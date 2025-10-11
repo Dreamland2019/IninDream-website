@@ -502,8 +502,11 @@
                 
                 // 重置章节选择器到第一章
                 if (chapterSelect.options.length > 0) {
-                    chapterSelect.value = chapterSelect.options[0].value;
+                    chapterSelect.value = "1.1"; // 直接设置为第一章
                 }
+                
+                // 确保题目数组是原始顺序
+                restoreOriginalOrder();
             } else {
                 chapterSelector.style.display = 'none';
                 
@@ -517,6 +520,19 @@
             
             // 显示第一题
             displayQuestion();
+        }
+
+        function restoreOriginalOrder() {
+            // 重新加载题目数据，确保是原始顺序
+            fetch('question_bank.json')
+                .then(response => response.json())
+                .then(data => {
+                    questions = data.questions;
+                    displayQuestion(); // 重新显示题目
+                })
+                .catch(error => {
+                    console.error('重新加载题目数据失败:', error);
+                });
         }
         
         // 返回首页
