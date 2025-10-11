@@ -486,7 +486,6 @@
         // 开始练习
         function startPractice(mode) {
             currentMode = mode;
-            currentQuestionIndex = 0;
             userAnswers = [];
             
             // 显示刷题界面
@@ -497,13 +496,20 @@
             // 根据模式显示章节选择器
             if (mode === 'sequential') {
                 chapterSelector.style.display = 'block';
+                
+                // 重置到第一章第一题
+                currentQuestionIndex = 0;
+                
+                // 重置章节选择器到第一章
+                if (chapterSelect.options.length > 0) {
+                    chapterSelect.value = chapterSelect.options[0].value;
+                }
             } else {
                 chapterSelector.style.display = 'none';
-            }
-            
-            // 初始化题目
-            if (mode === 'random') {
+                
+                // 随机模式下打乱题目
                 shuffleQuestions();
+                currentQuestionIndex = 0;
             }
             
             // 开始计时
