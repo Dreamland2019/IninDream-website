@@ -614,6 +614,19 @@
             
             const question = questions[currentQuestionIndex];
             
+            // 确保question对象存在且包含必要的属性
+            if (!question || !question.options) {
+                console.error("题目数据不完整:", question);
+                // 如果当前题目有问题，尝试加载下一题
+                if (currentQuestionIndex < questions.length - 1) {
+                    currentQuestionIndex++;
+                    setTimeout(displayQuestion, 0); // 使用setTimeout避免递归过深
+                } else {
+                    alert("题目数据加载异常，请刷新页面重试");
+                }
+                return;
+            }
+            
             // 更新题目类型
             questionType.textContent = question.type;
             questionType.className = 'question-type';
@@ -639,44 +652,50 @@
             // 更新题目文本
             questionText.textContent = question.question;
             
-            // 更新选项
+            // 更新选项 - 确保选项容器完全清空
             optionsContainer.innerHTML = '';
             const options = question.options;
             
-            for (const key in options) {
-                const optionDiv = document.createElement('div');
-                optionDiv.className = 'option';
-                
-                const input = document.createElement('input');
-                input.type = question.type === '多选题' ? 'checkbox' : 'radio';
-                input.name = 'answer';
-                input.value = key;
-                input.id = `option-${key}`;
-                
-                const label = document.createElement('label');
-                label.htmlFor = `option-${key}`;
-                label.innerHTML = `<span class="option-label">${key}.</span> ${options[key]}`;
-                
-                optionDiv.appendChild(input);
-                optionDiv.appendChild(label);
-                optionsContainer.appendChild(optionDiv);
-                
-                // 添加选项点击事件
-                optionDiv.addEventListener('click', function() {
-                    if (question.type === '多选题') {
-                        input.checked = !input.checked;
-                    } else {
-                        // 单选或判断，先取消所有选择
-                        document.querySelectorAll('input[name="answer"]').forEach(radio => {
-                            radio.checked = false;
-                        });
-                        input.checked = true;
-                    }
-                });
+            // 检查选项是否为空
+            if (!options || Object.keys(options).length === 0) {
+                console.error("题目选项为空:", question);
+                optionsContainer.innerHTML = '<div class="option error">题目选项数据异常</div>';
+            } else {
+                for (const key in options) {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'option';
+                    
+                    const input = document.createElement('input');
+                    input.type = question.type === '多选题' ? 'checkbox' : 'radio';
+                    input.name = 'answer';
+                    input.value = key;
+                    input.id = `option-${key}`;
+                    
+                    const label = document.createElement('label');
+                    label.htmlFor = `option-${key}`;
+                    label.innerHTML = `<span class="option-label">${key}.</span> ${options[key]}`;
+                    
+                    optionDiv.appendChild(input);
+                    optionDiv.appendChild(label);
+                    optionsContainer.appendChild(optionDiv);
+                    
+                    // 添加选项点击事件
+                    optionDiv.addEventListener('click', function() {
+                        if (question.type === '多选题') {
+                            input.checked = !input.checked;
+                        } else {
+                            // 单选或判断，先取消所有选择
+                            document.querySelectorAll('input[name="answer"]').forEach(radio => {
+                                radio.checked = false;
+                            });
+                            input.checked = true;
+                        }
+                    });
+                }
             }
             
-            // 更新答案解析内容 - 这是修复的关键部分
-            explanationContent.textContent = question.explanation;
+            // 更新答案解析内容
+            explanationContent.textContent = question.explanation || '暂无解析';
             
             // 更新书签状态
             updateBookmarkButton();
