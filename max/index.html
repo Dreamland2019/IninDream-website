@@ -313,6 +313,19 @@
             color: white;
             font-size: 1.2rem;
         }
+
+        .chapter-selector-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .chapter-selector-header h3 {
+            font-size: 1.1rem;
+            color: var(--secondary-color);
+            margin: 0;
+        }
         
         @media (max-width: 768px) {
             .container {
@@ -430,10 +443,10 @@
                 </div>
             </div>
             
-            <!-- 新增横线分隔 -->
-            <div class="section-divider"></div>
-            
             <div class="chapter-selector" id="chapterSelector" style="display: none;">
+                <div class="chapter-selector-header">
+                    <h3>章节选择</h3>
+                </div>
                 <select id="chapterSelect">
                     <!-- 章节选项会动态生成 -->
                 </select>
