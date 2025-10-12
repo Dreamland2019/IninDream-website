@@ -347,21 +347,21 @@
         @media (max-width: 768px) {
             .actions {
                 display: flex;
-                flex-wrap: wrap;
+                flex-direction: column;
                 gap: 10px;
             }
             
-            /* 提交答案按钮单独一行 */
-            #submitBtn {
-                width: 100%;
-                order: 1;
+            /* 创建第二行容器 */
+            .second-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
             }
             
-            /* 上一题和下一按钮平分第二行 */
+            /* 上一题和下一题按钮平分第二行 */
             #prevBtn,
             #nextBtn {
-                width: calc(50% - 5px);
-                order: 2;
+                flex: 1;
             }
             
             .container {
