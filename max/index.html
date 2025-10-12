@@ -60,22 +60,22 @@
             padding: 25px;
             margin-bottom: 20px;
         }
-
-        .hidden {
-            display: none !important;
-        }
         
         .mode-selection {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 15px !important;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 15px;
+            width: 100%;
         }
         
-        .mode-btn {
-            padding: 15px 25px !important;
-            box-sizing: border-box !important;
-            padding: 15px 25px !important;
-            margin: 0 !important;
+        .button-row .mode-btn {
+            flex: 1;
+            padding: 15px 25px;
             border: none;
             border-radius: 8px;
             font-size: 1.1rem;
@@ -85,7 +85,6 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px;
         }
         
         .sequential-btn {
@@ -95,6 +94,16 @@
         
         .random-btn {
             background-color: var(--secondary-color);
+            color: white;
+        }
+
+        .review-btn {
+            background-color: #9b59b6;
+            color: white;
+        }
+
+        .clear-cache-btn {
+            background-color: var(--warning-color);
             color: white;
         }
         
@@ -344,7 +353,7 @@
             margin: 0;
         }
         
-        @media (max-width: 768px) {
+        @media (max-width: 768px) {         
             .actions {
                 display: flex;
                 flex-direction: column;
@@ -553,16 +562,61 @@
             chapterSelect.addEventListener('change', changeChapter);
             bookmarkBtn.addEventListener('click', toggleBookmark);
             clearCacheBtn.addEventListener('click', clearCache);
+            reviewBtn.addEventListener('click', startReview);
             
             // 初始化统计信息
             loadStats();
         });
 
+        function startReview() {
+            // 从localStorage获取错题记录
+            const wrongAnswers = JSON.parse(localStorage.getItem('wrongAnswers')) || [];
+            
+            if (wrongAnswers.length === 0) {
+                alert('暂无错题记录，请先完成一些题目！');
+                return;
+            }
+            
+            currentMode = 'review';
+            userAnswers = [];
+            
+            // 筛选出错题对应的完整题目数据
+            const wrongQuestionIds = wrongAnswers.map(item => item.questionId);
+            const reviewQuestions = questions.filter(q => wrongQuestionIds.includes(q.id));
+            
+            if (reviewQuestions.length === 0) {
+                alert('错题数据异常，请清除缓存后重试！');
+                return;
+            }
+            
+            // 使用错题作为题目数组
+            const originalQuestions = questions;
+            questions = reviewQuestions;
+            currentQuestionIndex = 0;
+            
+            // 显示刷题界面
+            modeSelection.style.display = 'none';
+            questionContainer.style.display = 'block';
+            homeBtn.style.display = 'block';
+            chapterSelector.style.display = 'none';
+            
+            // 开始计时
+            startTimer();
+            
+            // 显示第一题
+            displayQuestion();
+            
+            // 恢复原始题目数组（在返回首页时使用）
+            questions = originalQuestions;
+        }
+
+        // 修改clearCache函数，同时清除错题记录
         function clearCache() {
-            if (confirm('确定要清除所有缓存数据吗？这将重置您的答题统计、书签和计时信息。')) {
+            if (confirm('确定要清除所有缓存数据吗？这将重置您的答题统计、书签、错题记录和计时信息。')) {
                 // 清除localStorage中的所有数据
                 localStorage.removeItem('stats');
                 localStorage.removeItem('bookmarks');
+                localStorage.removeItem('wrongAnswers');
                 
                 // 重置内存中的变量
                 bookmarks = [];
@@ -777,6 +831,11 @@
                 }
             });
             
+            // 记录错题
+            if (!isCorrect) {
+                recordWrongAnswer(question.id);
+            }
+            
             // 记录用户答案
             userAnswers.push({
                 questionId: question.id,
@@ -795,6 +854,20 @@
             
             // 启用下一题按钮
             nextBtn.disabled = false;
+        }
+
+        // 添加记录错题函数
+        function recordWrongAnswer(questionId) {
+            const wrongAnswers = JSON.parse(localStorage.getItem('wrongAnswers')) || [];
+            
+            // 避免重复记录
+            if (!wrongAnswers.some(item => item.questionId === questionId)) {
+                wrongAnswers.push({
+                    questionId: questionId,
+                    timestamp: new Date().toISOString()
+                });
+                localStorage.setItem('wrongAnswers', JSON.stringify(wrongAnswers));
+            }
         }
         
         // 下一题
