@@ -66,15 +66,26 @@
         }
         
         .mode-selection {
-            display: flex ;
-            flex-direction: column ;
-            gap: 15px ;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 15px !important;
         }
         
         .mode-btn {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 15px 25px;
+            padding: 15px 25px !important;
+            box-sizing: border-box !important;
+            padding: 15px 25px !important;
+            margin: 0 !important;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
         }
         
         .sequential-btn {
@@ -373,7 +384,7 @@
 <body>
     <div class="container">
         <header>
-            <button class="home-btn hidden" id="homeBtn">←</button>
+            <button class="home-btn" id="homeBtn">←</button>
             <h1>HQU马原题库刷题系统</h1>
             <p>共 <span id="totalQuestions">766</span> 道题目，最后更新2025-10-10</p>
         </header>
@@ -390,7 +401,7 @@
             </button>
         </div>
         
-        <div class="card question-container hidden" id="questionContainer">
+        <div class="card question-container" id="questionContainer">
             <div class="question-header">
                 <div>
                     <span class="question-type" id="questionType">单选题</span>
@@ -544,10 +555,10 @@
             currentMode = mode;
             userAnswers = [];
             
-            // 使用CSS类控制显示/隐藏
-            modeSelection.classList.add('hidden');
-            questionContainer.classList.remove('hidden');
-            homeBtn.classList.remove('hidden');
+            // 使用style.display控制显示/隐藏
+            modeSelection.style.display = 'none';
+            questionContainer.style.display = 'block';
+            homeBtn.style.display = 'block';
             
             // 根据模式显示章节选择器
             if (mode === 'sequential') {
@@ -558,7 +569,7 @@
                 
                 // 重置章节选择器到第一章
                 if (chapterSelect.options.length > 0) {
-                    chapterSelect.value = "1.1"; // 直接设置为第一章
+                    chapterSelect.value = "1.1";
                 }
                 
                 // 确保题目数组是原始顺序
@@ -577,6 +588,7 @@
             // 显示第一题
             displayQuestion();
         }
+        
         function restoreOriginalOrder() {
             // 重新加载题目数据，确保是原始顺序
             fetch('question_bank.json')
@@ -592,16 +604,19 @@
         
         // 返回首页
         function goHome() {
-            // 使用CSS类控制显示/隐藏，而不是直接修改style
-            modeSelection.classList.remove('hidden');
-            questionContainer.classList.add('hidden');
-            homeBtn.classList.add('hidden');
+            // 使用style.display控制显示/隐藏
+            modeSelection.style.display = 'block';
+            questionContainer.style.display = 'none';
+            homeBtn.style.display = 'none';
             
             // 停止计时
             clearInterval(timerInterval);
             
             // 保存统计信息
             saveStats();
+            
+            // 强制重排以修复按钮布局问题
+            void modeSelection.offsetHeight;
         }
         
         // 显示题目
