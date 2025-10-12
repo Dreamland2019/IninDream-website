@@ -406,6 +406,43 @@
                 border-top: 1px dashed #ddd;
             }
         }
+        
+        .site-footer {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 20px 0;
+            margin-top: 40px;
+            text-align: center;
+        }
+        
+        .footer-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .footer-content p {
+            margin: 5px 0;
+            opacity: 0.8;
+        }
+        
+        .footer-content .copyright {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+        
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .site-footer {
+                padding: 15px 0;
+                margin-top: 30px;
+            }
+            
+            .footer-content {
+                padding: 0 15px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -493,6 +530,15 @@
             </div>
         </div>
     </div>
+
+    <!-- 添加页脚 -->
+    <footer class="site-footer">
+        <div class="footer-content">
+            <p>作者：幻境沉沦</p>
+            <p>有问题请联系 → QQ：1426333693</p>
+            <!-- <p class="copyright">&copy; 2025 马克思主义原理题库系统 版权所有</p> -->
+        </div>
+    </footer>    
 
     <script>
         // 全局变量
