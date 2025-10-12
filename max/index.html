@@ -346,30 +346,24 @@
         
         @media (max-width: 768px) {
             .actions {
-                display: grid;
-                grid-template-columns: 1fr; /* 单列布局 */
+                display: flex;
+                flex-direction: column;
                 gap: 10px;
             }
             
-            /* 提交答案按钮在第一行 */
-            #submitBtn {
-                grid-row: 1;
+            /* 创建第二行容器 */
+            .second-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 10px;
             }
             
-            /* 上一题和下一题按钮在第二行，并排显示 */
+            /* 上一题和下一题按钮平分第二行 */
             #prevBtn,
             #nextBtn {
-                grid-row: 2;
-                display: inline-block;
-                width: calc(50% - 5px);
-                vertical-align: top;
+                flex: 1;
             }
-            
-            /* 为上一题按钮添加右边距 */
-            #prevBtn {
-                margin-right: 10px;
-            }
-            
+
             .container {
                 padding: 10px;
             }
@@ -452,9 +446,11 @@
             </div>
             
             <div class="actions">
-                <button class="btn btn-secondary" id="prevBtn">上一题</button>
                 <button class="btn btn-primary" id="submitBtn">提交答案</button>
-                <button class="btn btn-primary" id="nextBtn" disabled>下一题</button>
+                <div class="second-row">
+                    <button class="btn btn-secondary" id="prevBtn">上一题</button>
+                    <button class="btn btn-primary" id="nextBtn" disabled>下一题</button>
+                </div>
             </div>
             
             <div class="explanation-container">
