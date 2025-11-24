@@ -78,10 +78,26 @@ function updateHomeStats() {
 }
 
 function initChapterSelect() {
-    els.chapterSelect.innerHTML = '<option value="" disabled selected>选择章节跳转</option>';
-    // 创建章节选项
+    // 1. 清空并添加默认提示
+    els.chapterSelect.innerHTML = '';
+    
+    // 2. 添加默认的“占位符”（显示在框里，但不能选）
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = "";
+    defaultOpt.textContent = "📍 跳转到章节...";
+    defaultOpt.disabled = true;
+    defaultOpt.selected = true;
+    els.chapterSelect.appendChild(defaultOpt);
+
+    // 3. 【关键修改】添加一个“取消”选项
+    const cancelOpt = document.createElement('option');
+    cancelOpt.value = "CANCEL_ACTION"; // 特殊标记
+    cancelOpt.textContent = "❌ 取消 (保持当前进度)";
+    els.chapterSelect.appendChild(cancelOpt);
+
+    // 4. 循环添加真实章节
     for (const [key, name] of Object.entries(state.chapters)) {
-        if(name) { // 只添加有名字的章节
+        if(name) { 
              const opt = document.createElement('option');
              opt.value = key;
              opt.textContent = `${key} ${name}`;
@@ -99,7 +115,24 @@ function bindEvents() {
     els.prevBtn.addEventListener('click', () => navigate(-1));
     
     els.chapterSelect.addEventListener('change', (e) => {
-        jumpToChapter(e.target.value);
+        const val = e.target.value;
+        
+        // 如果用户选了“取消”
+        if (val === "CANCEL_ACTION") {
+            // 重置选择器回到“跳转到章节...”的文字状态
+            e.target.value = ""; 
+            // 移除焦点，让手机键盘/选择框收起
+            e.target.blur(); 
+            return;
+        }
+
+        // 正常跳转
+        jumpToChapter(val);
+        
+        // 跳转后也建议重置选择框显示，避免一直显示着刚才选的章节，
+        // 这样下次用户再点的时候，逻辑更清晰
+        e.target.value = ""; 
+        e.target.blur();
     });
 
     els.removeWrongBtn.addEventListener('click', removeCurrentWrongQuestion);
