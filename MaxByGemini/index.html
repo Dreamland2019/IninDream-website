@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>马原客观题刷题库</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- 顶部导航栏 -->
+    <header class="app-header">
+        <div class="header-content">
+            <button id="back-home-btn" class="hidden">← 返回主页</button>
+            <h1 id="page-title">马原题库</h1>
+            <div id="header-controls">
+                <!-- 章节选择器 (仅在顺序练习模式显示) -->
+                <select id="chapter-selector" class="hidden"></select>
+                <!-- 移除错题按钮 (仅在错题模式显示) -->
+                <button id="remove-wrong-btn" class="hidden">🗑️ 移除此题</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主容器 -->
+    <main class="container">
+        
+        <!-- 1. 首页视图 -->
+        <div id="home-view" class="view active">
+            <div class="card intro-card">
+                <h2>欢迎回来</h2>
+                <p id="stats-display">加载中...</p>
+            </div>
+            <div class="menu-grid">
+                <button class="menu-btn primary" onclick="startPractice()">
+                    <span class="icon">📖</span>
+                    <span class="text">顺序刷题</span>
+                    <span class="sub-text">接着上次继续</span>
+                </button>
+                <button class="menu-btn warning" onclick="startReview()">
+                    <span class="icon">✍️</span>
+                    <span class="text">错题回顾</span>
+                    <span class="sub-text" id="wrong-count-badge">0 题待复习</span>
+                </button>
+                <button class="menu-btn danger" onclick="clearCache()">
+                    <span class="icon">🧹</span>
+                    <span class="text">清除缓存</span>
+                    <span class="sub-text">重置所有进度</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. 答题视图 -->
+        <div id="quiz-view" class="view hidden">
+            <!-- 进度条 -->
+            <div class="progress-bar-container">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <div class="progress-text">
+                <span id="current-index">1</span> / <span id="total-count">100</span>
+                <span id="chapter-tag" class="tag">第一章</span>
+                <span id="type-tag" class="tag type-tag">单选题</span>
+            </div>
+
+            <!-- 题目区域 -->
+            <div class="question-card">
+                <div id="question-text" class="question-text">
+                    题目加载中...
+                </div>
+                
+                <!-- 选项区域 -->
+                <div id="options-container" class="options-list">
+                    <!-- JS动态生成选项 -->
+                </div>
+            </div>
+
+            <!-- 按钮区域 -->
+            <div class="action-area">
+                <button id="submit-btn" class="action-btn submit">提交答案</button>
+                <div class="nav-btns hidden" id="nav-btns">
+                    <button id="prev-btn" class="action-btn secondary">上一题</button>
+                    <button id="next-btn" class="action-btn primary">下一题</button>
+                </div>
+            </div>
+
+            <!-- 解析区域 -->
+            <div id="explanation-area" class="explanation-card hidden">
+                <h3>答案解析</h3>
+                <div class="result-row">
+                    <span id="result-icon"></span>
+                    <span id="correct-answer-text"></span>
+                </div>
+                <div id="explanation-text" class="explanation-content"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
