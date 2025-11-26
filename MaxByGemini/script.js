@@ -16,7 +16,8 @@ const FILES = {
 
 const STORAGE_KEYS = {
     progress: 'mqb_practice_index',
-    wrongList: 'mqb_wrong_list'
+    wrongList: 'mqb_wrong_list',
+    reviewIndex: 'mqb_review_index'
 };
 
 // DOM 元素
@@ -165,7 +166,18 @@ function startReview() {
     }
     state.mode = 'review';
     state.reviewQueue = [...state.wrongList]; // 复制一份
-    state.reviewIndex = 0;
+
+    // --- 修改开始：读取进度 ---
+    const savedReviewIndex = parseInt(localStorage.getItem(STORAGE_KEYS.reviewIndex) || 0);
+    
+    // 校验进度是否越界（防止删题后旧索引超过数组长度）
+    if (savedReviewIndex >= state.reviewQueue.length) {
+        state.reviewIndex = 0;
+    } else {
+        state.reviewIndex = savedReviewIndex;
+    }
+    // --- 修改结束 ---
+
     enterQuizMode();
     els.removeWrongBtn.classList.remove('hidden');
     renderQuestion();
@@ -183,6 +195,7 @@ function clearCache() {
     if(confirm('确定要清除所有进度和错题记录吗？此操作不可恢复。')) {
         localStorage.removeItem(STORAGE_KEYS.progress);
         localStorage.removeItem(STORAGE_KEYS.wrongList);
+        localStorage.removeItem(STORAGE_KEYS.reviewIndex); // 【新增这一行】
         location.reload();
     }
 }
@@ -339,7 +352,13 @@ function navigate(direction) {
         if (newIndex >= 0 && newIndex < state.reviewQueue.length) {
             state.reviewIndex = newIndex;
             renderQuestion();
+
+            // 【新增】：保存错题进度
+            localStorage.setItem(STORAGE_KEYS.reviewIndex, state.reviewIndex);
+
         } else {
+            // 如果刷完了，重置进度为 0，方便下次从头开始
+            localStorage.setItem(STORAGE_KEYS.reviewIndex, 0); 
             alert('错题回顾结束');
             showHome();
         }
@@ -375,6 +394,20 @@ function removeCurrentWrongQuestion() {
 
     // 从当前回顾队列移除
     state.reviewQueue.splice(state.reviewIndex, 1);
+
+    // --- 修改开始：修正索引并保存 ---
+    // 如果删除的是最后一题，索引需要前移；否则索引不变（因为后面的题顶上来了）
+    if (state.reviewIndex >= state.reviewQueue.length) {
+        state.reviewIndex = Math.max(0, state.reviewQueue.length - 1);
+    }
+    
+    // 保存修正后的索引
+    localStorage.setItem(STORAGE_KEYS.reviewIndex, state.reviewIndex);
+    // --- 修改结束 ---
+    
+    els.removeWrongBtn.textContent = "已移除";
+    els.removeWrongBtn.disabled = true;
+
     
     els.removeWrongBtn.textContent = "已移除";
     els.removeWrongBtn.disabled = true;
