@@ -12,6 +12,7 @@ let state = {
     priorityList: [], 
     priorityIndex: 0, 
     userAnswers: {},
+    appName: "适用HQU的马原客观题刷题网页" 
 };
 
 const FILES = {
@@ -49,6 +50,11 @@ const els = {
 
 // 初始化
 window.addEventListener('DOMContentLoaded', async () => {
+    // 【新增】页面加载时，立即获取 HTML 里写好的标题
+    if (els.headerTitle) {
+        state.appName = els.headerTitle.textContent;
+    }
+
     await loadData();
     loadStorage();
     updateHomeStats();
@@ -205,12 +211,11 @@ function showHome() {
     if (els.starBtn) els.starBtn.classList.add('hidden'); // 如果你有这个按钮的话
 
     // 3. 【关键】将标题重置回题库名称
-    // 如果 JSON 里有 metadata.title 就用那个，否则默认显示 "马原题库"
-    const libTitle = (state.metadata && state.metadata.title) ? state.metadata.title : "马原题库";
+    // 【修改】这里不要写死 "马原题库"，而是用存好的 appName
     if (els.headerTitle) {
-        els.headerTitle.textContent = libTitle;
+        els.headerTitle.textContent = state.appName;
     }
-
+    
     // 4. 更新统计数据
     updateHomeStats();
 }
