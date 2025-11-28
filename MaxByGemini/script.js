@@ -193,7 +193,7 @@ function updateHeaderTitle() {
         els.headerTitle.textContent = "⭐ 重点标记";
     } else {
         // 默认情况
-        els.headerTitle.textContent = "马原题库";
+        els.headerTitle.textContent = "适用HQU的马原客观题刷题网页";
     }
 }
 
