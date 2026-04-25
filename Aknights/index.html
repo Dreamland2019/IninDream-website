@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幻境沉沦的赛博名片</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="background-overlay"></div>
+    <div class="top-line-deco"></div>
+
+    <main class="hud-container">
+        <!-- 左侧包装容器 -->
+        <div class="side-wrapper left-side">
+            <!-- 头像区：添加 has-deco -->
+            <section class="widget profile-header has-deco">
+                <div class="avatar-box">
+                    <img src="Resources/avatar.png" alt="Avatar" class="avatar-img">
+                    <div class="avatar-frame"></div>
+                </div>
+                <div class="name-area">
+                    <h2 class="nickname">幻境沉沦<span class="tag">#325799</span></h2>
+                    <div class="uid-row">
+                        <span class="info-label">QQ: 1426333693</span>
+                        <span class="date-label">苏醒日 2004/01/30</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 等级区：添加 has-deco -->
+            <section class="widget level-stats has-deco">
+                <div class="stat-row">
+                    <span class="stat-label"></span>
+                    <span class="stat-value">#社恐# #蟑螂# #宅男#</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label"></span>
+                    <span class="stat-value">#神秘游戏玩家# #脆皮大学生#</span>
+                </div>
+            </section>
+
+            <!-- 数据区：添加 has-deco -->
+            <section class="widget count-stats has-deco">
+                <div class="count-item">
+                    <span class="count-num">COMMING SOON</span>
+                    <span class="count-label"></span>
+                </div>
+                <div class="count-item">
+                    <span class="count-num"></span>
+                    <span class="count-label"></span>
+                </div>
+                <div class="count-item">
+                    <span class="count-num"></span>
+                    <span class="count-label"></span>
+                </div>
+            </section>
+        </div>
+
+        <!-- 右侧包装容器 -->
+        <div class="side-wrapper right-side">
+            <div class="cards-group">
+                <!-- 卡片 1 -->
+                <div class="glass-card clickable" onclick="openModal('Resources/mrfz_detail.png')">
+                    <div class="card-tag">RHODES ISLAND ARCHIVE</div>
+                    <div class="card-content">
+                        <div class="preview-img-box"><img src="Resources/mrfz_detail.webp"></div>
+                        <div class="card-text">
+                            <h4>明日方舟</h4>
+                            <p>点击查看大图</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 卡片 2 -->
+                <div class="glass-card clickable" onclick="openModal('Resources/zmd_detail.png')">
+                    <div class="card-tag">ENDFIELD ARCHIVE</div>
+                    <div class="card-content">
+                        <div class="preview-img-box"><img src="Resources/zmd_detail.webp"></div>
+                        <div class="card-text">
+                            <h4>明日方舟：终末地</h4>
+                            <p>点击查看大图</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 卡片 3 -->
+                <div class="glass-card clickable" onclick="openModal('Resources/default.jpg')">
+                    <div class="card-tag">EARTH ONLINE 21ST ARCHIVE</div>
+                    <div class="card-content">
+                        <div class="preview-img-box"><img src="Resources/default.jpg"></div>
+                        <div class="card-text">
+                            <h4>敬请期待</h4>
+                            <p>COMING SOON</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 底部介绍：不添加 has-deco，确保没方块 -->
+            <section class="widget footer-bio">
+                <p class="bio-content">一个未来</p>
+                <div class="quotes"></div>
+            </section>
+        </div>
+    </main>
+  
+    <!-- 弹窗部分 -->
+    <div id="modal" class="modal" onclick="closeModal()">
+        <div class="modal-content">
+            <img id="full-img" src="" alt="">
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

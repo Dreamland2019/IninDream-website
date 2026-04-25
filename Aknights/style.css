@@ -1,0 +1,300 @@
+/* --- 变量定义 --- */
+:root {
+    --endfield-teal: #00E5BC;
+    --bg-dark-trans: rgba(15, 15, 15, 0.75);
+    --border-color: rgba(255, 255, 255, 0.15);
+    
+    /* 定义响应式比例：让基础间距和字体跟随屏幕缩放 */
+    --base-gap: clamp(20px, 3vw, 50px);
+}
+
+/* --- 基础重置 --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* 关键：让字体大小随屏幕宽度微调，解决“字太小”的问题 */
+    font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+html {
+    /* 核心修改：基础字体大小随视口缩放 (14px到20px之间变化) */
+    font-size: clamp(14px, 0.6vw, 20px);
+}
+
+body {
+    background-color: #000;
+    color: #fff;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* 背景图 */
+.background-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: url('Resources/background.webp') center/cover no-repeat;
+    z-index: -1;
+    filter: brightness(0.9);
+}
+
+/* HUD 主容器 */
+.hud-container {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    padding: 5vh 5vw; 
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    z-index: 10;
+}
+
+.side-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.left-side {
+    gap: var(--base-gap);
+    align-items: flex-start;
+    /* 增加左侧容器的基础宽度感知 */
+    max-width: 40vw;
+}
+
+.right-side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end; /* 强制所有子元素向右对齐 */
+    justify-content: space-between;
+    /* 3. 宽度可以根据需要调整，或者干脆不设固定宽度，由内容撑开 */
+    width: auto; 
+    min-width: 33vw; 
+    height: 100%;
+}
+
+/* --- 青色装饰方块逻辑 --- */
+.widget { position: relative; }
+.has-deco::before {
+    content: '';
+    position: absolute;
+    left: -1.5vw; /* 随缩放挪动位置 */
+    top: 0.5rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    background: var(--endfield-teal);
+    box-shadow: 0 0 10px var(--endfield-teal);
+}
+
+/* --- 左侧模块：大幅度放大 --- */
+.avatar-box {
+    position: relative; /* 必须为 relative 才能让装饰框定位 */
+    width: clamp(120px, 10vw, 200px);
+    height: clamp(120px, 10vw, 200px);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 5px;
+    display: block;
+}
+
+/* 修正后的缺角装饰框 */
+.avatar-frame {
+    position: absolute;
+    top: -8px;   /* 稍微超出头像框 */
+    left: -8px;
+    /* 装饰框大小随头像缩放 */
+    width: clamp(30px, 3vw, 60px);
+    height: clamp(30px, 3vw, 60px);
+    border-top: 4px solid var(--endfield-teal);
+    border-left: 4px solid var(--endfield-teal);
+    z-index: 5; /* 确保在图像上方 */
+    pointer-events: none; /* 确保不挡住鼠标点击头像 */
+}
+
+.nickname {
+    /* 标题文字放大 */
+    font-size: clamp(2rem, 3vw, 4rem);
+    font-weight: 400;
+}
+
+.tag { font-size: 0.5em; opacity: 0.5; margin-left: 10px; }
+
+.uid-row {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.info-label, .date-label {
+    background: rgba(255,255,255,0.3);
+    padding: 0.4rem 1rem;
+    font-size: 1rem; /* 随 html font-size 自动放大 */
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+/* 等级统计区放大 */
+.level-stats {
+    background: rgba(255, 255, 255, 0.3);
+    padding: 1.5rem 2.5rem;
+    width: clamp(250px, 18vw, 400px);
+    border-left: 6px solid #333;
+}
+
+.stat-row { font-size: 1.2rem; margin: 0.8rem 0; }
+.stat-value { font-size: 1.5rem; color: var(--endfield-teal); }
+
+/* 数据区放大 */
+.count-num {
+    font-size: clamp(2.5rem, 4vw, 5rem);
+    color: var(--endfield-teal);
+    line-height: 1;
+}
+.count-label { font-size: 1rem; margin-top: 0.5rem; border-top: 2px solid #555; }
+
+/* --- 右侧卡片组：大幅度放大 --- */
+.cards-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5vh;
+    width: 100%;
+}
+
+.glass-card {
+    /* 让卡片宽度占据右侧更大部分，防止中间太空 */
+    width: 100%; 
+    max-width: 800px;
+    background: rgba(73, 73, 73, 0.3);
+    backdrop-filter: blur(5px);
+    border-radius: 12px;
+    padding: 2.5vh 2vw;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.glass-card:hover {
+    background: rgba(22, 22, 22, 0.8);
+    border-color: var(--endfield-teal);
+    transform: translateX(-15px) scale(1.02);
+}
+
+.card-tag {
+    font-size: 0.8rem;
+    margin-bottom: 1.5vh;
+    opacity: 0.5;
+}
+
+.preview-img-box {
+    /* 1. 确保容器大小响应式（这部分你应该已经有了） */
+    width: clamp(140px, 12vw, 260px); 
+    height: clamp(80px, 7vw, 150px);
+    
+    /* 2. 关键：禁止图片溢出 */
+    overflow: hidden; 
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    
+    /* 3. 防止在内容过多时被挤压 */
+    flex-shrink: 0; 
+}
+
+.preview-img-box img {
+    /* 4. 关键：让图片撑满容器且不变形 */
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover; /* 类似背景图的 cover 效果，裁剪多余部分 */
+    display: block;
+}
+
+.card-content {
+    display: flex;
+    gap: 2vw; /* 增加图片和文字之间的间距 */
+    align-items: center; /* 垂直居中对齐 */
+    width: 100%;
+}
+
+.card-text {
+    flex: 1; /* 让文字占据剩余空间 */
+    min-width: 0; /* 防止文字过长撑破卡片 */
+}
+
+.card-text h4 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 文字过长时显示省略号 */
+}
+
+.card-text h4 {
+    font-size: clamp(1.4rem, 1.8vw, 2.2rem);
+    margin-bottom: 0.5rem;
+}
+
+.card-text p {
+    font-size: 1.1rem;
+    color: var(--endfield-teal);
+}
+
+/* --- 底部签名 --- */
+.footer-bio {
+    text-align: right;
+    padding-right: 2vw;
+    border-right: 5px solid var(--endfield-teal);
+}
+
+.bio-content {
+    font-size: clamp(1.2rem, 1.5vw, 2rem);
+    font-style: italic;
+}
+
+/* --- 弹窗缩放 --- */
+.modal {
+    display: none; /* 初始隐藏 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 9999; /* 必须是最高级 */
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out; /* 提示点击可关闭 */
+}
+
+/* 弹窗内容容器 */
+.modal-content {
+    position: relative;
+    width: clamp(300px, 85vw, 1600px); /* 弹窗也做自适应 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border: 1px solid var(--endfield-teal);
+    box-shadow: 0 0 30px rgba(0, 229, 188, 0.3);
+}
+/* --- 手机端适配：由于使用了响应式单位，这里只需微调 --- */
+@media (max-width: 1024px) {
+    body { overflow-y: auto; height: auto; }
+    .hud-container {
+        flex-direction: column;
+        padding: 40px 20px;
+        gap: 60px;
+    }
+    .side-wrapper { width: 100%; height: auto; }
+    .left-side, .right-side { align-items: flex-start; width: 100%; }
+    .nickname { font-size: 2.5rem; }
+    .glass-card { max-width: none; }
+    .footer-bio { text-align: left; border-right: none; border-left: 5px solid var(--endfield-teal); padding-left: 20px; }
+}
