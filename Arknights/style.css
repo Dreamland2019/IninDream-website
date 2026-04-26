@@ -56,30 +56,51 @@ body {
 
 /* 手机横屏提示样式 */
 .orientation-notice {
-    display: none; /* 默认隐藏 */
+    display: none; /* 默认不显示 */
     position: fixed;
-    top: 0; left: 0; width: 100%;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 40px; /* 固定高度 */
     background: var(--endfield-teal);
     color: #000;
-    text-align: center;
-    padding: 5px 0;
-    font-size: 0.8rem;
+    z-index: 10000; /* 确保在最最顶层 */
+    
+    display: none; /* 下方媒体查询控制显示 */
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
     font-weight: bold;
-    z-index: 10000;
     letter-spacing: 1px;
+    box-shadow: 0 2px 10px rgba(0, 229, 188, 0.5);
 }
 
 /* 仅在手机端（且为竖屏时）显示提示 */
-@media (max-width: 1024px) and (orientation: portrait) {
-    /* 只有当屏幕确实是“高大于宽”时才显示 */
-    @media screen and (aspect-ratio: 1/1) or (max-aspect-ratio: 1/1) {
-        .orientation-notice { display: block; }
-        .hud-container {
-            transform: scale(0.7); 
-            width: 142%; 
-            height: 142%;
-            padding: 20px;
-        }
+@media screen and (orientation: portrait) {
+    .orientation-notice {
+        display: flex; /* 竖屏时强制显示 */
+    }
+
+    /* 同时缩放 HUD 容器，使其在竖屏下也能大致看清结构 */
+    .hud-container {
+        transform: scale(0.65); /* 缩放比例可根据需求调整 */
+        transform-origin: top left;
+        width: 154%; /* 1/0.65 补偿宽度 */
+        height: 154%;
+        padding: 30px;
+    }
+}
+
+@media screen and (orientation: landscape) {
+    .orientation-notice {
+        display: none !important;
+    }
+    
+    /* 横屏时 HUD 恢复 1:1 比例 */
+    .hud-container {
+        transform: scale(1);
+        width: 100%;
+        height: 100%;
     }
 }
 
