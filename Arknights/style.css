@@ -41,14 +41,45 @@ body {
 
 /* HUD 主容器 */
 .hud-container {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between;
+    /* 允许缩放以适应小屏幕 */
+    transform-origin: top left;
     position: relative;
     width: 100%;
     height: 100vh;
     padding: 5vh 5vw; 
-    display: flex;
-    justify-content: space-between;
     align-items: flex-start;
     z-index: 10;
+}
+
+/* 手机横屏提示样式 */
+.orientation-notice {
+    display: none; /* 默认隐藏 */
+    position: fixed;
+    top: 0; left: 0; width: 100%;
+    background: var(--endfield-teal);
+    color: #000;
+    text-align: center;
+    padding: 5px 0;
+    font-size: 0.8rem;
+    font-weight: bold;
+    z-index: 10000;
+    letter-spacing: 1px;
+}
+
+/* 仅在手机端（且为竖屏时）显示提示 */
+@media (max-width: 1024px) and (orientation: portrait) {
+    .orientation-notice { display: block; }
+    
+    /* 在竖屏下缩小 HUD 以防止重叠 */
+    .hud-container {
+        transform: scale(0.7); 
+        width: 142%; /* 1/0.7 补偿缩放后的宽度 */
+        height: 142%;
+        padding: 20px;
+    }
 }
 
 .side-wrapper {
@@ -158,14 +189,6 @@ body {
     line-height: 1;
 }
 .count-label { font-size: 1rem; margin-top: 0.5rem; border-top: 2px solid #555; }
-
-/* --- 右侧卡片组：大幅度放大 --- */
-.cards-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5vh;
-    width: 100%;
-}
 
 .glass-card {
     /* 让卡片宽度占据右侧更大部分，防止中间太空 */
@@ -284,17 +307,120 @@ body {
     border: 1px solid var(--endfield-teal);
     box-shadow: 0 0 30px rgba(0, 229, 188, 0.3);
 }
-/* --- 手机端适配：由于使用了响应式单位，这里只需微调 --- */
-@media (max-width: 1024px) {
-    body { overflow-y: auto; height: auto; }
-    .hud-container {
-        flex-direction: column;
-        padding: 40px 20px;
-        gap: 60px;
-    }
-    .side-wrapper { width: 100%; height: auto; }
-    .left-side, .right-side { align-items: flex-start; width: 100%; }
-    .nickname { font-size: 2.5rem; }
-    .glass-card { max-width: none; }
-    .footer-bio { text-align: left; border-right: none; border-left: 5px solid var(--endfield-teal); padding-left: 20px; }
+
+
+/* --- 新增：功能区域样式 --- */
+.pc-only { display: block; }
+
+.control-panel {
+    background: var(--bg-dark-trans);
+    padding: 1.5rem 2rem;
+    width: clamp(250px, 22vw, 450px);
+    border-left: 4px solid var(--endfield-teal);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
 }
+
+.ctrl-row { font-size: 1.1rem; opacity: 0.9; }
+
+.teal-text {
+    color: var(--endfield-teal);
+    cursor: pointer;
+    text-decoration: none;
+    border-bottom: 1px dashed var(--endfield-teal);
+}
+.teal-text:hover { filter: brightness(1.2); }
+
+.clickable-text { cursor: pointer; transition: 0.2s; }
+.clickable-text:hover { color: var(--endfield-teal); padding-left: 5px; }
+
+/* 隐藏按钮样式 */
+.hide-toggle-wrapper {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+.hide-btn {
+    width: 40px; height: 40px;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.3s;
+}
+.hide-btn:hover { background: var(--endfield-teal); }
+.hide-icon {
+    width: 20px; height: 2px; background: #fff; position: relative;
+}
+.hide-icon::before {
+    content: ''; position: absolute; top: -6px; left: 0; width: 20px; height: 2px; background: #fff;
+}
+
+
+
+.side-edge-toggle {
+    position: fixed; /* 固定在屏幕上 */
+    right: 0;        /* 紧贴右边缘 */
+    top: 50%;        /* 垂直居中 */
+    transform: translateY(-50%);
+    
+    width: 30px;
+    height: 120px;   /* 纤长的设计，类似终末地的侧边栏按钮 */
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(8px);
+    
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: none; /* 贴边不需要右边框 */
+    border-radius: 8px 0 0 8px; /* 左侧圆角 */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100; /* 确保在卡片之上 */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.side-edge-toggle:hover {
+    background: rgba(0, 229, 188, 0.15); /* 悬停变青色 */
+    width: 40px; /* 悬停稍微伸出一点，增加交互感 */
+    border-color: var(--endfield-teal);
+}
+
+#toggle-arrow {
+    color: #fff;
+    font-size: 24px;
+    font-family: "Consolas", monospace; /* 使用等宽字体让箭头更锐利 */
+    transition: transform 0.3s;
+    user-select: none;
+    opacity: 0.8;
+}
+
+
+/* --- 右侧卡片组 --- */
+.cards-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5vh;
+    width: 100%;
+    transition: all 0.5s cubic-bezier(0.165, 0.84, 0.44, 1);
+    opacity: 1;
+}
+
+/* 之前卡片组隐藏的样式确保包含 visibility 和 opacity */
+.cards-hidden {
+    opacity: 0 !important;
+    visibility: hidden !important; /* 关键：防止隐藏后还能点到透明的卡片 */
+    transform: translateY(20px) !important;
+    pointer-events: none !important; /* 确保隐藏后鼠标点不到它 */
+}
+
+/* 修正：按钮在卡片隐藏时也稍微变暗或变色提醒 */
+.cards-hidden + .side-edge-toggle {
+    background: rgba(0, 229, 188, 0.05);
+}
+

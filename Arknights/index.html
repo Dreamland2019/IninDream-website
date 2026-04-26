@@ -11,6 +11,12 @@
     <div class="background-overlay"></div>
     <div class="top-line-deco"></div>
 
+        <!-- 手机横屏提示 -->
+    <div class="orientation-notice">
+        <span>DETECTION: PORTRAIT MODE / 请横屏查看以获得最佳体验</span>
+    </div>
+
+
     <main class="hud-container">
         <!-- 左侧包装容器 -->
         <div class="side-wrapper left-side">
@@ -42,25 +48,31 @@
             </section>
 
             <!-- 数据区：添加 has-deco -->
-            <section class="widget count-stats has-deco">
-                <div class="count-item">
-                    <span class="count-num">COMMING SOON</span>
-                    <span class="count-label"></span>
+            <section class="widget control-panel has-deco pc-only">
+                <div class="ctrl-row">
+                    <span class="ctrl-label">背景图轮换中，剩余时间：<span id="timer-sec">5</span>秒</span>
                 </div>
-                <div class="count-item">
-                    <span class="count-num"></span>
-                    <span class="count-label"></span>
+                <div class="ctrl-row clickable-text" id="pause-btn" onclick="toggleRotation()">
+                    <span class="ctrl-cmd">指令：暂停轮换</span>
                 </div>
-                <div class="count-item">
-                    <span class="count-num"></span>
-                    <span class="count-label"></span>
+                <div class="ctrl-row">
+                    <span class="ctrl-label">当前图库：<span id="lib-name" class="teal-text" onclick="switchLibrary()">终末地</span></span>
+                </div>
+                <div class="ctrl-row">
+                    <span class="ctrl-label">当前模式：<span id="mode-text" class="teal-text" onclick="toggleMode()">顺序轮换 (1/3)</span></span>
                 </div>
             </section>
         </div>
 
         <!-- 右侧包装容器 -->
+
         <div class="side-wrapper right-side">
-            <div class="cards-group">
+
+            <div class="side-edge-toggle" onclick="toggleCardsVisibility()">
+               <span id="toggle-arrow">></span>
+            </div>
+            
+            <div class="cards-group" id="target-cards-group">
                 <!-- 卡片 1 -->
                 <div class="glass-card clickable" onclick="openModal('Resources/mrfz_detail.png')">
                     <div class="card-tag">RHODES ISLAND ARCHIVE</div>
@@ -101,7 +113,6 @@
             <!-- 底部介绍：不添加 has-deco，确保没方块 -->
             <section class="widget footer-bio">
                 <p class="bio-content">一个未来</p>
-                <div class="quotes"></div>
             </section>
         </div>
     </main>
