@@ -13,7 +13,7 @@ function closeModal() {
     const modal = document.getElementById('modal');
     if (modal) {
         modal.style.display = 'none'; // 隐藏弹窗
-        document.body.style.overflow = 'auto'; // 恢复滚动
+        document.body.style.overflow = ''; // 清空行内样式
     }
 }
 
