@@ -25,15 +25,15 @@ document.addEventListener('keydown', (e) => {
 // --- 背景轮换配置 ---
 // 因为是静态网页，无法自动读取文件夹，请在这里列出每个文件夹下的图片文件名
 const imgLists = {
-    '终末地': ['1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp', '10.webp'], 
-    '明日方舟': ['ak1.webp', '不义之财_鸣铳.webp'],
-    '其他游戏': ['dd2.webp', 'hh.webp']
+    'Endfield': ['1.webp', '2.webp', '3.webp', '4.webp', '5.webp', '6.webp', '7.webp', '8.webp', '9.webp', '10.webp'], 
+    'Arknights': ['ak1.webp', '不义之财_鸣铳.webp'],
+    'others': ['dd2.webp', 'hh.webp']
 };
 
 const libs = Object.keys(imgLists);
 let currentLibIndex = 0;
 // 记录每个图库当前播到第几张，用于顺序轮换
-let libProgress = { '终末地': 0, '明日方舟': 0, '其他游戏': 0 };
+let libProgress = { 'Endfield': 0, 'Arknights': 0, 'others': 0 };
 
 let timeLeft = 5;
 let timer = null;

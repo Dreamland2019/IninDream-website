@@ -71,14 +71,15 @@ body {
 
 /* 仅在手机端（且为竖屏时）显示提示 */
 @media (max-width: 1024px) and (orientation: portrait) {
-    .orientation-notice { display: block; }
-    
-    /* 在竖屏下缩小 HUD 以防止重叠 */
-    .hud-container {
-        transform: scale(0.7); 
-        width: 142%; /* 1/0.7 补偿缩放后的宽度 */
-        height: 142%;
-        padding: 20px;
+    /* 只有当屏幕确实是“高大于宽”时才显示 */
+    @media screen and (aspect-ratio: 1/1) or (max-aspect-ratio: 1/1) {
+        .orientation-notice { display: block; }
+        .hud-container {
+            transform: scale(0.7); 
+            width: 142%; 
+            height: 142%;
+            padding: 20px;
+        }
     }
 }
 
