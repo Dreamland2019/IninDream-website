@@ -176,3 +176,13 @@ function closeModal() {
     document.getElementById('modal').style.display = 'none';
     document.body.style.overflow = 'auto';
 }
+
+// 新增：关闭横屏提示
+function closeOrientationNotice() {
+    const notice = document.getElementById('orientation-notice');
+    if (notice) {
+        // 使用 style.display = 'none' 隐藏
+        // 加上 !important 的目的是为了覆盖 CSS 媒体查询中的 display: flex
+        notice.style.setProperty('display', 'none', 'important');
+    }
+}
