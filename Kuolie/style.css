@@ -311,10 +311,10 @@ body {
 
 /* 等级统计区放大 */
 .level-stats {
-    background: rgba(255, 255, 255, 0.3);
+    background: var(--bg-dark-trans);
     padding: 1.5rem 2.5rem;
-    width: clamp(250px, 18vw, 400px);
-    border-left: 6px solid #333;
+    width: clamp(250px, 15vw, 400px);
+    border-left: 4px solid var(--endfield-teal);
 }
 
 .stat-row { font-size: 1.2rem; margin: 0.8rem 0; }
