@@ -181,8 +181,8 @@ function closeModal() {
 function closeOrientationNotice() {
     const notice = document.getElementById('orientation-notice');
     if (notice) {
-        // 使用 style.display = 'none' 隐藏
-        // 加上 !important 的目的是为了覆盖 CSS 媒体查询中的 display: flex
-        notice.style.setProperty('display', 'none', 'important');
+        // 通过增加一个类名来强制隐藏
+        notice.classList.add('force-hide-notice');
+        
     }
 }
