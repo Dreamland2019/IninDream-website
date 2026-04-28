@@ -151,9 +151,10 @@ body {
     /* 1. 缩小等级区域容器 */
     .level-stats {
         /* 缩小宽度，减小内边距 */
-        width: clamp(180px, 15vw, 250px) !important; 
+        /*width: clamp(180px, 15vw, 250px) !important; */
         padding: 0.8rem 1.2rem !important;
         border-left-width: 3px !important; /* 线条变细一点 */
+        background: var(--bg-dark-trans);
     }
 
     /* 2. 缩小每一行文字的大小 */
@@ -177,7 +178,7 @@ body {
     /* 1. 缩小等级区域容器 */
     .control-panel {
         /* 缩小宽度，减小内边距 */
-        width: clamp(180px, 15vw, 250px) !important; 
+        /*width: clamp(180px, 15vw, 250px) !important;*/ 
         padding: 0.8rem 1.2rem !important;
         border-left-width: 3px !important; /* 线条变细一点 */
     }
