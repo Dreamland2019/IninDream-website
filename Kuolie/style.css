@@ -70,19 +70,19 @@ body {
     
     /* 修改：背景改为 50% 透明度的青色 (0, 229, 188 是青色的 RGB 值) */
     background: rgba(0, 229, 188, 0.5) !important;
-    /* 增加：毛玻璃效果，让半透明更高级 */
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     
     color: #000;
     z-index: 10000;
     
-    /* 修改：布局改为两端对齐 */
     display: none; /* 由下方的媒体查询开启为 flex */
     align-items: center;
-    justify-content: space-between; 
+    justify-content: center; 
     padding: 0 15px;
     box-sizing: border-box;
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 10px rgba(0, 229, 188, 0.2);
 }
 
 /* 仅在手机端（且为竖屏时）显示提示 */
