@@ -35,7 +35,7 @@ let currentLibIndex = 0;
 // 记录每个图库当前播到第几张，用于顺序轮换
 let libProgress = { 'Endfield': 0, 'Arknights': 0, 'others': 0 };
 
-let timeLeft = 5;
+let timeLeft = 7;
 let timer = null;
 let isPaused = false;
 let isRandomMode = false; // 默认顺序轮换
@@ -47,7 +47,7 @@ window.onload = function() {
 
 function startRotation() {
     if (timer) clearInterval(timer);
-    timeLeft = 5;
+    timeLeft = 7;
     updateTimerDisplay();
     
     timer = setInterval(() => {
@@ -55,7 +55,7 @@ function startRotation() {
             timeLeft--;
             if (timeLeft <= 0) {
                 changeBackground();
-                timeLeft = 5;
+                timeLeft = 7;
             }
             updateTimerDisplay();
         }
@@ -135,7 +135,7 @@ function switchLibrary() {
 }
 
 function resetTimer() {
-    timeLeft = 5;
+    timeLeft = 7;
     updateTimerDisplay();
 }
 

@@ -3,7 +3,7 @@
     --endfield-teal: #00E5BC;
     --bg-dark-trans: rgba(15, 15, 15, 0.75);
     --border-color: rgba(255, 255, 255, 0.15);
-    
+     --text-main: #ffffff; /* 确保变量是纯白 */
     /* 定义响应式比例：让基础间距和字体跟随屏幕缩放 */
     --base-gap: clamp(20px, 3vw, 50px);
 }
@@ -15,6 +15,7 @@
     box-sizing: border-box;
     /* 关键：让字体大小随屏幕宽度微调，解决“字太小”的问题 */
     font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    color: inherit; 
 }
 
 html {
@@ -23,9 +24,10 @@ html {
 }
 
 body {
-  background-color: #000;
-    color: var(--text-main);
+    background-color: #000;
+    color: var(--text-main) !important;
     /* 修改：PC 端默认隐藏溢出，防止出现奇怪的滚动条 */
+    color-scheme: dark;
     overflow: hidden; 
     height: 100vh;
     width: 100vw;
@@ -115,6 +117,33 @@ body {
         overflow-x: hidden;
         height: auto; /* 允许 body 随内容撑开 */
     }
+
+    /* 1. 缩小等级区域容器 */
+    .level-stats {
+        /* 缩小宽度，减小内边距 */
+        width: clamp(180px, 15vw, 250px) !important; 
+        padding: 0.8rem 1.2rem !important;
+        border-left-width: 3px !important; /* 线条变细一点 */
+    }
+
+    /* 2. 缩小每一行文字的大小 */
+    .level-stats .stat-row {
+        font-size: 0.85rem !important; /* 原始大概是 1.2rem */
+        margin: 0.4rem 0 !important;   /* 减小上下间距 */
+    }
+
+    /* 3. 缩小具体的数值（权限等级、探索等级） */
+    .level-stats .stat-value {
+        font-size: 1rem !important; /* 原始大概是 1.5rem */
+    }
+
+    /* 4. [同步优化] 缩小左侧装饰方块，防止方块比文字还显眼 */
+    .level-stats.has-deco::before {
+        width: 4px !important;
+        height: 4px !important;
+        left: -15px !important;
+    }
+
 }
 
 /* 针对屏幕高度很小的横屏手机进行压缩 */
@@ -128,6 +157,13 @@ body {
     }
     .control-panel {
         padding: 0.8rem 1.2rem; /* 缩小面板内边距 */
+    }
+
+    .level-stats {
+        padding: 0.5rem 1rem !important; /* 高度极小时进一步压缩内边距 */
+    }
+    .level-stats .stat-row {
+        margin: 0.2rem 0 !important;
     }
 }
 
