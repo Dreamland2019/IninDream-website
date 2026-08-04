@@ -1,3 +1,4 @@
+let exportLayout = 'three'; // 'three' or 'single'
 // ========== 预设数据 ==========
 let leftSliders = [
     { label: '我认为我是：', left: '淡人', right: '浓人', value: 50 },
@@ -212,6 +213,19 @@ if (!loadData()) {
     renderTable();
 }
 
+const toggleBtn = document.getElementById('toggleLayoutBtn');
+if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+        if (exportLayout === 'three') {
+            exportLayout = 'single';
+            this.textContent = '📋 切换三列导出';
+        } else {
+            exportLayout = 'three';
+            this.textContent = '📋 切换单列导出';
+        }
+    });
+}
+
 // ========== 头像上传 ==========
 const avatarWrap = document.getElementById('avatarWrap');
 const avatarInput = document.getElementById('avatarInput');
@@ -370,74 +384,93 @@ function exportImage() {
         return;
     }
 
-    const exportWidth = 1100;
+    // 根据模式决定宽度
+    const exportWidth = exportLayout === 'three' ? 1500 : 900;
 
-    // 深克隆
+    // 克隆容器
     const clone = container.cloneNode(true);
-    
-    // 移除交互按钮
     clone.querySelectorAll('.slider-del, .del-row-btn, .btn-add, .action-buttons, .avatar-wrap input[type="file"]')
         .forEach(el => el.remove());
 
-    // 强制三列、固定宽度
+    // 设置克隆基础样式
     clone.style.width = exportWidth + 'px';
     clone.style.padding = '40px 35px';
     clone.style.overflow = 'visible';
     clone.style.maxWidth = 'none';
     clone.style.margin = '0 auto';
+
+    // 强制三列或单列布局
     const threeColClone = clone.querySelector('.three-col');
     if (threeColClone) {
-        threeColClone.style.gridTemplateColumns = '1fr 1fr 1.2fr';
+        if (exportLayout === 'three') {
+            threeColClone.style.gridTemplateColumns = '1fr 1fr 1.2fr';
+        } else {
+            threeColClone.style.gridTemplateColumns = '1fr';
+            threeColClone.style.gap = '20px';
+        }
         threeColClone.style.display = 'grid';
         threeColClone.style.gap = '30px';
     }
 
-    // ===== 修复滑块模拟（确保圆点居中） =====
-    const sliderItems = clone.querySelectorAll('.slider-item');
-    sliderItems.forEach(item => {
-        const input = item.querySelector('input[type="range"]');
-        if (!input) return;
-        const val = parseInt(input.value) || 50;
-        const wrap = input.parentNode; // .slider-wrap
-        
-        // 创建模拟容器，使用 flex 垂直居中
-        const mock = document.createElement('div');
-        mock.className = 'mock-slider';
-        mock.style.cssText = 'position:relative; width:100%; height:30px; display:flex; align-items:center;';
-        
-        // 轨道：绝对定位，水平居中
-        const track = document.createElement('div');
-        track.style.cssText = 'position:absolute; left:10px; right:10px; height:2px; background:#ccc;';
-        mock.appendChild(track);
-        
-        // 圆点：绝对定位，垂直居中，水平位置根据值
-        const thumb = document.createElement('div');
-        const percent = (val / 100) * 100;
-        thumb.style.cssText = `
-            position:absolute;
-            left:${percent}%;
-            top:50%;
-            transform:translate(-50%, -50%);
-            width:18px;
-            height:18px;
-            border-radius:50%;
-            background:#1e1e1e;
-            border:2px solid #fff;
-            box-shadow:0 2px 6px rgba(0,0,0,0.3);
-            z-index:1;
+    // ========== 关键修复：将 textarea 替换为 div 以保留换行 ==========
+    const textareas = clone.querySelectorAll('textarea.field-input');
+    textareas.forEach(textarea => {
+        const parent = textarea.parentNode;
+        // 获取 textarea 的当前值
+        const value = textarea.value || '';
+        // 创建 div 替代
+        const div = document.createElement('div');
+        div.className = 'field-input'; // 复用相同类名以便样式继承
+        div.textContent = value;       // 使用 textContent 保留换行符
+        // 复制样式：边框、背景、字体、内边距等
+        const computed = window.getComputedStyle(textarea);
+        div.style.cssText = `
+            border: none;
+            border-bottom: 1.5px solid #ccc;
+            background: transparent;
+            font-size: ${computed.fontSize};
+            font-family: ${computed.fontFamily};
+            color: ${computed.color};
+            padding: 4px 0;
+            width: 100%;
+            outline: none;
+            white-space: pre-wrap;      /* 保留换行和空格 */
+            word-wrap: break-word;
+            box-sizing: border-box;
+            min-height: 30px;
+            line-height: 1.5;
         `;
-        mock.appendChild(thumb); // 直接放在mock下，与track同级
-        
-        // 隐藏原input，插入模拟
-        input.style.display = 'none';
-        wrap.appendChild(mock);
+        // 如果 textarea 有特定的 id，可以忽略
+        // 替换：隐藏 textarea，插入 div
+        textarea.style.display = 'none';
+        parent.insertBefore(div, textarea);
     });
 
-    // 放到屏幕外
+    // 处理滑块模拟（原有逻辑）
+    const sliderInputs = clone.querySelectorAll('.slider-item input[type="range"]');
+    sliderInputs.forEach(input => {
+        const val = parseInt(input.value);
+        const parent = input.parentNode;
+        const mock = document.createElement('div');
+        mock.style.cssText = 'display:flex; align-items:center; position:relative; width:100%; height:30px;';
+        const track = document.createElement('div');
+        track.style.cssText = 'flex:1; height:2px; background:#ccc; margin:0 10px; position:relative;';
+        const thumb = document.createElement('div');
+        const percent = (val / 100) * 100;
+        thumb.style.cssText = `position:absolute; left:${percent}%; top:50%; transform:translate(-50%, -50%); width:18px; height:18px; border-radius:50%; background:#1e1e1e; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.3);`;
+        track.appendChild(thumb);
+        mock.appendChild(track);
+        input.style.display = 'none';
+        parent.appendChild(mock);
+    });
+
+    // 移出屏幕截图
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:fixed; left:-9999px; top:0; z-index:-9999;';
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
+
+    console.log('正在截图，请稍候...');
 
     html2canvas(clone, {
         scale: 2,

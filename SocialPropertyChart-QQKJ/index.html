@@ -14,6 +14,7 @@
         <header class="header">
             <div class="action-buttons" style="margin: 10px 0 20px 0; display: flex; gap: 12px;">
                  <button id="exportImgBtn" class="btn-action">🖼️ 导出图片</button>
+                 <button id="toggleLayoutBtn" class="btn-action">📋 切换单列导出</button>
                  <button id="resetBtn" class="btn-action">↻ 重置</button>
             </div>
 
@@ -32,9 +33,9 @@
                 </div>
 
                 <div class="profile-fields">
-                    <p><span class="field-label">cn:</span> <textarea class="field-input" id="cnInput" rows="1" style="resize: vertical; min-height: 30px;"></textarea></p>
-                    <p><span class="field-label">标签:</span> <textarea class="field-input" id="tagInput" rows="1" style="resize: vertical; min-height: 30px;"></textarea></p>
-                    <p><span class="field-label">空间成分构成:</span> <textarea class="field-input" id="composeInput" rows="1" style="resize: vertical; min-height: 30px;"></textarea></p>
+                    <p><span class="field-label">cn:</span> <textarea class="field-input" id="cnInput" rows="1" style="resize: vertical; min-height: 2em;"></textarea></p>
+                    <p><span class="field-label">标签:</span> <textarea class="field-input" id="tagInput" rows="1" style="resize: vertical; min-height: 2em;"></textarea></p>
+                    <p><span class="field-label">空间成分构成:</span> <textarea class="field-input" id="composeInput" rows="2" style="resize: vertical; min-height: 2.5em;"></textarea></p>
                 </div>
             </div>
 
@@ -101,6 +102,7 @@
             <label for="extraInput">补充发言：</label>
             <textarea id="extraInput" placeholder="在这里写下你的补充说明…"></textarea>
             <div class="action-buttons" style="margin: 10px 0 20px 0; display: flex; gap: 12px;">
+                 <button id="toggleLayoutBtn" class="btn-action">📋 切换单列导出</button>
                  <button id="exportImgBtn" class="btn-action">🖼️ 导出图片</button>
                  <button id="resetBtn" class="btn-action">↻ 重置</button>
             </div>
