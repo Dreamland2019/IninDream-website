@@ -122,10 +122,21 @@ body {
     padding-top: 4px;
 }
 .profile-fields p {
-    font-size: 15px;
     display: flex;
-    align-items: center;
-    gap: 6px;
+    flex-direction: row;        /* 水平排列 */
+    align-items: center;        /* 垂直居中 */
+    gap: 6px;                   /* 标签与输入框间距 */
+    margin-bottom: 8px;
+}
+.profile-fields p .field-label {
+    min-width: auto;
+    white-space: nowrap;        /* 标签文字不换行 */
+    flex-shrink: 0;             /* 防止标签被压缩 */
+}
+.profile-fields p .field-input {
+    flex: 1;                    /* 输入框占据剩余宽度 */
+    min-width: 0;               /* 防止溢出 */
+    width: auto;                /* 不固定宽度，由 flex 控制 */
 }
 .field-label {
     font-size: 18px;
@@ -136,14 +147,23 @@ body {
     border: none;
     border-bottom: 1.5px solid #ccc;
     background: transparent;
-    font-size: 18px;
+    font-size: 15px;
     padding: 4px 0;
-    flex: 1;
+    width: 100%;
     outline: none;
     transition: border-color 0.2s;
+    font-family: inherit;  /* 确保字体一致 */
 }
 .field-input:focus {
     border-bottom-color: #1e1e1e;
+}
+/* 针对 textarea 的专门样式 */
+textarea.field-input {
+    resize: vertical;      /* 允许垂直拉伸 */
+    min-height: 30px;      /* 最小高度与原来 input 高度相当 */
+    overflow: auto;        /* 内容溢出时滚动 */
+    line-height: 1.5;      /* 行高舒适 */
+    vertical-align: bottom; /* 对齐方式 */
 }
 
 .prefer-row {
@@ -539,18 +559,18 @@ td:last-child {
     .profile-row {
         flex-wrap: wrap;
     }
-     /* 新增：个人信息字段在手机上换行 */
+    /* 个人信息字段改为纵向排列 */
     .profile-fields p {
-        flex-wrap: wrap;          /* 允许换行 */
-        gap: 0;                  /* 去除默认间隙，使布局紧凑 */
+        flex-direction: column;
+        align-items: stretch;
+        gap: 2px;
     }
     .profile-fields p .field-label {
-        min-width: auto;          /* 标签宽度自适应，避免过宽 */
-        flex: 0 0 auto;          /* 不伸缩，保持内容宽度 */
+        min-width: auto;
     }
     .profile-fields p .field-input {
-        flex: 1 1 100%;          /* 占据整行，宽度100% */
-        min-width: 0;            /* 防止溢出 */
-        margin-top: 2px;         /* 与标签稍有间距，更美观 */
+        width: 100%;
+        flex: none;
     }
+    
 }
