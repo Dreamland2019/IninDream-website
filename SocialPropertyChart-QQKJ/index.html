@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>更适合空间妹体质的社交一览表</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="container">
+
+        <!-- ===== 顶部区域 ===== -->
+        <header class="header">
+            <div class="header-top">
+                <h1>更适合空间妹体质的社交一览表</h1>
+                <span class="header-meta">制表:禾霜</span>
+            </div>
+            <div class="header-sub">我是这样的人……</div>
+
+            <div class="profile-row">
+                <!-- 头像 -->
+                <div class="avatar-wrap" id="avatarWrap">
+                    <img id="avatarImg" src="" alt="头像" />
+                    <div class="avatar-placeholder" id="avatarPlaceholder">+</div>
+                    <input type="file" id="avatarInput" accept="image/*" />
+                </div>
+
+                <div class="profile-fields">
+                    <p><span class="field-label">cn:</span> <input type="text" class="field-input" id="cnInput" /></p>
+                    <p><span class="field-label">标签:</span> <input type="text" class="field-input" id="tagInput" /></p>
+                    <p><span class="field-label">空间成分构成:</span> <input type="text" class="field-input" id="composeInput" /></p>
+                </div>
+            </div>
+
+            <div class="prefer-row">
+                <span class="prefer-label">我更喜欢：</span>
+                <label><input type="checkbox" /> 小窗</label>
+                <label><input type="checkbox" /> 空间</label>
+                <label><input type="checkbox" /> 两者皆可</label>
+            </div>
+        </header>
+
+        <!-- ===== 三栏主体 ===== -->
+        <div class="three-col">
+
+            <!-- 左栏：滑块 -->
+            <section class="col-slider" id="leftCol">
+                <h2 class="col-title">◈ 人格标尺</h2>
+                <div class="slider-list" id="leftSliderList"></div>
+                <div class="add-area">
+                    <button class="btn-add" data-target="left">＋ 添加滑块</button>
+                </div>
+            </section>
+
+            <!-- 中间栏：滑块 -->
+            <section class="col-slider" id="middleCol">
+                <h2 class="col-title">◈ 观念标尺</h2>
+                <div class="slider-list" id="middleSliderList"></div>
+                <div class="add-area">
+                    <button class="btn-add" data-target="middle">＋ 添加滑块</button>
+                </div>
+            </section>
+
+            <!-- 右栏：表格 -->
+            <section class="col-table">
+                <h2 class="col-title">◈ 行为态度</h2>
+                <div class="table-note">
+                    <span class="dot-blue">●</span> 无感 &nbsp;
+                    <span class="dot-green">●</span> 喜欢 &nbsp;
+                    <span class="dot-red">●</span> 不喜欢
+                    <span style="margin-left:12px;font-size:12px;color:#888;">（点击循环切换）</span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="th-behavior">行为</th>
+                                <th class="th-check">普通列表</th>
+                                <th class="th-check">好感列/亲友</th>
+                                <th class="th-del"> </th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
+                <div class="add-area">
+                    <button class="btn-add" id="addTableRowBtn">＋ 添加行</button>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- ===== 底部：补充发言 ===== -->
+        <footer class="footer">
+            <label for="extraInput">补充发言：</label>
+            <textarea id="extraInput" placeholder="在这里写下你的补充说明…"></textarea>
+        </footer>
+
+    </div>
+
+    <!-- ===== 添加滑块 Modal ===== -->
+    <div class="modal-overlay" id="sliderModal">
+        <div class="modal-box">
+            <h3>添加新滑块</h3>
+            <div class="modal-field">
+                <label>标签文字</label>
+                <input type="text" id="modalSliderLabel" placeholder="例如：我认为我是：" />
+            </div>
+            <div class="modal-field">
+                <label>左端文字</label>
+                <input type="text" id="modalSliderLeft" placeholder="例如：淡人" />
+            </div>
+            <div class="modal-field">
+                <label>右端文字</label>
+                <input type="text" id="modalSliderRight" placeholder="例如：浓人" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="modalSliderCancel">取消</button>
+                <button class="btn-modal-confirm" id="modalSliderConfirm">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 添加表格行 Modal ===== -->
+    <div class="modal-overlay" id="tableModal">
+        <div class="modal-box">
+            <h3>添加新行为</h3>
+            <div class="modal-field">
+                <label>行为描述</label>
+                <input type="text" id="modalTableLabel" placeholder="例如：小窗倒黑泥" />
+            </div>
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="modalTableCancel">取消</button>
+                <button class="btn-modal-confirm" id="modalTableConfirm">确认添加</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
