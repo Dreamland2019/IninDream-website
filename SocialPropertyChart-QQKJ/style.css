@@ -305,7 +305,7 @@ table {
 
 /* 为所有 th 和 td 设置 white-space: nowrap */
 th, td {
-    white-space: nowrap;
+    white-space: auto;
     padding: 10px 6px;         /* 上下内边距增大，从 6px 4px 改为 10px 6px */
     border-bottom: 1px solid #eae7e3;
     vertical-align: middle;
@@ -326,9 +326,9 @@ td:first-child {
 .th-check,
 td:nth-child(2),
 td:nth-child(3) {
-    width: 100px;
-    min-width: 100px;
-    max-width: 100px;
+    width: 90px;
+    min-width: 90px;
+    max-width: 90px;
     text-align: center;
 }
 

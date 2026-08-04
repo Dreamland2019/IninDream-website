@@ -370,7 +370,7 @@ function exportImage() {
         return;
     }
 
-    const exportWidth = 1000;
+    const exportWidth = 1100;
 
     // 深克隆
     const clone = container.cloneNode(true);
