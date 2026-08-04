@@ -155,10 +155,10 @@ body {
 }
 .prefer-label {
     font-weight: 600;
-    font-size: 15px;
+    font-size: 17px;
 }
 .prefer-row label {
-    font-size: 14px;
+    font-size: 16px;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -344,6 +344,7 @@ td:last-child {
 /* 复选框单元格内部居中对齐 */
 .check-cell {
     text-align: center;
+    width: 60px;
 }
 
 /* 复选框本身：inline-block，固定尺寸 */
@@ -519,7 +520,7 @@ td:last-child {
         max-width: 30px !important;
     }
     td {
-        white-space: nowrap !important;
+        white-space: auto !important;
     }
     .custom-check {
         border: 1px solid #000 !important;
