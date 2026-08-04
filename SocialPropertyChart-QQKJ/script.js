@@ -369,90 +369,92 @@ function exportImage() {
         alert('未找到容器 .container');
         return;
     }
-    const threeCol = document.querySelector('.three-col');
-    if (!threeCol) {
-        alert('未找到三列布局 .three-col');
-        return;
+
+    const exportWidth = 1000;
+
+    // 深克隆
+    const clone = container.cloneNode(true);
+    
+    // 移除交互按钮
+    clone.querySelectorAll('.slider-del, .del-row-btn, .btn-add, .action-buttons, .avatar-wrap input[type="file"]')
+        .forEach(el => el.remove());
+
+    // 强制三列、固定宽度
+    clone.style.width = exportWidth + 'px';
+    clone.style.padding = '40px 35px';
+    clone.style.overflow = 'visible';
+    clone.style.maxWidth = 'none';
+    clone.style.margin = '0 auto';
+    const threeColClone = clone.querySelector('.three-col');
+    if (threeColClone) {
+        threeColClone.style.gridTemplateColumns = '1fr 1fr 1.2fr';
+        threeColClone.style.display = 'grid';
+        threeColClone.style.gap = '30px';
     }
 
-    // 保存原始样式
-    const origContainerWidth = container.style.width;
-    const origGridTemplate = threeCol.style.gridTemplateColumns;
-    const origContainerPadding = container.style.padding;
-    const origOverflow = container.style.overflow;
-
-    // 强制三列布局，固定容器宽度为1200px
-    container.style.width = '1200px';
-    container.style.padding = '40px 35px';
-    container.style.overflow = 'visible';
-    threeCol.style.gridTemplateColumns = '1fr 1fr 1.2fr';
-
-    // ---------- 处理滑块：生成模拟显示 ----------
-    const sliderInputs = container.querySelectorAll('.slider-item input[type="range"]');
-    const mockElements = [];
-    sliderInputs.forEach(input => {
-        const val = parseInt(input.value);
-        const parent = input.parentNode; // .slider-wrap
-        // 创建模拟容器
+    // ===== 修复滑块模拟（确保圆点居中） =====
+    const sliderItems = clone.querySelectorAll('.slider-item');
+    sliderItems.forEach(item => {
+        const input = item.querySelector('input[type="range"]');
+        if (!input) return;
+        const val = parseInt(input.value) || 50;
+        const wrap = input.parentNode; // .slider-wrap
+        
+        // 创建模拟容器，使用 flex 垂直居中
         const mock = document.createElement('div');
         mock.className = 'mock-slider';
         mock.style.cssText = 'position:relative; width:100%; height:30px; display:flex; align-items:center;';
         
-        // 轨道
+        // 轨道：绝对定位，水平居中
         const track = document.createElement('div');
         track.style.cssText = 'position:absolute; left:10px; right:10px; height:2px; background:#ccc;';
         mock.appendChild(track);
         
-        // thumb圆点
+        // 圆点：绝对定位，垂直居中，水平位置根据值
         const thumb = document.createElement('div');
         const percent = (val / 100) * 100;
-        thumb.style.cssText = `position:absolute; left:${percent}%; transform:translateX(-50%); width:18px; height:18px; border-radius:50%; background:#1e1e1e; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.3);`;
-        track.appendChild(thumb); // 将thumb放在track内部，基于track定位
+        thumb.style.cssText = `
+            position:absolute;
+            left:${percent}%;
+            top:50%;
+            transform:translate(-50%, -50%);
+            width:18px;
+            height:18px;
+            border-radius:50%;
+            background:#1e1e1e;
+            border:2px solid #fff;
+            box-shadow:0 2px 6px rgba(0,0,0,0.3);
+            z-index:1;
+        `;
+        mock.appendChild(thumb); // 直接放在mock下，与track同级
         
-        // 隐藏原input
+        // 隐藏原input，插入模拟
         input.style.display = 'none';
-        parent.appendChild(mock);
-        mockElements.push({ parent, input, mock });
+        wrap.appendChild(mock);
     });
 
-    console.log('正在截图，请稍候...');
+    // 放到屏幕外
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed; left:-9999px; top:0; z-index:-9999;';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
 
-    html2canvas(container, {
+    html2canvas(clone, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
-        width: 1200,
+        width: exportWidth,
     }).then(canvas => {
-        // 恢复样式
-        container.style.width = origContainerWidth;
-        container.style.padding = origContainerPadding;
-        container.style.overflow = origOverflow;
-        threeCol.style.gridTemplateColumns = origGridTemplate;
-        // 恢复滑块
-        mockElements.forEach(({ parent, input, mock }) => {
-            parent.removeChild(mock);
-            input.style.display = '';
-        });
-
-        // 下载图片
+        document.body.removeChild(wrapper);
         const link = document.createElement('a');
         link.download = '社交一览表.png';
         link.href = canvas.toDataURL('image/png');
         link.click();
         console.log('下载已触发');
     }).catch(err => {
-        // 恢复样式
-        container.style.width = origContainerWidth;
-        container.style.padding = origContainerPadding;
-        container.style.overflow = origOverflow;
-        threeCol.style.gridTemplateColumns = origGridTemplate;
-        // 恢复滑块
-        mockElements.forEach(({ parent, input, mock }) => {
-            parent.removeChild(mock);
-            input.style.display = '';
-        });
+        document.body.removeChild(wrapper);
         console.error('导出图片失败:', err);
         alert('导出失败，请打开控制台查看详细错误信息。');
     });

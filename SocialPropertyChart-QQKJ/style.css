@@ -30,7 +30,7 @@ body {
     padding-bottom: 8px;
 }
 .header-top h1 {
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 900;
     letter-spacing: 1px;
     color: #1e1e1e;
@@ -41,7 +41,7 @@ body {
 }
 .header-sub {
     margin: 16px 0 20px 0;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
     color: #2c2c2c;
 }
@@ -128,6 +128,7 @@ body {
     gap: 6px;
 }
 .field-label {
+    font-size: 18px;
     font-weight: 600;
     min-width: 70px;
 }
@@ -176,7 +177,7 @@ body {
     margin-top: 10px;
 }
 .col-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
     margin-bottom: 18px;
     color: #2c2c2c;
@@ -200,7 +201,7 @@ body {
 }
 .slider-item .slider-label {
     display: block;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 500;
     margin-bottom: 6px;
 }
@@ -241,7 +242,7 @@ body {
 .slider-item .slider-extremes {
     display: flex;
     justify-content: space-between;
-    font-size: 12px;
+    font-size: 14px;
     color: #555;
     padding: 0 10px;
 }
@@ -296,20 +297,21 @@ body {
 
 /* 关键修复：固定表格布局 + 每列明确宽度 + 禁止换行 */
 table {
-    table-layout: fixed;          /* 固定布局 */
+    table-layout: fixed;
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 16px;           /* 从 13px 改为 14px */
 }
 
 /* 为所有 th 和 td 设置 white-space: nowrap */
 th, td {
     white-space: nowrap;
-    padding: 6px 4px;
+    padding: 10px 6px;         /* 上下内边距增大，从 6px 4px 改为 10px 6px */
     border-bottom: 1px solid #eae7e3;
     vertical-align: middle;
-    overflow: hidden;             /* 防止内容溢出 */
-    text-overflow: ellipsis;      /* 溢出显示省略号（可选） */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.6;          /* 增加行高，使文字更舒展 */
 }
 
 /* 第一列：行为描述，自动宽度，但有最小宽度 */
@@ -324,9 +326,9 @@ td:first-child {
 .th-check,
 td:nth-child(2),
 td:nth-child(3) {
-    width: 70px;
-    min-width: 70px;
-    max-width: 70px;
+    width: 100px;
+    min-width: 100px;
+    max-width: 100px;
     text-align: center;
 }
 
