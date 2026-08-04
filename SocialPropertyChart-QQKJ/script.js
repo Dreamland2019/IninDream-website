@@ -2,7 +2,7 @@
 let leftSliders = [
     { label: '我认为我是：', left: '淡人', right: '浓人', value: 50 },
     { label: '是否主动破冰，与他人互动：', left: '否', right: '是', value: 50 },
-    { label: '对空间争议话题的参与度：', left: 'peace and love', right: 'tlk！！', value: 50 },
+    { label: '对空间争议话题的参与度：', left: 'peace and love', right: 'ttk！！', value: 50 },
     { label: '对社交干涉的接受度(壁塑/编水/嘴碎等)：', left: '放荡不羁爱自由', right: '尽量演好每一帧', value: 50 },
     { label: '对删后重加的态度：', left: '绝不接受', right: '欢迎再续前缘 从来不请', value: 50 },
     { label: '对有仇和好的态度：', left: '老死不相往来', right: '逐渐放下', value: 50 },
@@ -18,7 +18,7 @@ let middleSliders = [
     { label: '清列频率：', left: '从来不清', right: '经常清列', value: 50 },
     { label: '搞同人/oc更喜欢：', left: '单机', right: '同好四面八方来', value: 50 },
     { label: '我的精力水平是：', left: '💤', right: '精力充沛', value: 50 },
-    { label: '我护短吗？：', left: '帮亲不帮理', right: '理理不帮亲', value: 50 },
+    { label: '我护短吗？：', left: '帮亲不帮理', right: '帮理不帮亲', value: 50 },
     { label: '有巨大的观念分歧无法相处：', left: '愿意磨合', right: '分道扬镳', value: 50 }
 ];
 let tableRows = [
