@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>更适合空间妹体质的社交一览表</title>
+    <title>可自定义的社交一览表</title>
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,8 +11,13 @@
 
         <!-- ===== 顶部区域 ===== -->
         <header class="header">
+            <div class="action-buttons" style="margin: 10px 0 20px 0; display: flex; gap: 12px;">
+                 <button id="printBtn" class="btn-action">🖨️ 导出图片</button>
+                 <button id="resetBtn" class="btn-action">↻ 重置</button>
+            </div>
+
             <div class="header-top">
-                <h1>更适合空间妹体质的社交一览表</h1>
+                <h1>社交一览表</h1>
                 <span class="header-meta">制表:禾霜</span>
             </div>
             <div class="header-sub">我是这样的人……</div>
@@ -76,7 +81,7 @@
                             <tr>
                                 <th class="th-behavior">行为</th>
                                 <th class="th-check">普通列表</th>
-                                <th class="th-check">好感列/亲友</th>
+                                <th class="th-check">好感/亲友</th>
                                 <th class="th-del"> </th>
                             </tr>
                         </thead>
