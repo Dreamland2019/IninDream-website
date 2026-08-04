@@ -9,7 +9,7 @@ let leftSliders = [
     { label: '对有仇和好的态度：', left: '老死不相往来', right: '逐渐放下', value: 50 },
     { label: '与列表观念不合：', left: '无所谓', right: '删除拉黑 随地大小絮', value: 50 },
     { label: '面刺寡人之过者：', left: '受上赏', right: '给两枪', value: 50 },
-    { label: '我与朋友的联系频率：', left: '很久不联系也没关系', right: '不常联系算什么朋友', value: 50 }
+    { label: '我与朋友的联系频率：', left: '很久不联系也没关系/', right: '不常联系算什么朋友', value: 50 }
 ];
 let middleSliders = [
     { label: '如何补充精神能量：', left: '自闭', right: '社交！疯狂社交！', value: 50 },
@@ -53,7 +53,7 @@ function renderSliders(containerId, dataArray) {
             <button class="slider-del" data-index="${index}" data-container="${containerId}">✕</button>
             <span class="slider-label">${item.label}</span>
             <div class="slider-wrap">
-                <input type="range" min="0" max="100" value="${item.value || 50}" />
+                <input type="range" min="0" max="100" value="${item.value != null ? item.value : 50}" />
             </div>
             <div class="slider-extremes">
                 <span>${item.left}</span>
@@ -385,7 +385,7 @@ function exportImage() {
     }
 
     // 根据模式决定宽度
-    const exportWidth = exportLayout === 'three' ? 1500 : 900;
+    const exportWidth = exportLayout === 'three' ? 1100 : 400;
 
     // 克隆容器
     const clone = container.cloneNode(true);
