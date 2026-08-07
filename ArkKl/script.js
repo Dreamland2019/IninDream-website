@@ -320,14 +320,41 @@ function exportImage() {
 
     const clone = container.cloneNode(true);
 
+    // ===== 【修复条形码】随机生成动态粗细的条形码！ =====
+    const cloneBarcode = clone.querySelector('.barcode-lines');
+    if (cloneBarcode) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 80;
+        canvas.height = 25;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000000';
+
+        let x = 0;
+        // 不断循环，直到画满 80 像素宽度
+        while (x < 80) {
+            // 随机生成黑条的宽度 (1px ~ 4px)
+            let barWidth = Math.floor(Math.random() * 4) + 1;
+            if (x + barWidth > 80) barWidth = 80 - x;
+            ctx.fillRect(x, 0, barWidth, 25);
+
+            x += barWidth;
+
+            // 随机生成间隔的宽度 (1px ~ 3px)
+            let gapWidth = Math.floor(Math.random() * 3) + 1;
+            if (x + gapWidth > 80) gapWidth = 80 - x;
+            x += gapWidth;
+        }
+        // 替换原有的 div
+        cloneBarcode.parentNode.replaceChild(canvas, cloneBarcode);
+    }
+    // ====================================================================
+
     // ===== 【新增核心修复】解决移动端导出时单选框选中状态消失的 Bug =====
-    // 提取克隆体中的所有单选按钮，用 JS 构造的完美 UI 替换掉原生的 radio
     const cloneRadios = clone.querySelectorAll('input[type="radio"]');
     cloneRadios.forEach(input => {
         const isChecked = input.checked;
         const fakeRadio = document.createElement('div');
         
-        // 基础模拟样式
         let styleStr = `
             display: inline-block;
             width: 16px;
@@ -340,10 +367,8 @@ function exportImage() {
             position: relative;
         `;
         
-        // 选中态与未选中态
         if (isChecked) {
             styleStr += `background: #1a1a1a; border: 1px solid #1a1a1a;`;
-            // 如果是选中状态，在黑色背景中画一个白色小圆点，模拟原生选中态
             const dot = document.createElement('div');
             dot.style.cssText = `
                 width: 6px;
@@ -361,10 +386,8 @@ function exportImage() {
         }
         
         fakeRadio.style.cssText = styleStr;
-        // 替换原始的 input
         input.parentNode.replaceChild(fakeRadio, input);
     });
-    // ============================================================
 
     // 1. 因为 clone 本身就是 .container，直接修改它的样式。
     clone.style.maxWidth = desktopWidth + 'px';
@@ -377,8 +400,8 @@ function exportImage() {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-right: 130px;
-            margin-top: 100px;
+            margin-right: 80px;
+            margin-top: 0px;
         `;
     }
 
@@ -646,3 +669,33 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('exportImgBtn').addEventListener('click', exportImage);
     document.getElementById('resetBtn').addEventListener('click', resetAll);
 });
+
+  // ===== 【补全】自定义大头像上传监听器 =====
+    const avatarWrapLg = document.getElementById('avatarWrapLg');
+    const avatarInputLg = document.getElementById('avatarInputLg');
+    const avatarImgLg = document.getElementById('avatarImgLg');
+    const avatarPlaceholderLg = document.getElementById('avatarPlaceholderLg');
+
+    if (avatarWrapLg && avatarInputLg && avatarImgLg && avatarPlaceholderLg) {
+        // 点击外框触发文件选择
+        avatarWrapLg.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'INPUT') avatarInputLg.click();
+        });
+
+        // 监听文件选择变更
+        avatarInputLg.addEventListener('change', function(e) {
+            const file = this.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                // 将读取到的 base64 赋予头像标签
+                avatarImgLg.src = ev.target.result;
+                avatarImgLg.style.display = 'block';
+                avatarPlaceholderLg.style.display = 'none';
+                avatarWrapLg.classList.add('has-image');
+                // 触发保存缓存（和你之前代码里的逻辑一样）
+                setTimeout(saveState, 100); 
+            };
+            reader.readAsDataURL(file);
+        });
+    }

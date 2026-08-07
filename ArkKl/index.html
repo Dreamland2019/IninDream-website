@@ -20,18 +20,26 @@
 
         <!-- ===== 头部横幅 ===== -->
         <header class="header">
+            <!-- 1. 顶部黑条 + 条形码 -->
             <div class="header-top-bar">
                 <div class="top-bar-left">
                     <span class="top-bar-title">个人档案</span>
                     <span class="top-bar-meta">PERSONAL PROFILE</span>
                     <span class="logo-triangle">▲</span>
                 </div>
+                <!-- 条形码区（去掉了B101） -->
                 <div class="header-barcode">
                     <div class="barcode-lines"></div>
-                    <span>B101</span>
                 </div>
             </div>
+
+            <!-- 2. 标题下方的横线 -->
             <div class="header-divider"></div>
+
+            <!-- 3. 【新增】将B101移至横线下方 -->
+            <div class="header-b101-row">
+                <span>B101</span>
+            </div>
         </header>
 
         <!-- ===== 上半部分：双栏布局 ===== -->
@@ -101,7 +109,7 @@
                 <div class="custom-avatar-area">
                     <h2 class="sec-title" style="width: 100%;"></h2>
                     <div class="avatar-wrap-lg" id="avatarWrapLg">
-                        <img id="avatarImgLg" src="" alt="自定义头像" />
+                        <img id="avatarImgLg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="自定义头像" />
                         <div class="avatar-placeholder-lg" id="avatarPlaceholderLg">+</div>
                         <input type="file" id="avatarInputLg" accept="image/*" />
                     </div>
