@@ -113,7 +113,7 @@ input[type="radio"], input[type="checkbox"] { width: 15px; height: 15px; accent-
 /* ===== 博士头像 ===== */
 .custom-avatar-area { display: flex; flex-direction: column; align-items: center; margin-right: 100px; margin-bottom: 0px; }
 .avatar-wrap-lg {
-    position: relative; width: 250px; height: 250x;
+    position: relative; width: 250px; height: 250px;
     background: #f4f4f4; cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 .avatar-wrap-lg::before {
