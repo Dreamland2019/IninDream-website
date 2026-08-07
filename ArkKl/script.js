@@ -321,6 +321,28 @@ function exportImage() {
     const desktopWidth = 960; 
 
     const clone = container.cloneNode(true);
+    // ===== 【新增核心】注入一段强制桌面版的 CSS，使手机端排版不影响导出！ =====
+    const cloneStyle = document.createElement('style');
+    cloneStyle.textContent = `
+        .container { padding: 45px 50px !important; }
+        .top-row { gap: 15px !important; margin-bottom: 40px !important; }
+        .bottom-content { gap: 40px !important; }
+        .dr-area { margin-bottom: 25px !important; }
+        .dr-label { font-size: 72px !important; font-weight: bold !important; line-height: 1 !important; }
+        .dr-input { width: 520px !important; font-size: 50px !important; }
+        .info-item .label { width: 90px !important; }
+        .info-item .options label { font-size: 18px !important; }
+        .sec-title { font-size: 18px !important; }
+        .slider-title { font-size: 14px !important; }
+        .slider-texts span { font-size: 16px !important; }
+        .footer-section textarea { font-size: 19px !important; }
+        /* 👇 新增这两行，强制恢复博士头像和干员头像的电脑端尺寸 */
+        .avatar-wrap-lg { width: 250px !important; height: 250px !important; }
+        .char-item { max-width: 120px !important; max-height: 120px !important; }
+    `;
+
+    // 把这段样式注入到克隆体中
+    clone.appendChild(cloneStyle);
 
     // ===== 【修复条形码】随机生成动态粗细的条形码！ =====
     const cloneBarcode = clone.querySelector('.barcode-lines');
@@ -432,8 +454,10 @@ function exportImage() {
     // 1. 因为 clone 本身就是 .container，直接修改它的样式。
     clone.style.maxWidth = desktopWidth + 'px';
     clone.style.width = desktopWidth + 'px';
-    // 必须显式继承内边距，否则内部宽度计算会变，导致换行
-    clone.style.padding = getComputedStyle(container).padding;
+    
+    // 【关键修复】这里不再读取手机端的真实 padding，而是直接覆盖为桌面端设定值
+    // 否则注入的 css !important 会被内联样式覆盖
+    clone.style.padding = '45px 50px';
 
     // 2. 强制覆盖手机端自定义头像的 margin，使用电脑端位置
     const cloneAvatarArea = clone.querySelector('.custom-avatar-area');

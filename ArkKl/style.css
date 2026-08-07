@@ -233,42 +233,64 @@ input[type="radio"], input[type="checkbox"] { width: 15px; height: 15px; accent-
 
 /* 手机端适配 */
 @media (max-width: 1080px) {
+    /* 1. 核心容器缩放，大幅缩小手机端内边距 */
+    .container {
+        padding: 15px 12px !important; 
+    }
+    
     .top-row, .bottom-content { flex-direction: column; }
     .top-right { justify-content: center; margin-top: 10px; }
     .top-left, .bottom-left, .bottom-right { min-width: auto; width: 100%; flex: none; }
     
-    /* 【修正】手机端干员改为 3 列，避免头像太小、文字太挤 */
-    .char-selected-grid { 
-        grid-template-columns: repeat(4, 1fr); 
-    }
-    .char-item { max-width: 120px; max-height: 120px; }
+    /* 2. 缩小字体与间距 */
+    .dr-area { margin-bottom: 15px !important; }
+    .dr-label { font-size: 46px !important; }
+    .dr-input { font-size: 36px !important; width: 180px !important; }
+    
+    .info-item .label { width: 70px !important; font-size: 16px !important; }
+    .info-item .options label { font-size: 14px !important; }
+    .info-item { margin-bottom: 6px; }
 
-    /* ===== 【修正移动端专属】底部工具条居中 ===== */
+    .sec-title { font-size: 16px !important; margin-bottom: 8px; }
+    .sub-title { font-size: 14px !important; }
+
+    .slider-list { gap: 10px; }
+    .slider-item { padding: 6px 10px 10px; }
+    .slider-title { font-size: 13px !important; }
+    .slider-texts span { font-size: 13px !important; }
+    
+    /* 缩小补充框字体 */
+    .footer-section textarea { font-size: 15px !important; min-height: 80px; }
+
+    /* 缩小网格间距 */
+    .bottom-content { gap: 20px; }
+    .char-selected-grid { gap: 6px; }
+    
+    /* 手机端干员头像略缩小 (4列不至于太挤) */
+    .char-item { max-width: 120px; max-height: 120px; }
+    .char-item .char-name { font-size: 9px; }
+
+    /* 底部工具条保持居中 */
     .bottom-toolbar {
         display: flex !important;
         justify-content: center;
-        margin: 15px auto 0;    /* 上下间距15px，左右自动居中 */
-        width: 100%;           /* 强制占满容器宽度 */
+        margin: 15px auto 0;
+        width: 100%;
         padding-bottom: 10px;
     }
-    .bottom-toolbar .btn-group {
-        display: flex;
-        gap: 12px;
-    }
-    .bg-logo-container {
-        bottom: 20px !important;  /* 距离底部 20px */
-        right: 10px !important;   /* 距离右侧 10px */
-        display: flex !important; /* 【关键修复】强制显示 */
-    }
-    
-    .bg-logo-container img {
-        width: 196px !important;  /* 手机端限制为 100px */
-        opacity: 0.15;             /* 手机端稍微更淡一点 */
-    }
+    .bottom-toolbar .btn-group { display: flex; gap: 12px; }
 
-    /* ===== 博士头像 ===== */
+    /* 右下角 LOGO 手机端缩小 */
+    .bg-logo-container {
+        bottom: 20px !important;
+        right: 10px !important;
+        display: flex !important;
+    }
+    .bg-logo-container img { width: 150px !important; opacity: 0.15; }
+
+    /* 博士头像手机端高度缩小 */
+    .avatar-wrap-lg { width: 160px !important; height: 160px !important; }
     .custom-avatar-area { display: flex; flex-direction: column; align-items: center; margin-right: 0px; margin-top: 0px; }
- 
     .avatar-wrap-lg img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .avatar-wrap-lg .avatar-placeholder-lg { color: #aaa; font-size: 50px; font-weight: 300; }
     .avatar-wrap-lg.has-image .avatar-placeholder-lg { display: none; }
