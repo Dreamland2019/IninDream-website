@@ -244,8 +244,8 @@ input[type="radio"], input[type="checkbox"] { width: 15px; height: 15px; accent-
     
     /* 2. 缩小字体与间距 */
     .dr-area { margin-bottom: 15px !important; }
-    .dr-label { font-size: 46px !important; }
-    .dr-input { font-size: 36px !important; width: 180px !important; }
+    .dr-label { font-size: 36px !important; }
+    .dr-input { font-size: 30px !important; width: 280px !important; }
     
     .info-item .label { width: 70px !important; font-size: 16px !important; }
     .info-item .options label { font-size: 14px !important; }
