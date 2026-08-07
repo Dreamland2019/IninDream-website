@@ -351,6 +351,44 @@ function exportImage() {
     }
     // ====================================================================
 
+    // ===== 【新增】修复导出时多选复选框的重叠和换行问题 =====
+    const cloneCheckboxes = clone.querySelectorAll('input[type="checkbox"]');
+    cloneCheckboxes.forEach(input => {
+        const isChecked = input.checked;
+        const fakeCheckbox = document.createElement('div');
+        
+        let styleStr = `
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+            margin: 0 4px;
+            vertical-align: middle;
+            position: relative;
+            background: ${isChecked ? '#1a1a1a' : 'transparent'};
+            border: 1px solid #1a1a1a;
+        `;
+        if (isChecked) {
+            // 如果是选中状态，在黑框中间画一个白色小勾，模拟原生选中态
+            const checkmark = document.createElement('div');
+            checkmark.style.cssText = `
+                width: 4px;
+                height: 8px;
+                border: solid #fff;
+                border-width: 0 2px 2px 0;
+                position: absolute;
+                top: 2px;
+                left: 5px;
+                transform: rotate(45deg);
+            `;
+            fakeCheckbox.appendChild(checkmark);
+        }
+        
+        fakeCheckbox.style.cssText = styleStr;
+        input.parentNode.replaceChild(fakeCheckbox, input);
+    });
+
     // ===== 【新增核心修复】解决移动端导出时单选框选中状态消失的 Bug =====
     const cloneRadios = clone.querySelectorAll('input[type="radio"]');
     cloneRadios.forEach(input => {
@@ -394,15 +432,18 @@ function exportImage() {
     // 1. 因为 clone 本身就是 .container，直接修改它的样式。
     clone.style.maxWidth = desktopWidth + 'px';
     clone.style.width = desktopWidth + 'px';
+    // 必须显式继承内边距，否则内部宽度计算会变，导致换行
+    clone.style.padding = getComputedStyle(container).padding;
 
     // 2. 强制覆盖手机端自定义头像的 margin，使用电脑端位置
     const cloneAvatarArea = clone.querySelector('.custom-avatar-area');
     if (cloneAvatarArea) {
+        // 【修正】改为和编辑时一致的 margin-right: 70px，并让 margin-top 为 0 以免下沉
         cloneAvatarArea.style.cssText = `
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-right: 80px;
+            margin-right: 70px;
             margin-top: 0px;
         `;
     }
@@ -413,7 +454,7 @@ function exportImage() {
     if (cloneLogoContainer && cloneLogoImg) {
         cloneLogoContainer.style.cssText = `
             position: absolute !important;
-            bottom: 20px !important;
+            bottom: 100px !important;
             right: 20px !important;
             pointer-events: none !important;
             z-index: 1 !important;
@@ -450,7 +491,7 @@ function exportImage() {
     const cloneBottomLeft = clone.querySelector('.bottom-left');
     const cloneBottomRight = clone.querySelector('.bottom-right');
     
-    if (cloneTopLeft) { cloneTopLeft.style.flex = '1.3'; cloneTopLeft.style.minWidth = '350px'; }
+    if (cloneTopLeft) { cloneTopLeft.style.flex = '2'; cloneTopLeft.style.minWidth = '350px'; }
     if (cloneTopRight) { 
         cloneTopRight.style.flex = '1'; 
         cloneTopRight.style.minWidth = '200px'; 
