@@ -1,6 +1,7 @@
 import { OPERATORS } from './operator_data.js';
 
-const AVATAR_PATH = './avatars/';
+const AVATAR_PATH = './avatars/';         // 主页面显示的高清大图路径
+const AVATAR_PATH_THUMB = './avatars_thumb/'; // 选择器里显示的缩略图路径
 
 // ==================== 势力配置 ====================
 const FACTION_NAMES = [
@@ -276,7 +277,8 @@ function renderModalList() {
         const checked = tempSelectedIds.includes(op.id) ? 'checked' : '';
         div.innerHTML = `
             <input type="checkbox" value="${op.id}" ${checked} />
-            <img src="${AVATAR_PATH}${op.avatar}" onerror="this.style.display='none'" />
+            <!-- 【修改点】：这里把路径换成了 AVATAR_PATH_THUMB ！ -->
+            <img src="${AVATAR_PATH_THUMB}${op.avatar}" onerror="this.style.display='none'" />
             <span>${op.name} ${op.rarity}</span>
         `;
         div.querySelector('input[type="checkbox"]').addEventListener('change', function() {
