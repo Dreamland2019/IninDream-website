@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>明日方舟扩列档案</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部工具栏 -->
+        <div class="toolbar">
+            <div class="btn-group">
+                <button id="resetBtn" class="btn-action">↻ 重置</button>
+                <button id="exportImgBtn" class="btn-action">🖼️ 导出图片</button>
+                <select id="factionSelect" class="btn-action select-styled"></select>
+            </div>
+        </div>
+
+        <!-- ===== 头部横幅 ===== -->
+        <header class="header">
+            <div class="header-top-bar">
+                <div class="top-bar-left">
+                    <span class="top-bar-title">个人档案</span>
+                    <span class="top-bar-meta">PERSONAL PROFILE</span>
+                    <span class="logo-triangle">▲</span>
+                </div>
+                <div class="header-barcode">
+                    <div class="barcode-lines"></div>
+                    <span>B101</span>
+                </div>
+            </div>
+            <div class="header-divider"></div>
+        </header>
+
+        <!-- ===== 上半部分：双栏布局 ===== -->
+        <div class="top-row">
+            <div class="top-left">
+                <!-- 1. Dr. 玩家名 -->
+                <div class="dr-area">
+                    <div class="dr-flex">
+                        <span class="dr-label">Dr.</span>
+                        <input type="text" id="drNameInput" class="dr-input" placeholder="博士名称" />
+                    </div>
+                </div>
+
+                <!-- 2. 基础信息 -->
+                <div class="info-section">
+                    <h2 class="sec-title">■ 基础信息</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">■ 性 别</span>
+                            <div class="options">
+                                <label><input type="radio" name="gender" value="女"> 女</label>
+                                <label><input type="radio" name="gender" value="男"> 男</label>
+                                <label><input type="radio" name="gender" value="其他"> 其他</label>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">■ 我想扩</span>
+                            <div class="options">
+                                <label><input type="checkbox" value="微信"> 微信</label>
+                                <label><input type="checkbox" value="QQ"> QQ</label>
+                                <label><input type="checkbox" value="游戏好友"> 游戏好友</label>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">■ 区 服</span>
+                            <div class="options">
+                                <label><input type="radio" name="server" value="官服"> 官服</label>
+                                <label><input type="radio" name="server" value="B服"> B服</label>
+                                <label><input type="radio" name="server" value="繁中"> 繁中</label>
+                                <label><input type="radio" name="server" value="日"> 日</label>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">■ 现在是</span>
+                            <div class="options">
+                                <label><input type="radio" name="level" value="小登"> 小登</label>
+                                <label><input type="radio" name="level" value="中登"> 中登</label>
+                                <label><input type="radio" name="level" value="老登"> 老登</label>
+                                <label><input type="radio" name="level" value="究极老资历"> 究极老资历</label>
+                            </div>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">■ 更侧重</span>
+                            <div class="options wrap-options">
+                                <label><input type="radio" name="focus" value="游戏本身"> 游戏本身</label>
+                                <label><input type="radio" name="focus" value="角色厨"> 角色厨</label>
+                                <label><input type="radio" name="focus" value="同人"> 同人</label>
+                                <label><input type="radio" name="focus" value="OC"> OC</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="top-right">
+                <!-- 3. 博士头像 -->
+                <div class="custom-avatar-area">
+                    <h2 class="sec-title" style="width: 100%;"></h2>
+                    <div class="avatar-wrap-lg" id="avatarWrapLg">
+                        <img id="avatarImgLg" src="" alt="自定义头像" />
+                        <div class="avatar-placeholder-lg" id="avatarPlaceholderLg">+</div>
+                        <input type="file" id="avatarInputLg" accept="image/*" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== 下半部分：双栏布局 ===== -->
+        <div class="bottom-row">
+            <div class="bottom-header">
+                <h2 class="sec-title">■ 详细资料</h2>
+            </div>
+            <div class="bottom-content">
+                <div class="bottom-left">
+                    <!-- 左侧：滑块 -->
+                    <div class="slider-section">
+                        <div class="slider-list" id="sliderContainer"></div>
+                        <div class="add-area">
+                            <button class="btn-add" id="addSliderBtn">＋ 添加滑块</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bottom-right">
+                    <!-- 右侧上方：干员 -->
+                    <div class="character-section">
+                        <h3 class="sub-title">我推的角色</h3>
+                        <div class="char-selected-grid" id="selectedOpsGrid"></div>
+                        <div class="char-tools">
+                            <button id="openSelectorBtn" class="btn-action btn-small">选择干员</button>
+                            <span class="char-tips" id="selectedTips">已选择 0 位干员</span>
+                        </div>
+                    </div>
+                    <!-- 右侧下方：补充 -->
+                    <div class="footer-section">
+                        <h3 class="sub-title">补充</h3>
+                        <textarea id="extraInput" placeholder="写点补充说明、游戏ID、碎碎念……"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="page-footer">The last stand against the originum.</footer>
+
+        <!-- ===== 【关键修改】背景 LOGO 容器移到了 container 内部 ===== -->
+        <div class="bg-logo-container" id="bgLogoContainer">
+            <img id="bgLogoImg" src="" alt="势力背景" />
+        </div>
+
+        <div class="bottom-toolbar" id="bottomToolbar">
+            <div class="btn-group">
+                <!-- 为了防止 ID 冲突，底部的按钮和选择器用了独立的 ID -->
+                <button id="bottomResetBtn" class="btn-action">↻ 重置</button>
+                <button id="bottomExportBtn" class="btn-action">🖼️ 导出图片</button>
+                <select id="bottomFactionSelect" class="btn-action select-styled"></select>
+            </div>
+        </div>
+
+    </div>    
+    
+    <!-- 干员选择器模态框 -->
+    <div class="modal-overlay" id="operatorModal">
+        <div class="modal-box modal-wide">
+            <div class="modal-header">
+                <h3>选择你的推</h3>
+                <button class="modal-close" id="closeSelectorBtn">✕</button>
+            </div>
+            <div class="filter-bar">
+                <input type="text" id="searchInput" placeholder="搜索干员名称..." />
+                <select id="filterProfession"><option value="">根职业（全部）</option></select>
+                <select id="filterRace"><option value="">种族（全部）</option></select>
+                <select id="filterRarity"><option value="">稀有度（全部）</option></select>
+            </div>
+            <div class="modal-operator-list" id="modalOperatorList"></div>
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="cancelSelector">取消</button>
+                <button class="btn-modal-confirm" id="confirmSelector">确定选入</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加滑块模态框 -->
+    <div class="modal-overlay" id="sliderModal">
+        <div class="modal-box">
+            <h3>添加新滑块</h3>
+            <div class="modal-field">
+                <label>标题文字</label>
+                <input type="text" id="modalSLabel" placeholder="例如：关于游戏..." />
+            </div>
+            <div class="modal-field">
+                <label>刻度数量</label>
+                <select id="modalSSteps">
+                    <option value="2">2个刻度</option>
+                    <option value="3" selected>3个刻度</option>
+                    <option value="4">4个刻度</option>
+                </select>
+            </div>
+            <div id="tickInputsContainer"></div>
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="cancelSlider">取消</button>
+                <button class="btn-modal-confirm" id="confirmSlider">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="operator_data.js"></script>
+    <script type="module" src="script.js"></script>
+    
+</body>
+</html>
