@@ -9,6 +9,17 @@
 </head>
 <body>
     <div class="container">
+        <!-- 右侧边缘机械点阵装饰 -->
+        <div class="right-edge-dots">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+        </div>
+
         <!-- 顶部工具栏 -->
         <div class="toolbar">
             <div class="btn-group">
@@ -20,25 +31,29 @@
 
         <!-- ===== 头部横幅 ===== -->
         <header class="header">
-            <!-- 1. 顶部黑条 + 条形码 -->
-            <div class="header-top-bar">
-                <div class="top-bar-left">
-                    <span class="top-bar-title">个人档案</span>
-                    <span class="top-bar-meta">PERSONAL PROFILE</span>
-                    <span class="logo-triangle">▲</span>
+            <div class="header-container">
+                <!-- 线上方：条形码 + by Near（右对齐） -->
+                <div class="header-top">
+                    <div class="header-top-right">
+                        <div class="barcode-lines"></div>
+                        <span class="author">by Near</span>
+                    </div>
                 </div>
-                <!-- 条形码区（去掉了B101） -->
-                <div class="header-barcode">
-                    <div class="barcode-lines"></div>
+
+                <!-- 页面顶端横线 -->
+                <div class="header-line"></div>
+
+                <!-- 横线下方：个人档案黑盒(左上角) + 档案编号/B101(右上角) -->
+                <div class="header-bottom">
+                    <div class="header-bottom-left">
+                        <span class="title-box">个人档案</span>
+                        <span class="title-en">PERSONAL PROFILE</span>
+                    </div>
+                    <div class="header-bottom-right">
+                        <span class="label">档案编号 DATA NUMBER</span>
+                        <span class="code">B101</span>
+                    </div>
                 </div>
-            </div>
-
-            <!-- 2. 标题下方的横线 -->
-            <div class="header-divider"></div>
-
-            <!-- 3. 【新增】将B101移至横线下方 -->
-            <div class="header-b101-row">
-                <span>B101</span>
             </div>
         </header>
 
@@ -47,59 +62,113 @@
             <div class="top-left">
                 <!-- 1. Dr. 玩家名 -->
                 <div class="dr-area">
+                    <div class="dr-blue-bar"></div>
                     <div class="dr-flex">
                         <span class="dr-label">Dr.</span>
                         <input type="text" id="drNameInput" class="dr-input" placeholder="博士名称" />
                     </div>
+                    <div class="dr-subtitle">Doctor</div>
                 </div>
 
-                <!-- 2. 基础信息 -->
+                <!-- 2. Logo 与标语（跟随势力选择） -->
+                <div class="logo-section">
+                    <img id="riLogoImg" src="" alt="" class="ri-logo-icon" />
+                    <div class="ri-slogan">
+                        <span class="slogan-line-1">Bitter forces may </span>
+                        <span class="slogan-line-2">have wholesome results</span>
+                    </div>
+                </div>
+
+                <!-- 3. 基础信息 -->
                 <div class="info-section">
-                    <h2 class="sec-title">■ 基础信息</h2>
+                    <h2 class="sec-title">
+                        <span class="title-box">基础信息</span>
+                        <span class="title-ray"></span>
+                    </h2>
                     <div class="info-grid">
                         <div class="info-item">
-                            <span class="label">■ 性 别</span>
+                            <span class="label"><span class="l-mark">■</span><span class="l-txt"><span>性</span><span>别</span></span></span>
                             <div class="options">
-                                <label><input type="radio" name="gender" value="女"> 女</label>
-                                <label><input type="radio" name="gender" value="男"> 男</label>
-                                <label><input type="radio" name="gender" value="其他"> 其他</label>
+                                <div class="custom-radio" data-name="gender" data-value="女">
+                                    <input type="radio" name="gender" value="女" /> 女
+                                </div>
+                                <div class="custom-radio" data-name="gender" data-value="男">
+                                    <input type="radio" name="gender" value="男" /> 男
+                                </div>
+                                <div class="custom-radio" data-name="gender" data-value="其他">
+                                    <input type="radio" name="gender" value="其他" /> 其他
+                                </div>
                             </div>
                         </div>
                         <div class="info-item">
-                            <span class="label">■ 我想扩</span>
+                            <span class="label"><span class="l-mark">■</span><span class="l-txt"><span>我</span><span>想</span><span>扩</span></span></span>
                             <div class="options">
-                                <label><input type="checkbox" value="微信"> 微信</label>
-                                <label><input type="checkbox" value="QQ"> QQ</label>
-                                <label><input type="checkbox" value="游戏好友"> 游戏好友</label>
+                                <div class="custom-checkbox" data-name="contact" data-value="微信">
+                                    <input type="checkbox" name="contact" value="微信" /> 微信
+                                </div>
+                                <div class="custom-checkbox" data-name="contact" data-value="QQ">
+                                    <input type="checkbox" name="contact" value="QQ" /> QQ
+                                </div>
+                                <div class="custom-checkbox" data-name="contact" data-value="游戏好友">
+                                    <input type="checkbox" name="contact" value="游戏好友" /> 游戏好友
+                                </div>
                             </div>
                         </div>
                         <div class="info-item">
-                            <span class="label">■ 区 服</span>
+                            <span class="label"><span class="l-mark">■</span><span class="l-txt"><span>区</span><span>服</span></span></span>
                             <div class="options">
-                                <label><input type="checkbox" name="server" value="官服"> 官服</label>
-                                <label><input type="checkbox" name="server" value="B服"> B服</label>
-                                <label><input type="checkbox" name="server" value="繁中"> 繁中</label>
-                                <label><input type="checkbox" name="server" value="日"> 日</label>
-                                <label><input type="checkbox" name="server" value="英"> 英</label>
+                                <div class="custom-checkbox" data-name="server" data-value="官服">
+                                    <input type="checkbox" name="server" value="官服" /> 官服
+                                </div>
+                                <div class="custom-checkbox" data-name="server" data-value="B服">
+                                    <input type="checkbox" name="server" value="B服" /> B服
+                                </div>
+                                <div class="custom-checkbox" data-name="server" data-value="繁中">
+                                    <input type="checkbox" name="server" value="繁中" /> 繁中
+                                </div>
+                                <div class="custom-checkbox" data-name="server" data-value="日">
+                                    <input type="checkbox" name="server" value="日" /> 日
+                                </div>
+                                <div class="custom-checkbox" data-name="server" data-value="英">
+                                    <input type="checkbox" name="server" value="英" /> 英
+                                </div>
                             </div>
                         </div>
                         <div class="info-item">
-                            <span class="label">■ 现在是</span>
+                            <span class="label"><span class="l-mark">■</span><span class="l-txt"><span>现</span><span>在</span><span>是</span></span></span>
                             <div class="options">
-                                <label><input type="radio" name="level" value="小登"> 小登</label>
-                                <label><input type="radio" name="level" value="中登"> 中登</label>
-                                <label><input type="radio" name="level" value="老登"> 老登</label>
-                                <label><input type="radio" name="level" value="究极老资历"> 究极老资历</label>
+                                <div class="custom-radio" data-name="level" data-value="小登">
+                                    <input type="radio" name="level" value="小登" /> 小登
+                                </div>
+                                <div class="custom-radio" data-name="level" data-value="中登">
+                                    <input type="radio" name="level" value="中登" /> 中登
+                                </div>
+                                <div class="custom-radio" data-name="level" data-value="老登">
+                                    <input type="radio" name="level" value="老登" /> 老登
+                                </div>
+                                <div class="custom-radio" data-name="level" data-value="究极老资历">
+                                    <input type="radio" name="level" value="究极老资历" /> 究极老资历
+                                </div>
                             </div>
                         </div>
                         <div class="info-item">
-                            <span class="label">■ 更侧重</span>
+                            <span class="label"><span class="l-mark">■</span><span class="l-txt"><span>更</span><span>侧</span><span>重</span></span></span>
                             <div class="options">
-                                <label><input type="checkbox" name="focus" value="游戏本身"> 游戏本身</label>
-                                <label><input type="checkbox" name="focus" value="角色厨"> 角色厨</label>
-                                <label><input type="checkbox" name="focus" value="同人"> 同人</label>
-                                <label><input type="checkbox" name="focus" value="OC"> OC</label>
-                                <label><input type="checkbox" name="focus" value="其他"> 其他</label>
+                                <div class="custom-checkbox" data-name="focus" data-value="游戏本身">
+                                    <input type="checkbox" name="focus" value="游戏本身" /> 游戏本身
+                                </div>
+                                <div class="custom-checkbox" data-name="focus" data-value="角色厨">
+                                    <input type="checkbox" name="focus" value="角色厨" /> 角色厨
+                                </div>
+                                <div class="custom-checkbox" data-name="focus" data-value="同人">
+                                    <input type="checkbox" name="focus" value="同人" /> 同人
+                                </div>
+                                <div class="custom-checkbox" data-name="focus" data-value="OC">
+                                    <input type="checkbox" name="focus" value="OC" /> OC
+                                </div>
+                                <div class="custom-checkbox" data-name="focus" data-value="其他">
+                                    <input type="checkbox" name="focus" value="其他" /> 其他
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -122,7 +191,10 @@
         <!-- ===== 下半部分：双栏布局 ===== -->
         <div class="bottom-row">
             <div class="bottom-header">
-                <h2 class="sec-title">■ 详细资料</h2>
+                <h2 class="sec-title">
+                    <span class="title-box">详细资料</span>
+                    <span class="title-ray"></span>
+                </h2>
             </div>
             <div class="bottom-content">
                 <div class="bottom-left">
@@ -142,6 +214,7 @@
                         <div class="char-selected-grid" id="selectedOpsGrid"></div>
                         <div class="char-tools">
                             <button id="openSelectorBtn" class="btn-action btn-small">选择干员</button>
+                            <button id="addBlankBtn" class="btn-action btn-small">＋ 添加空行</button>
                             <span class="char-tips" id="selectedTips">已选择 0 位干员</span>
                         </div>
                     </div>

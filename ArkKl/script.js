@@ -47,6 +47,7 @@ const FACTION_NAMES = [
 
 let state = {
     selectedOps: [],
+    blankSlots: 0,
     sliders: [
         { label: '关于氪金', texts: ['0氪', '微氪', '中氪', '重氪'], value: 50, steps: 4 },
         { label: '关于吃谷', texts: ['不太吃', '理性吃', '为鹰角掏空钱包'], value: 50, steps: 3 },
@@ -61,6 +62,19 @@ let state = {
 
 // ==================== 渲染引擎 ====================
 
+// 玩家名自动缩放（不换行）：内容超出输入框宽度时逐级缩小字号
+function fitDrNameFontSize() {
+    const input = document.getElementById('drNameInput');
+    if (!input) return;
+    const maxWidth = input.clientWidth;
+    let size = 70;
+    input.style.fontSize = size + 'px';
+    while (input.scrollWidth > maxWidth && size > 18) {
+        size -= 1;
+        input.style.fontSize = size + 'px';
+    }
+}
+
 function loadBaseInfo() {
     const radios = document.querySelectorAll('input[type="radio"], input[type="checkbox"]');
     const saved = JSON.parse(localStorage.getItem('arknights_baseInfo') || '{}');
@@ -68,6 +82,7 @@ function loadBaseInfo() {
         if (el.type === 'radio' && saved[el.name] === el.value) el.checked = true;
         if (el.type === 'checkbox' && saved[el.name]?.includes(el.value)) el.checked = true;
     });
+    syncCustomControlState();
     const extraTextArea = document.getElementById('extraInput');
     if (extraTextArea) {
         // 初始化先算一次高度（防止刷新页面后高度塌陷）
@@ -83,6 +98,7 @@ function loadBaseInfo() {
     }
     document.getElementById('drNameInput').value = saved.drName || '';
     document.getElementById('extraInput').value = saved.extra || '';
+    fitDrNameFontSize();
 
     if (saved.avatarLgSrc) {
         const wrap = document.getElementById('avatarWrapLg');
@@ -110,6 +126,35 @@ function saveBaseInfo() {
         if (el.type === 'checkbox' && el.checked) data[el.name].push(el.value);
     });
     localStorage.setItem('arknights_baseInfo', JSON.stringify(data));
+}
+
+// ==================== 自定义表单控件（radio/checkbox）====================
+function syncCustomControlState() {
+    document.querySelectorAll('.custom-radio, .custom-checkbox').forEach(el => {
+        const input = el.querySelector('input[type="radio"], input[type="checkbox"]');
+        if (input && input.checked) el.classList.add('active');
+        else el.classList.remove('active');
+    });
+}
+
+function bindCustomControls() {
+    document.querySelectorAll('.custom-radio').forEach(el => {
+        el.addEventListener('click', function() {
+            document.querySelectorAll(`.custom-radio[data-name="${this.dataset.name}"]`).forEach(g => g.classList.remove('active'));
+            this.classList.add('active');
+            const input = this.querySelector('input[type="radio"]');
+            if (input) input.checked = true;
+            saveState();
+        });
+    });
+    document.querySelectorAll('.custom-checkbox').forEach(el => {
+        el.addEventListener('click', function() {
+            this.classList.toggle('active');
+            const input = this.querySelector('input[type="checkbox"]');
+            if (input) input.checked = this.classList.contains('active');
+            saveState();
+        });
+    });
 }
 
 function renderSliders() {
@@ -150,7 +195,10 @@ function renderSliders() {
             <button class="slider-del" data-idx="${idx}">✕</button>
             <span class="slider-title">${item.label}</span>
             <div class="slider-wrap">
-                <input type="range" min="0" max="100" value="${currentVal}" data-idx="${idx}" />
+                <div class="slider-track-bg"></div>
+                <div class="slider-track-fill"></div>
+                <input type="range" min="0" max="100" value="${currentVal}" data-idx="${idx}" class="slider-range-hidden" />
+                <div class="slider-thumb"></div>
                 <div class="slider-ticks">${ticksHtml}</div>
             </div>
             <div class="slider-texts">${textsHtml}</div>
@@ -158,8 +206,17 @@ function renderSliders() {
         container.appendChild(div);
 
         const input = div.querySelector('input[type="range"]');
+        const fill = div.querySelector('.slider-track-fill');
+        const thumb = div.querySelector('.slider-thumb');
+        const updateSliderPos = () => {
+            const pct = input.value + '%';
+            if (fill) fill.style.width = pct;
+            if (thumb) thumb.style.left = pct;
+        };
+        updateSliderPos();
         input.addEventListener('input', function() {
             state.sliders[parseInt(this.dataset.idx)].value = parseInt(this.value);
+            updateSliderPos();
             saveState();
         });
 
@@ -182,14 +239,30 @@ function renderSelectedOps() {
         div.innerHTML = `<img src="${AVATAR_PATH}${op.avatar}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" /><span class="char-name">${op.name}</span>`;
         grid.appendChild(div);
     });
-    const remain = 8 - state.selectedOps.length;
+    // 空白格：供玩家导出后自行 P 图（如剧情角色等无头像角色）
+    for (let i = 0; i < state.blankSlots; i++) {
+        const blank = document.createElement('div');
+        blank.className = 'char-item char-blank';
+        blank.title = '空白格：导出后可自行 P 图，点击移除';
+        blank.innerHTML = `<span class="blank-hint">＋</span>`;
+        blank.addEventListener('click', function() {
+            state.blankSlots = Math.max(0, state.blankSlots - 1);
+            renderSelectedOps();
+            saveState();
+        });
+        grid.appendChild(blank);
+    }
+    // 自动补足到 8 格（仅当总数不足 8 时）
+    const remain = Math.max(0, 8 - state.selectedOps.length - state.blankSlots);
     for (let i = 0; i < remain; i++) {
         const empty = document.createElement('div');
         empty.className = 'char-item';
         empty.style.background = '#f4f4f4';
         grid.appendChild(empty);
     }
-    tips.textContent = `已选择 ${state.selectedOps.length} 位干员`;
+    let tipText = `已选择 ${state.selectedOps.length} 位干员`;
+    if (state.blankSlots > 0) tipText += ` · ${state.blankSlots} 个空白格`;
+    tips.textContent = tipText;
 }
 
 function initFactionSelect() {
@@ -211,6 +284,14 @@ function renderFaction(val) {
     
     const imgPath = `./logos/Logo_${val}.png`; 
     img.src = imgPath;
+
+    // 同步小 Logo（与背景 logo 同图，仅尺寸缩小）
+    const riLogoImg = document.getElementById('riLogoImg');
+    if (riLogoImg) {
+        riLogoImg.src = imgPath;
+        riLogoImg.onerror = function() { riLogoImg.style.display = 'none'; };
+        riLogoImg.onload = function() { riLogoImg.style.display = 'inline-block'; };
+    }
     
     img.onerror = function() { 
         console.error(`❌ 找不到背景 LOGO: ${imgPath}`);
@@ -223,6 +304,7 @@ function renderFaction(val) {
 
 function saveState() {
     localStorage.setItem('arknights_selectedOps', JSON.stringify(state.selectedOps.map(o => o.id)));
+    localStorage.setItem('arknights_blankSlots', String(state.blankSlots));
     localStorage.setItem('arknights_sliders', JSON.stringify(state.sliders));
     localStorage.setItem('arknights_faction', state.faction);
     saveBaseInfo();
@@ -231,6 +313,7 @@ function saveState() {
 function loadState() {
     const opsIds = JSON.parse(localStorage.getItem('arknights_selectedOps') || '[]');
     state.selectedOps = opsIds.map(id => OPERATORS.find(o => o.id === id)).filter(Boolean);
+    state.blankSlots = parseInt(localStorage.getItem('arknights_blankSlots') || '0', 10) || 0;
     const sliders = JSON.parse(localStorage.getItem('arknights_sliders') || 'null');
     if (sliders) state.sliders = sliders;
 
@@ -321,24 +404,35 @@ function exportImage() {
     const desktopWidth = 960; 
 
     const clone = container.cloneNode(true);
+    clone.classList.add('export-clone');
     // ===== 【新增核心】注入一段强制桌面版的 CSS，使手机端排版不影响导出！ =====
     const cloneStyle = document.createElement('style');
     cloneStyle.textContent = `
         .container { padding: 45px 50px !important; }
-        .top-row { gap: 15px !important; margin-bottom: 40px !important; }
+        .top-row { gap: 15px !important; margin-bottom: 10px !important; }
         .bottom-content { gap: 40px !important; }
-        .dr-area { margin-bottom: 25px !important; }
-        .dr-label { font-size: 72px !important; font-weight: bold !important; line-height: 1 !important; }
-        .dr-input { width: 520px !important; font-size: 50px !important; }
-        .info-item .label { width: 90px !important; }
+        .dr-area { margin-bottom: 10px !important; }
+        .dr-label { font-size: 80px !important; font-weight: bold !important; line-height: 1 !important; }
+        .dr-input { width: 520px !important; font-size: 80px !important; }
+        .info-item .label { width: 100px !important; font-size: 23px !important; }
         .info-item .options label { font-size: 18px !important; }
         .sec-title { font-size: 18px !important; }
-        .slider-title { font-size: 14px !important; }
+        .slider-title { font-size: 17px !important; }
         .slider-texts span { font-size: 16px !important; }
         .footer-section textarea { font-size: 19px !important; }
         /* 👇 新增这两行，强制恢复博士头像和干员头像的电脑端尺寸 */
-        .avatar-wrap-lg { width: 250px !important; height: 250px !important; }
+        .avatar-wrap-lg { width: 233px !important; height: 233px !important; }
         .char-item { max-width: 120px !important; max-height: 120px !important; }
+        /* 👇 新增：导出时强制新装饰元素为桌面端样式，并避免与模拟控件重复渲染 */
+        .export-clone .dr-blue-bar { width: 8px !important; height: 100px !important; top: 6px !important; }
+        .export-clone .dr-subtitle { font-size: 24px !important; font-weight: 700 !important; }
+        .export-clone .right-edge-dots { display: block !important; }
+        .export-clone .logo-section { flex-direction: row !important; align-items: flex-end; !important; }
+        .export-clone .ri-slogan { margin: 0 0 15px 0 !important; }
+        .export-clone .custom-radio, .export-clone .custom-checkbox { gap: 4px !important; font-size: 20px !important; }
+        .export-clone .custom-radio::before, .export-clone .custom-radio::after,
+        .export-clone .custom-checkbox::before, .export-clone .custom-checkbox::after { content: none !important; display: none !important; }
+        .export-clone .slider-track-bg, .export-clone .slider-track-fill, .export-clone .slider-thumb { display: none !important; }
     `;
 
     // 把这段样式注入到克隆体中
@@ -348,24 +442,24 @@ function exportImage() {
     const cloneBarcode = clone.querySelector('.barcode-lines');
     if (cloneBarcode) {
         const canvas = document.createElement('canvas');
-        canvas.width = 80;
-        canvas.height = 25;
+        canvas.width = 120;
+        canvas.height = 33;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000000';
 
         let x = 0;
-        // 不断循环，直到画满 80 像素宽度
-        while (x < 80) {
+        // 不断循环，直到画满 120 像素宽度
+        while (x < 120) {
             // 随机生成黑条的宽度 (1px ~ 4px)
             let barWidth = Math.floor(Math.random() * 4) + 1;
-            if (x + barWidth > 80) barWidth = 80 - x;
-            ctx.fillRect(x, 0, barWidth, 25);
+            if (x + barWidth > 120) barWidth = 120 - x;
+            ctx.fillRect(x, 0, barWidth, 33);
 
             x += barWidth;
 
             // 随机生成间隔的宽度 (1px ~ 3px)
             let gapWidth = Math.floor(Math.random() * 3) + 1;
-            if (x + gapWidth > 80) gapWidth = 80 - x;
+            if (x + gapWidth > 120) gapWidth = 120 - x;
             x += gapWidth;
         }
         // 替换原有的 div
@@ -373,82 +467,26 @@ function exportImage() {
     }
     // ====================================================================
 
-    // ===== 【新增】修复导出时多选复选框的重叠和换行问题 =====
-    const cloneCheckboxes = clone.querySelectorAll('input[type="checkbox"]');
-    cloneCheckboxes.forEach(input => {
-        const isChecked = input.checked;
-        const fakeCheckbox = document.createElement('div');
-        
-        let styleStr = `
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            box-sizing: border-box;
-            flex-shrink: 0;
-            margin: 0 4px;
-            vertical-align: middle;
-            position: relative;
-            background: ${isChecked ? '#1a1a1a' : 'transparent'};
-            border: 1px solid #1a1a1a;
-        `;
-        if (isChecked) {
-            // 如果是选中状态，在黑框中间画一个白色小勾，模拟原生选中态
-            const checkmark = document.createElement('div');
-            checkmark.style.cssText = `
-                width: 4px;
-                height: 8px;
-                border: solid #fff;
-                border-width: 0 2px 2px 0;
-                position: absolute;
-                top: 2px;
-                left: 5px;
-                transform: rotate(45deg);
-            `;
-            fakeCheckbox.appendChild(checkmark);
-        }
-        
-        fakeCheckbox.style.cssText = styleStr;
-        input.parentNode.replaceChild(fakeCheckbox, input);
-    });
-
-    // ===== 【新增核心修复】解决移动端导出时单选框选中状态消失的 Bug =====
-    const cloneRadios = clone.querySelectorAll('input[type="radio"]');
-    cloneRadios.forEach(input => {
-        const isChecked = input.checked;
-        const fakeRadio = document.createElement('div');
-        
-        let styleStr = `
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            box-sizing: border-box;
-            flex-shrink: 0;
-            margin: 0 4px;
-            vertical-align: middle;
-            position: relative;
-        `;
-        
-        if (isChecked) {
-            styleStr += `background: #1a1a1a; border: 1px solid #1a1a1a;`;
-            const dot = document.createElement('div');
-            dot.style.cssText = `
-                width: 6px;
-                height: 6px;
-                background: #fff;
-                border-radius: 50%;
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-            `;
-            fakeRadio.appendChild(dot);
-        } else {
-            styleStr += `background: transparent; border: 1px solid #1a1a1a;`;
-        }
-        
-        fakeRadio.style.cssText = styleStr;
-        input.parentNode.replaceChild(fakeRadio, input);
+    // ===== 导出：把基础信息的单/复选项改成“斜杠分隔 + 选中项红色马克笔涂抹” =====
+    const infoOptions = clone.querySelectorAll('.info-item .options');
+    infoOptions.forEach(optionsEl => {
+        const optionEls = optionsEl.querySelectorAll('.custom-radio, .custom-checkbox');
+        if (optionEls.length === 0) return;
+        const parts = [];
+        optionEls.forEach(opt => {
+            // 勾选态以 .active class 为准（cloneNode 不会复制 input.checked 属性）
+            const isChecked = opt.classList.contains('active');
+            const text = (opt.textContent || '').trim();
+            if (isChecked) {
+                parts.push(`<span style="background: rgba(255, 45, 45, 0.35); padding: 1px 3px;">${text}</span>`);
+            } else {
+                parts.push(`<span>${text}</span>`);
+            }
+        });
+        optionsEl.innerHTML = parts.join('  /  ');
+        optionsEl.style.display = 'block';
+        optionsEl.style.fontSize = '23px';
+        optionsEl.style.lineHeight = '1.6';
     });
 
     // 1. 因为 clone 本身就是 .container，直接修改它的样式。
@@ -467,7 +505,7 @@ function exportImage() {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-right: 70px;
+            margin-right: 120px;
             margin-top: 0px;
         `;
     }
@@ -478,15 +516,15 @@ function exportImage() {
     if (cloneLogoContainer && cloneLogoImg) {
         cloneLogoContainer.style.cssText = `
             position: absolute !important;
-            bottom: 100px !important;
-            right: 20px !important;
+            bottom: 80px !important;
+            right: 10px !important;
             pointer-events: none !important;
-            z-index: 1 !important;
-            opacity: 0.15 !important;
+            z-index: 0 !important;
+            opacity: 0.08 !important;
             display: flex !important;
         `;
         cloneLogoImg.style.cssText = `
-            width: 325px !important;
+            width: 400px !important;
             max-width: 100% !important;
             height: auto !important;
             object-fit: contain !important;
@@ -524,7 +562,7 @@ function exportImage() {
         cloneTopRight.style.alignItems = 'center';     
     }
     if (cloneBottomLeft) { cloneBottomLeft.style.flex = '1'; cloneBottomLeft.style.minWidth = '320px'; }
-    if (cloneBottomRight) { cloneBottomRight.style.flex = '1.1'; cloneBottomRight.style.minWidth = '400px'; }
+    if (cloneBottomRight) { cloneBottomRight.style.flex = '2'; cloneBottomRight.style.minWidth = '400px'; }
 
     // 7. 恢复干员选择器为 4 列布局
     const cloneGrid = clone.querySelector('.char-selected-grid');
@@ -536,14 +574,16 @@ function exportImage() {
     const cloneDrInput = clone.querySelector('#drNameInput');
     if (cloneDrInput) {
         const val = cloneDrInput.value || '博士名称';
+        // 读取自动缩放后的实际字号（内联样式），避免被导出 CSS 的 80px !important 覆盖
+        const actualFontSize = cloneDrInput.style.fontSize || '80px';
         const computedStyle = window.getComputedStyle(cloneDrInput);
-        
+
         const textDisplay = document.createElement('div');
         textDisplay.className = cloneDrInput.className;
         textDisplay.style.cssText = `
             display: inline-block;
             width: ${computedStyle.width};
-            font-size: ${computedStyle.fontSize};
+            font-size: ${actualFontSize} !important;
             font-weight: ${computedStyle.fontWeight};
             line-height: ${computedStyle.lineHeight};
             padding: 0 5px 0 0;
@@ -592,19 +632,13 @@ function exportImage() {
         const val = parseInt(input.value);
         input.style.display = 'none';
         const mock = document.createElement('div');
-        mock.style.cssText = 'position: relative; width: 100%; height: 34px; margin: 0 5px;';
+        mock.style.cssText = 'position: relative; width: 100%; height: 34px; margin: 0;';
         const track = document.createElement('div');
-        track.style.cssText = 'position: absolute; top: 50%; left: 0; right: 0; height: 3px; background: #ccc; transform: translateY(-50%);';
-        const ticksWrap = wrap.querySelector('.slider-ticks');
-        if (ticksWrap) {
-            const ticksClone = ticksWrap.cloneNode(true);
-            ticksClone.style.cssText = 'position: absolute; top: 16px; left: 0; right: 0; height: 6px; pointer-events: none; padding: 0 6px;';
-            mock.appendChild(ticksClone);
-        }
+        track.style.cssText = 'position: absolute; top: 50%; left: 0; right: 0; height: 3px; background: #000; transform: translateY(-50%); opacity: 0.7;';
         const thumb = document.createElement('div');
         thumb.style.cssText = `
-            position: absolute; top: 50%; left: ${val}%; width: 16px; height: 16px; 
-            background: #1a1a1a; transform: translate(-50%, -50%); border-radius: 0;
+            position: absolute; top: 50%; left: ${val}%; width: 16px; height: 16px;
+            background: #1a1a1a; transform: translate(-50%, -50%); border-radius: 0; opacity: 0.8;
         `;
         track.appendChild(thumb);
         mock.appendChild(track);
@@ -684,6 +718,7 @@ document.getElementById('confirmSlider').addEventListener('click', function() {
 // ==================== 初始化 ====================
 document.addEventListener('DOMContentLoaded', function() {
     loadState();
+    bindCustomControls();
 
     document.querySelectorAll('input, #extraInput, #drNameInput').forEach(el => {
         el.addEventListener('change', saveState);
@@ -692,7 +727,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // 玩家名输入时自动缩放字号（不换行）
+    document.getElementById('drNameInput').addEventListener('input', fitDrNameFontSize);
+
     document.getElementById('openSelectorBtn').addEventListener('click', openSelector);
+    document.getElementById('addBlankBtn').addEventListener('click', function() {
+        state.blankSlots += 1;
+        renderSelectedOps();
+        saveState();
+    });
     document.getElementById('closeSelectorBtn').addEventListener('click', closeSelector);
     document.getElementById('cancelSelector').addEventListener('click', closeSelector);
     document.getElementById('confirmSelector').addEventListener('click', function() {
