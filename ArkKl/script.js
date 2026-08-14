@@ -45,6 +45,15 @@ const FACTION_NAMES = [
 ];
 // ==================================================
 
+// ==================== 头像移动参数 ====================
+const AVATAR_MOVE_STEP = 10;   // 每次点击方向按钮移动的像素
+const AVATAR_MOVE_MAX = 500;   // 每个方向相对原位置的最大移动距离（当前为调试值）
+// =====================================================
+
+// ==================== 导出相关常量 ====================
+const DESKTOP_EXPORT_WIDTH = 960;   // 导出/预览强制使用的桌面端宽度
+// =====================================================
+
 let state = {
     selectedOps: [],
     blankSlots: 0,
@@ -57,7 +66,9 @@ let state = {
         { label: '吃更多的是', texts: ['cb', 'cp'], value: 50, steps: 3 },
         { label: '集成战略(肉鸽)', texts: ['几乎不碰', '为了奖励打', '深度沉迷'], value: 50, steps: 3 }
     ],
-    faction: '罗德岛'
+    faction: '罗德岛',
+    // 头像相对原位置的净偏移：x 正=右 / x 负=左，y 正=下 / y 负=上，各方向限 ±AVATAR_MOVE_MAX
+    avatarOffset: { x: 0, y: 0 }
 };
 
 // ==================== 渲染引擎 ====================
@@ -126,6 +137,67 @@ function saveBaseInfo() {
         if (el.type === 'checkbox' && el.checked) data[el.name].push(el.value);
     });
     localStorage.setItem('arknights_baseInfo', JSON.stringify(data));
+}
+
+// ==================== 头像移动控件（4 方向按钮） ====================
+// 与 CSS 的移动端断点保持一致：<=1080px 视为移动端布局
+function isMobileView() {
+    return window.matchMedia('(max-width: 1080px)').matches;
+}
+
+// 更新 4 个方向按钮上显示的“相对原位置移动了多少 px”。
+// 显示的是净位移：例如先点上 2 次（上 20px）再点下 1 次，上显示 10px、下显示 0px。
+function updateAvatarOffsetLabels() {
+    const off = state.avatarOffset || {};
+    const x = off.x || 0;
+    const y = off.y || 0;
+    const set = (id, v) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = v + 'px';
+    };
+    set('avatarMoveUpVal', Math.max(0, -y));
+    set('avatarMoveDownVal', Math.max(0, y));
+    set('avatarMoveLeftVal', Math.max(0, -x));
+    set('avatarMoveRightVal', Math.max(0, x));
+}
+
+// 把偏移量应用到头像控件：
+//  - 桌面端：用 transform 真实移动头像（transform 不占布局空间，不影响其他控件位置）
+//  - 移动端：实际不移动，只在按钮上显示净位移数字（导出/预览时才会体现）
+function applyAvatarOffset() {
+    const area = document.querySelector('.custom-avatar-area');
+    if (!area) return;
+    const off = state.avatarOffset || {};
+    const tx = off.x || 0;
+    const ty = off.y || 0;
+    if (isMobileView()) {
+        area.style.transform = '';
+    } else {
+        area.style.transform = (tx === 0 && ty === 0) ? '' : `translate(${tx}px, ${ty}px)`;
+    }
+    updateAvatarOffsetLabels();
+}
+
+function bindAvatarMoveControls() {
+    document.querySelectorAll('.avatar-move-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dir = this.dataset.dir;
+            if (!state.avatarOffset) state.avatarOffset = { x: 0, y: 0 };
+            const off = state.avatarOffset;
+            // 相对原位置（0,0）的净位移：点反方向按钮会抵消已有位移，不会反向累计
+            if (dir === 'right')  off.x = Math.min(AVATAR_MOVE_MAX, (off.x || 0) + AVATAR_MOVE_STEP);
+            else if (dir === 'left')  off.x = Math.max(-AVATAR_MOVE_MAX, (off.x || 0) - AVATAR_MOVE_STEP);
+            else if (dir === 'down')  off.y = Math.min(AVATAR_MOVE_MAX, (off.y || 0) + AVATAR_MOVE_STEP);
+            else if (dir === 'up')    off.y = Math.max(-AVATAR_MOVE_MAX, (off.y || 0) - AVATAR_MOVE_STEP);
+            applyAvatarOffset();
+            saveState();
+        });
+    });
+    // 视口在桌面/移动端之间切换时，重新决定是否真实移动
+    const mq = window.matchMedia('(max-width: 1080px)');
+    const onChange = function() { applyAvatarOffset(); };
+    if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
+    else if (typeof mq.addListener === 'function') mq.addListener(onChange);
 }
 
 // ==================== 自定义表单控件（radio/checkbox）====================
@@ -256,8 +328,7 @@ function renderSelectedOps() {
     const remain = Math.max(0, 8 - state.selectedOps.length - state.blankSlots);
     for (let i = 0; i < remain; i++) {
         const empty = document.createElement('div');
-        empty.className = 'char-item';
-        empty.style.background = '#f4f4f4';
+        empty.className = 'char-item char-empty';
         grid.appendChild(empty);
     }
     let tipText = `已选择 ${state.selectedOps.length} 位干员`;
@@ -307,6 +378,7 @@ function saveState() {
     localStorage.setItem('arknights_blankSlots', String(state.blankSlots));
     localStorage.setItem('arknights_sliders', JSON.stringify(state.sliders));
     localStorage.setItem('arknights_faction', state.faction);
+    localStorage.setItem('arknights_avatarOffset', JSON.stringify(state.avatarOffset || { x: 0, y: 0 }));
     saveBaseInfo();
 }
 
@@ -316,6 +388,21 @@ function loadState() {
     state.blankSlots = parseInt(localStorage.getItem('arknights_blankSlots') || '0', 10) || 0;
     const sliders = JSON.parse(localStorage.getItem('arknights_sliders') || 'null');
     if (sliders) state.sliders = sliders;
+
+    // 恢复头像偏移量（相对原位置的净位移，每个方向限 0 ~ AVATAR_MOVE_MAX）
+    const savedOffset = JSON.parse(localStorage.getItem('arknights_avatarOffset') || 'null');
+    if (savedOffset && typeof savedOffset === 'object') {
+        const clamp = v => Math.max(-AVATAR_MOVE_MAX, Math.min(AVATAR_MOVE_MAX, parseInt(v, 10) || 0));
+        // 兼容旧版 { up, down, left, right } 各自累计的格式 → 换算成净位移
+        if ('up' in savedOffset || 'right' in savedOffset) {
+            state.avatarOffset = {
+                x: clamp((savedOffset.right || 0) - (savedOffset.left || 0)),
+                y: clamp((savedOffset.down || 0) - (savedOffset.up || 0))
+            };
+        } else {
+            state.avatarOffset = { x: clamp(savedOffset.x), y: clamp(savedOffset.y) };
+        }
+    }
 
     initFactionSelect();
     const savedFaction = localStorage.getItem('arknights_faction') || '罗德岛';
@@ -391,38 +478,33 @@ function initFilters() {
     document.getElementById('searchInput').oninput = renderModalList;
 }
 
-// ==================== 导出与重置 ====================
-function exportImage() {
-    // ===== 【新增：强制备份】导出瞬间立即保存当前状态，防止意外重置导致缓存丢失！ =====
-    saveState(); 
-
+// ==================== 导出与预览 ====================
+// 构建“强制桌面端布局”的容器克隆：导出图片与移动端预览共用同一套逻辑
+function buildDesktopExportClone() {
     const container = document.querySelector('.container');
-    container.classList.add('hide-for-export');
-    document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
-
-    // ===== 【核心升级】强制导出宽度为电脑端桌面尺寸 (960px) =====
-    const desktopWidth = 960; 
-
     const clone = container.cloneNode(true);
     clone.classList.add('export-clone');
+    clone.classList.add('hide-for-export');   // 克隆体内自动隐藏导出不需要的控件（工具栏 / 头像移动按钮等）
     // ===== 【新增核心】注入一段强制桌面版的 CSS，使手机端排版不影响导出！ =====
+    // 注意：所有选择器必须带 .export-clone 作用域，否则 <style> 会全局生效，
+    // 污染实时页面（例如 .dr-input 的 !important 字号会让玩家名无法自动缩小）。
     const cloneStyle = document.createElement('style');
     cloneStyle.textContent = `
-        .container { padding: 45px 50px !important; }
-        .top-row { gap: 15px !important; margin-bottom: 10px !important; }
-        .bottom-content { gap: 40px !important; }
-        .dr-area { margin-bottom: 10px !important; }
-        .dr-label { font-size: 80px !important; font-weight: bold !important; line-height: 1 !important; }
-        .dr-input { width: 520px !important; font-size: 80px !important; }
-        .info-item .label { width: 100px !important; font-size: 23px !important; }
-        .info-item .options label { font-size: 18px !important; }
-        .sec-title { font-size: 18px !important; }
-        .slider-title { font-size: 17px !important; }
-        .slider-texts span { font-size: 16px !important; }
-        .footer-section textarea { font-size: 19px !important; }
+        .export-clone.container { padding: 45px 50px !important; }
+        .export-clone .top-row { gap: 15px !important; margin-bottom: 10px !important; }
+        .export-clone .bottom-content { gap: 40px !important; }
+        .export-clone .dr-area { margin-bottom: 10px !important; }
+        .export-clone .dr-label { font-size: 80px !important; font-weight: bold !important; line-height: 1 !important; }
+        .export-clone .dr-input { width: 520px !important; font-size: 80px !important; }
+        .export-clone .info-item .label { width: 100px !important; font-size: 23px !important; }
+        .export-clone .info-item .options label { font-size: 18px !important; }
+        .export-clone .sec-title { font-size: 18px !important; }
+        .export-clone .slider-title { font-size: 17px !important; }
+        .export-clone .slider-texts span { font-size: 16px !important; }
+        .export-clone .footer-section textarea { font-size: 19px !important; }
         /* 👇 新增这两行，强制恢复博士头像和干员头像的电脑端尺寸 */
-        .avatar-wrap-lg { width: 233px !important; height: 233px !important; }
-        .char-item { max-width: 120px !important; max-height: 120px !important; }
+        .export-clone .avatar-wrap-lg { width: 233px !important; height: 233px !important; }
+        .export-clone .char-item { max-width: 120px !important; max-height: 120px !important; }
         /* 👇 新增：导出时强制新装饰元素为桌面端样式，并避免与模拟控件重复渲染 */
         .export-clone .dr-blue-bar { width: 8px !important; height: 100px !important; top: 6px !important; }
         .export-clone .dr-subtitle { font-size: 24px !important; font-weight: 700 !important; }
@@ -490,8 +572,8 @@ function exportImage() {
     });
 
     // 1. 因为 clone 本身就是 .container，直接修改它的样式。
-    clone.style.maxWidth = desktopWidth + 'px';
-    clone.style.width = desktopWidth + 'px';
+    clone.style.maxWidth = DESKTOP_EXPORT_WIDTH + 'px';
+    clone.style.width = DESKTOP_EXPORT_WIDTH + 'px';
     
     // 【关键修复】这里不再读取手机端的真实 padding，而是直接覆盖为桌面端设定值
     // 否则注入的 css !important 会被内联样式覆盖
@@ -508,6 +590,11 @@ function exportImage() {
             margin-right: 120px;
             margin-top: 0px;
         `;
+        // 【头像移动】导出的是桌面端布局：始终应用编辑时记录的净位移（含移动端仅计数不移动的情况）
+        const off = state.avatarOffset || {};
+        const tx = off.x || 0;
+        const ty = off.y || 0;
+        cloneAvatarArea.style.transform = (tx === 0 && ty === 0) ? 'none' : `translate(${tx}px, ${ty}px)`;
     }
 
     // 3. 强制恢复背景 LOGO 为最新的桌面端样式
@@ -645,9 +732,61 @@ function exportImage() {
         wrap.appendChild(mock);
     });
 
+    return clone;
+}
+
+// ===== 移动端预览：把“桌面端导出布局”渲染成可缩放的预览浮层 =====
+function previewDesktopExport() {
+    const clone = buildDesktopExportClone();
+
+    let overlay = document.getElementById('exportPreviewOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'exportPreviewOverlay';
+        overlay.className = 'preview-overlay';
+        overlay.innerHTML = `
+            <div class="preview-head">
+                <span class="preview-note">桌面端导出效果预览（宽 ${DESKTOP_EXPORT_WIDTH}px）· 头像位移已按编辑值应用</span>
+                <button type="button" class="preview-close" id="exportPreviewClose">✕ 关闭</button>
+            </div>
+            <div class="preview-scroll">
+                <div class="preview-clone" id="exportPreviewClone"></div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay || e.target.id === 'exportPreviewClose') {
+                overlay.classList.remove('active');
+                // 关闭后清空克隆体：其内部注入的 <style> 和重复 ID 若残留会污染实时页面
+                const cloneHost = overlay.querySelector('#exportPreviewClone');
+                if (cloneHost) cloneHost.innerHTML = '';
+            }
+        });
+    }
+
+    const cloneHost = overlay.querySelector('#exportPreviewClone');
+    cloneHost.innerHTML = '';
+    cloneHost.appendChild(clone);
+    // 用 zoom 等比缩放，让 960px 的桌面布局适配手机屏幕宽度
+    const scale = Math.min(1, (window.innerWidth - 24) / DESKTOP_EXPORT_WIDTH);
+    cloneHost.style.zoom = scale;
+    overlay.classList.add('active');
+}
+
+function exportImage() {
+    // ===== 【新增：强制备份】导出瞬间立即保存当前状态，防止意外重置导致缓存丢失！ =====
+    saveState(); 
+
+    const container = document.querySelector('.container');
+    container.classList.add('hide-for-export');
+    document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
+
+    // ===== 【核心升级】强制导出宽度为电脑端桌面尺寸 (960px) =====
+    const clone = buildDesktopExportClone();
+
     // 11. 截图执行
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = `position:fixed; left:-9999px; top:0; z-index:-9999; width:${desktopWidth}px;`;
+    wrapper.style.cssText = `position:fixed; left:-9999px; top:0; z-index:-9999; width:${DESKTOP_EXPORT_WIDTH}px;`;
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
 
@@ -655,7 +794,7 @@ function exportImage() {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        width: desktopWidth 
+        width: DESKTOP_EXPORT_WIDTH 
     }).then(canvas => {
         document.body.removeChild(wrapper);
         container.classList.remove('hide-for-export');
@@ -718,6 +857,8 @@ document.getElementById('confirmSlider').addEventListener('click', function() {
 // ==================== 初始化 ====================
 document.addEventListener('DOMContentLoaded', function() {
     loadState();
+    applyAvatarOffset();
+    bindAvatarMoveControls();
     bindCustomControls();
 
     document.querySelectorAll('input, #extraInput, #drNameInput').forEach(el => {
@@ -770,12 +911,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ===== 【新增】底部按钮绑定 =====
     document.getElementById('bottomResetBtn').addEventListener('click', resetAll);
+    document.getElementById('bottomPreviewBtn').addEventListener('click', previewDesktopExport);
     document.getElementById('bottomExportBtn').addEventListener('click', exportImage);
 
     document.querySelectorAll('.modal-overlay').forEach(el => {
         el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('active'); });
     });
 
+    document.getElementById('topPreviewBtn').addEventListener('click', previewDesktopExport);
     document.getElementById('exportImgBtn').addEventListener('click', exportImage);
     document.getElementById('resetBtn').addEventListener('click', resetAll);
 });

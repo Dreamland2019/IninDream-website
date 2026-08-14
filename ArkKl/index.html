@@ -24,6 +24,7 @@
         <div class="toolbar">
             <div class="btn-group">
                 <button id="resetBtn" class="btn-action">↻ 重置</button>
+                <button id="topPreviewBtn" class="btn-action">👁 预览导出</button>
                 <button id="exportImgBtn" class="btn-action">🖼️ 导出图片</button>
                 <select id="factionSelect" class="btn-action select-styled"></select>
             </div>
@@ -176,13 +177,22 @@
             </div>
 
             <div class="top-right">
-                <!-- 3. 博士头像 -->
+                <!-- 3. 博士头像（可自由移动：四周方向按钮，按钮上显示相对原位置的位移） -->
                 <div class="custom-avatar-area">
                     <h2 class="sec-title" style="width: 100%;"></h2>
-                    <div class="avatar-wrap-lg" id="avatarWrapLg">
-                        <img id="avatarImgLg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="自定义头像" />
-                        <div class="avatar-placeholder-lg" id="avatarPlaceholderLg">+</div>
-                        <input type="file" id="avatarInputLg" accept="image/*" />
+                    <div class="avatar-move-stage">
+                        <div class="avatar-wrap-lg" id="avatarWrapLg">
+                            <img id="avatarImgLg" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="自定义头像" />
+                            <div class="avatar-placeholder-lg" id="avatarPlaceholderLg">+</div>
+                            <input type="file" id="avatarInputLg" accept="image/*" />
+                        </div>
+                        <!-- 头像移动控件：4 个方向按钮（桌面端真实移动，移动端仅累计显示位移） -->
+                        <div class="avatar-move-controls" id="avatarMoveControls">
+                            <button type="button" class="avatar-move-btn avatar-move-up" data-dir="up" title="向上移动头像"><span class="move-arrow">▲</span><span class="move-val" id="avatarMoveUpVal">0px</span></button>
+                            <button type="button" class="avatar-move-btn avatar-move-down" data-dir="down" title="向下移动头像"><span class="move-arrow">▼</span><span class="move-val" id="avatarMoveDownVal">0px</span></button>
+                            <button type="button" class="avatar-move-btn avatar-move-left" data-dir="left" title="向左移动头像"><span class="move-arrow">◀</span><span class="move-val" id="avatarMoveLeftVal">0px</span></button>
+                            <button type="button" class="avatar-move-btn avatar-move-right" data-dir="right" title="向右移动头像"><span class="move-arrow">▶</span><span class="move-val" id="avatarMoveRightVal">0px</span></button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -246,6 +256,7 @@
             <div class="btn-group">
                 <!-- 为了防止 ID 冲突，底部的按钮和选择器用了独立的 ID -->
                 <button id="bottomResetBtn" class="btn-action">↻ 重置</button>
+                <button id="bottomPreviewBtn" class="btn-action">👁 预览导出</button>
                 <button id="bottomExportBtn" class="btn-action">🖼️ 导出图片</button>
                 <select id="bottomFactionSelect" class="btn-action select-styled"></select>
             </div>

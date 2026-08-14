@@ -183,6 +183,36 @@ input[type="radio"], input[type="checkbox"] { width: 15px; height: 15px; accent-
 .avatar-wrap-lg.has-image .avatar-placeholder-lg { display: none; }
 .avatar-wrap-lg input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 
+/* ===== 头像移动控件（4 方向按钮，包围头像） ===== */
+.avatar-move-stage { position: relative; }
+.avatar-move-controls { position: absolute; inset: 0; z-index: 20; pointer-events: none; }
+.avatar-move-btn {
+    position: absolute;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: #ffffff;
+    border: 1px solid #1a1a1a;
+    border-radius: 5px;
+    font-size: 12px;
+    line-height: 1;
+    color: #1a1a1a;
+    padding: 4px 7px;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    user-select: none;
+}
+.avatar-move-btn:hover { background: #f2f2f2; }
+.avatar-move-btn:active { background: #e2e2e2; }
+.avatar-move-btn .move-arrow { font-size: 11px; }
+.avatar-move-btn .move-val { font-weight: bold; font-family: Consolas, 'Cascadia Mono', monospace; }
+.avatar-move-up { top: -32px; left: 50%; transform: translateX(-50%); }
+.avatar-move-down { bottom: -32px; left: 50%; transform: translateX(-50%); }
+.avatar-move-left { left: -80px; top: 50%; transform: translateY(-50%); }
+.avatar-move-right { right: -80px; top: 50%; transform: translateY(-50%); }
+
 /* ===== 干员选择器 ===== */
 .char-selected-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 0; justify-items: center; align-items: start; width: 100%; }
 .char-item { aspect-ratio: 1; max-width: 120px; max-height: 120px; width: 100%; height: 100%; border: 1px solid #ccc; display: flex; align-items: center; justify-content: center; background: #fafafa; overflow: hidden; position: relative; justify-self: center; }
@@ -192,7 +222,9 @@ input[type="radio"], input[type="checkbox"] { width: 15px; height: 15px; accent-
 .char-tips { font-size: 13px; color: #666; }
 .char-blank { background: #f4f4f4; border: 1px dashed #bbb; cursor: pointer; }
 .char-blank .blank-hint { font-size: 22px; color: #ccc; font-weight: bold; }
-.hide-for-export .char-blank { background: transparent; border: none; }
+/* 自动补足的空位（未选满 8 人时）：编辑时显示灰色占位格，导出时与空白格一样不显示 */
+.char-empty { background: #f4f4f4; }
+.hide-for-export .char-blank, .hide-for-export .char-empty { background: transparent; border: none; }
 .hide-for-export .char-blank .blank-hint { display: none; }
 
 /* ===== 补充 ===== */
@@ -281,12 +313,56 @@ input[type="radio"], input[type="checkbox"] { width: 15px; height: 15px; accent-
 .add-area { margin: 5px 0 10px; }
 .btn-add { border: 1px dashed #aaa; background: transparent; padding: 4px 12px; cursor: pointer; font-size: 13px; }
 
+/* ===== 导出预览浮层（移动端查看桌面导出效果） ===== */
+.preview-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.78);
+    z-index: 2000;
+    overflow: auto;
+    padding: 14px 12px 24px;
+}
+.preview-overlay.active { display: block; }
+.preview-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 8px 10px;
+    border-radius: 6px;
+}
+.preview-note { font-size: 12px; color: #ddd; line-height: 1.4; }
+.preview-close {
+    flex-shrink: 0;
+    background: #ffffff;
+    color: #1a1a1a;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 16px;
+    font-size: 13px;
+    cursor: pointer;
+}
+.preview-close:hover { background: #eee; }
+.preview-clone {
+    width: 960px;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid #000;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
 /* 导出隐藏类 */
 .hide-for-export .bottom-toolbar, 
 .hide-for-export .toolbar, .hide-for-export .modal-overlay, 
 .hide-for-export .add-area, .hide-for-export .char-tools,
 .hide-for-export .slider-del, .hide-for-export .btn-add,
-.hide-for-export .modal-box { display: none !important; }
+.hide-for-export .modal-box, .hide-for-export .avatar-move-controls { display: none !important; }
 
 /* 手机端适配 */
 @media (max-width: 1080px) {
@@ -358,6 +434,13 @@ input[type="radio"], input[type="checkbox"] { width: 15px; height: 15px; accent-
     .avatar-wrap-lg .avatar-placeholder-lg { color: #aaa; font-size: 50px; font-weight: 300; }
     .avatar-wrap-lg.has-image .avatar-placeholder-lg { display: none; }
     .avatar-wrap-lg input[type="file"] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+    /* 移动端方向按钮紧凑化（移动端头像不真实移动，仅显示位移数字） */
+    .avatar-move-up { top: -28px; }
+    .avatar-move-down { bottom: -28px; }
+    .avatar-move-left { left: -62px; }
+    .avatar-move-right { right: -62px; }
+    .avatar-move-btn { font-size: 11px; padding: 4px 6px; }
 }
 
 /* ===== 背景势力 LOGO 样式 ===== */
