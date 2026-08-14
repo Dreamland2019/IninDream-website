@@ -564,10 +564,10 @@ function exportImage() {
     if (cloneBottomLeft) { cloneBottomLeft.style.flex = '1'; cloneBottomLeft.style.minWidth = '320px'; }
     if (cloneBottomRight) { cloneBottomRight.style.flex = '2'; cloneBottomRight.style.minWidth = '400px'; }
 
-    // 7. 恢复干员选择器为 4 列布局
+    // 7. 恢复干员选择器为 4 列布局（!important 内联样式，压过手机端 3 列媒体查询）
     const cloneGrid = clone.querySelector('.char-selected-grid');
     if (cloneGrid) {
-        cloneGrid.style.gridTemplateColumns = 'repeat(4, 1fr)';
+        cloneGrid.style.setProperty('grid-template-columns', 'repeat(4, 1fr)', 'important');
     }
 
     // 8. 修复导出：彻底去掉 Dr. 输入框下划线
