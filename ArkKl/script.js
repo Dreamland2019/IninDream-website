@@ -67,6 +67,10 @@ let state = {
         { label: '集成战略(肉鸽)', texts: ['几乎不碰', '为了奖励打', '深度沉迷'], value: 50, steps: 3 }
     ],
     faction: '罗德岛',
+    // 导出样式自定义
+    markerColor: '#ff2d2d',   // 基础信息选中项导出时的马克笔填色
+    sliderColor: '#1a1a1a',   // 滑块导出时的颜色
+    extraFontSize: 21,        // 补充文字字号（px，默认已调大）
     // 头像相对原位置的净偏移：x 正=右 / x 负=左，y 正=下 / y 负=上，各方向限 ±AVATAR_MOVE_MAX
     avatarOffset: { x: 0, y: 0 }
 };
@@ -198,6 +202,114 @@ function bindAvatarMoveControls() {
     const onChange = function() { applyAvatarOffset(); };
     if (typeof mq.addEventListener === 'function') mq.addEventListener('change', onChange);
     else if (typeof mq.addListener === 'function') mq.addListener(onChange);
+}
+
+// ==================== 导出样式自定义（颜色 / 字号） ====================
+// 基础信息马克笔可选颜色（常见色）
+const MARKER_COLORS = ['#ff2d2d', '#ff7f27', '#ffd400', '#2ecc71', '#3498db', '#9b59b6', '#ff69b4', '#00bcd4'];
+// 滑块可选颜色：黑色 + 与马克笔一致的饱和色，共 8 色（最后一个颜色已移除）
+const SLIDER_COLORS = ['#1a1a1a', ...MARKER_COLORS.slice(0, 7)];
+const EXTRA_FONT_MIN = 14;   // 补充文字最小字号
+const EXTRA_FONT_MAX = 30;   // 补充文字最大字号
+
+// 十六进制颜色 → rgba（导出马克笔需要透明度）
+function hexToRgba(hex, alpha) {
+    const h = (hex || '#000000').replace('#', '');
+    const r = parseInt(h.substring(0, 2), 16) || 0;
+    const g = parseInt(h.substring(2, 4), 16) || 0;
+    const b = parseInt(h.substring(4, 6), 16) || 0;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// 初始化一个颜色选择器（按钮 + 弹出色板 + 自定义全色色盘）
+function initColorPicker(btnId, popId, palette, getColor, setColor) {
+    const btn = document.getElementById(btnId);
+    const pop = document.getElementById(popId);
+    if (!btn || !pop) return;
+    const dot = btn.querySelector('.color-dot');
+    const wrap = pop.querySelector('.color-swatches');
+    if (!wrap) return;
+
+    const current = getColor() || palette[0];
+    if (dot) dot.style.background = current;
+
+    // 自定义颜色：点击“自定义…”唤起系统全色色盘（input[type=color]）
+    const customBtn = pop.querySelector('.color-custom-btn');
+    const customInput = pop.querySelector('input[type="color"]');
+    if (customInput) customInput.value = current;
+    if (customBtn && customInput) {
+        customBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            customInput.click();
+        });
+        const applyCustom = function(finalize) {
+            const c = customInput.value;
+            setColor(c);
+            if (dot) dot.style.background = c;
+            wrap.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+            if (finalize) {
+                saveState();
+                pop.classList.remove('open');
+            }
+        };
+        customInput.addEventListener('input', function() { applyCustom(false); });  // 拖动色盘时实时预览
+        customInput.addEventListener('change', function() { applyCustom(true); });  // 确定后保存并关闭
+    }
+
+    palette.forEach(c => {
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'swatch';
+        sw.title = c;
+        sw.style.background = c;
+        sw.dataset.color = c;
+        if (c.toLowerCase() === current.toLowerCase()) sw.classList.add('active');
+        sw.addEventListener('click', function(e) {
+            e.stopPropagation();
+            setColor(c);
+            if (dot) dot.style.background = c;
+            if (customInput) customInput.value = c;
+            wrap.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s === sw));
+            pop.classList.remove('open');
+            saveState();
+        });
+        wrap.appendChild(sw);
+    });
+
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // 同时只允许一个色板展开
+        document.querySelectorAll('.color-pop.open').forEach(p => { if (p !== pop) p.classList.remove('open'); });
+        pop.classList.toggle('open');
+    });
+    // 点击其它位置关闭
+    document.addEventListener('click', function(e) {
+        if (!pop.contains(e.target) && !btn.contains(e.target)) pop.classList.remove('open');
+    });
+}
+
+// 把补充文字字号应用到文本框（用 !important 内联，压过移动端媒体查询），并同步高度
+function applyExtraFontSize() {
+    const ta = document.getElementById('extraInput');
+    if (!ta) return;
+    ta.style.setProperty('font-size', state.extraFontSize + 'px', 'important');
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+}
+
+function bindExtraFontSizeControls() {
+    const minus = document.getElementById('extraFontMinusBtn');
+    const plus = document.getElementById('extraFontPlusBtn');
+    if (minus) minus.addEventListener('click', function() {
+        state.extraFontSize = Math.max(EXTRA_FONT_MIN, state.extraFontSize - 1);
+        applyExtraFontSize();
+        saveState();
+    });
+    if (plus) plus.addEventListener('click', function() {
+        state.extraFontSize = Math.min(EXTRA_FONT_MAX, state.extraFontSize + 1);
+        applyExtraFontSize();
+        saveState();
+    });
 }
 
 // ==================== 自定义表单控件（radio/checkbox）====================
@@ -378,6 +490,9 @@ function saveState() {
     localStorage.setItem('arknights_blankSlots', String(state.blankSlots));
     localStorage.setItem('arknights_sliders', JSON.stringify(state.sliders));
     localStorage.setItem('arknights_faction', state.faction);
+    localStorage.setItem('arknights_markerColor', state.markerColor || '#ff2d2d');
+    localStorage.setItem('arknights_sliderColor', state.sliderColor || '#1a1a1a');
+    localStorage.setItem('arknights_extraFontSize', String(state.extraFontSize || 21));
     localStorage.setItem('arknights_avatarOffset', JSON.stringify(state.avatarOffset || { x: 0, y: 0 }));
     saveBaseInfo();
 }
@@ -404,6 +519,15 @@ function loadState() {
         }
     }
 
+    // 恢复导出样式自定义设置（颜色校验、字号限制范围）
+    const hexOk = c => /^#[0-9a-fA-F]{6}$/.test(c || '');
+    const savedMarker = localStorage.getItem('arknights_markerColor');
+    const savedSlider = localStorage.getItem('arknights_sliderColor');
+    state.markerColor = hexOk(savedMarker) ? savedMarker : '#ff2d2d';
+    state.sliderColor = hexOk(savedSlider) ? savedSlider : '#1a1a1a';
+    const savedFs = parseInt(localStorage.getItem('arknights_extraFontSize') || '21', 10);
+    state.extraFontSize = Math.max(EXTRA_FONT_MIN, Math.min(EXTRA_FONT_MAX, savedFs || 21));
+
     initFactionSelect();
     const savedFaction = localStorage.getItem('arknights_faction') || '罗德岛';
     state.faction = savedFaction;
@@ -413,6 +537,7 @@ function loadState() {
     renderSliders();
     renderSelectedOps();
     loadBaseInfo();
+    applyExtraFontSize();
 }
 
 // ==================== 干员选择器逻辑 ====================
@@ -486,30 +611,41 @@ function buildDesktopExportClone() {
     clone.classList.add('export-clone');
     clone.classList.add('hide-for-export');   // 克隆体内自动隐藏导出不需要的控件（工具栏 / 头像移动按钮等）
     // ===== 【新增核心】注入一段强制桌面版的 CSS，使手机端排版不影响导出！ =====
-    // 注意：所有选择器必须带 .export-clone 作用域，否则 <style> 会全局生效，
-    // 污染实时页面（例如 .dr-input 的 !important 字号会让玩家名无法自动缩小）。
+    // 注意：媒体查询按“视口宽度”生效，手机端导出时克隆体仍在手机视口里渲染，
+    // 因此所有会被 ≤1080px / ≤600px 移动端规则改动的属性，都必须在此用
+    // .export-clone 前缀的 !important 规则强制回桌面端值；否则手机端导出会与桌面端不一致。
+    // 同时所有选择器必须带 .export-clone 作用域，否则 <style> 会全局生效污染实时页面。
     const cloneStyle = document.createElement('style');
     cloneStyle.textContent = `
         .export-clone.container { padding: 45px 50px !important; }
         .export-clone .top-row { gap: 15px !important; margin-bottom: 10px !important; }
         .export-clone .bottom-content { gap: 40px !important; }
-        .export-clone .dr-area { margin-bottom: 10px !important; }
+        .export-clone .dr-area { margin-bottom: 10px !important; padding-left: 24px !important; }
         .export-clone .dr-label { font-size: 80px !important; font-weight: bold !important; line-height: 1 !important; }
         .export-clone .dr-input { width: 520px !important; font-size: 80px !important; }
+        .export-clone .info-item { margin-bottom: 8px !important; }
         .export-clone .info-item .label { width: 100px !important; font-size: 23px !important; }
         .export-clone .info-item .options label { font-size: 18px !important; }
-        .export-clone .sec-title { font-size: 18px !important; }
+        .export-clone .sec-title { font-size: 18px !important; margin-bottom: 14px !important; }
+        /* 标题盒：恢复桌面端字号/内边距，并保留“个人档案”的黑色背景延伸（--box-extend） */
+        .export-clone .title-box { font-size: 18px !important; padding: 1px 12px !important; padding-right: calc(12px + var(--box-extend, 0px)) !important; }
+        .export-clone .sub-title { font-size: 17px !important; }
+        .export-clone .top-right { margin-top: 0 !important; }
+        .export-clone .slider-list { gap: 12px !important; }
+        .export-clone .slider-item { padding: 6px 0 10px 0 !important; }
         .export-clone .slider-title { font-size: 17px !important; }
         .export-clone .slider-texts span { font-size: 16px !important; }
-        .export-clone .footer-section textarea { font-size: 19px !important; }
+        .export-clone .footer-section textarea { font-size: 21px !important; min-height: 100px !important; }
         /* 👇 新增这两行，强制恢复博士头像和干员头像的电脑端尺寸 */
         .export-clone .avatar-wrap-lg { width: 233px !important; height: 233px !important; }
         .export-clone .char-item { max-width: 120px !important; max-height: 120px !important; }
+        .export-clone .char-item .char-name { font-size: 10px !important; }
+        .export-clone .char-selected-grid { gap: 8px !important; }
         /* 👇 新增：导出时强制新装饰元素为桌面端样式，并避免与模拟控件重复渲染 */
         .export-clone .dr-blue-bar { width: 8px !important; height: 100px !important; top: 6px !important; }
         .export-clone .dr-subtitle { font-size: 24px !important; font-weight: 700 !important; }
         .export-clone .right-edge-dots { display: block !important; }
-        .export-clone .logo-section { flex-direction: row !important; align-items: flex-end; !important; }
+        .export-clone .logo-section { flex-direction: row !important; align-items: flex-end !important; }
         .export-clone .ri-slogan { margin: 0 0 15px 0 !important; }
         .export-clone .custom-radio, .export-clone .custom-checkbox { gap: 4px !important; font-size: 20px !important; }
         .export-clone .custom-radio::before, .export-clone .custom-radio::after,
@@ -560,7 +696,8 @@ function buildDesktopExportClone() {
             const isChecked = opt.classList.contains('active');
             const text = (opt.textContent || '').trim();
             if (isChecked) {
-                parts.push(`<span style="background: rgba(255, 45, 45, 0.35); padding: 1px 3px;">${text}</span>`);
+                // 【自定义】马克笔填色使用用户选择的颜色
+                parts.push(`<span style="background: ${hexToRgba(state.markerColor || '#ff2d2d', 0.35)}; padding: 1px 3px;">${text}</span>`);
             } else {
                 parts.push(`<span>${text}</span>`);
             }
@@ -601,13 +738,15 @@ function buildDesktopExportClone() {
     const cloneLogoContainer = clone.querySelector('#bgLogoContainer');
     const cloneLogoImg = clone.querySelector('#bgLogoImg');
     if (cloneLogoContainer && cloneLogoImg) {
+        // 透明度统一为 0.15（更深更清晰）：容器与 img 都内联固定，
+        // 避免移动端媒体查询的 img opacity 规则在手机端导出时二次稀释，导致与桌面端不一致
         cloneLogoContainer.style.cssText = `
             position: absolute !important;
             bottom: 80px !important;
-            right: 10px !important;
+            right: 20px !important;
             pointer-events: none !important;
             z-index: 0 !important;
-            opacity: 0.08 !important;
+            opacity: 0.15 !important;
             display: flex !important;
         `;
         cloneLogoImg.style.cssText = `
@@ -615,6 +754,7 @@ function buildDesktopExportClone() {
             max-width: 100% !important;
             height: auto !important;
             object-fit: contain !important;
+            opacity: 1 !important;
         `;
     }
 
@@ -689,13 +829,17 @@ function buildDesktopExportClone() {
     if (cloneExtraInput) {
         const val = cloneExtraInput.value || '';
         const computedStyle = window.getComputedStyle(cloneExtraInput);
+        // 字号必须跟随用户设置：克隆体尚未挂载时 getComputedStyle 拿不到真实字号（会固定成小号），
+        // 因此直接读内联字号（cloneNode 会原样复制 style 属性），并回退到 state 中保存的值。
+        const fontSize = cloneExtraInput.style.fontSize
+            || (state.extraFontSize ? state.extraFontSize + 'px' : computedStyle.fontSize);
 
         const textDisplay = document.createElement('div');
         textDisplay.className = cloneExtraInput.className;
         textDisplay.style.cssText = `
             width: ${computedStyle.width};
             min-height: ${computedStyle.minHeight};
-            font-size: ${computedStyle.fontSize};
+            font-size: ${fontSize} !important;
             font-family: ${computedStyle.fontFamily};
             line-height: ${computedStyle.lineHeight};
             padding: ${computedStyle.padding};
@@ -712,6 +856,7 @@ function buildDesktopExportClone() {
     }
 
     // 10. 修复滑块在截图中的显示
+    const sliderColor = state.sliderColor || '#1a1a1a';
     const wraps = clone.querySelectorAll('.slider-wrap');
     wraps.forEach((wrap) => {
         const input = wrap.querySelector('input[type="range"]');
@@ -720,12 +865,13 @@ function buildDesktopExportClone() {
         input.style.display = 'none';
         const mock = document.createElement('div');
         mock.style.cssText = 'position: relative; width: 100%; height: 34px; margin: 0;';
+        // 横轴保持 100% 黑色，仅可移动的滑块圆点使用用户选择的颜色
         const track = document.createElement('div');
         track.style.cssText = 'position: absolute; top: 50%; left: 0; right: 0; height: 3px; background: #000; transform: translateY(-50%); opacity: 0.7;';
         const thumb = document.createElement('div');
         thumb.style.cssText = `
             position: absolute; top: 50%; left: ${val}%; width: 16px; height: 16px;
-            background: #1a1a1a; transform: translate(-50%, -50%); border-radius: 0; opacity: 0.8;
+            background: ${sliderColor}; transform: translate(-50%, -50%); border-radius: 0; opacity: 0.8;
         `;
         track.appendChild(thumb);
         mock.appendChild(track);
@@ -860,6 +1006,13 @@ document.addEventListener('DOMContentLoaded', function() {
     applyAvatarOffset();
     bindAvatarMoveControls();
     bindCustomControls();
+
+    // 导出样式自定义：颜色选择器 + 补充字号调节
+    initColorPicker('markerColorBtn', 'markerColorPop', MARKER_COLORS,
+        () => state.markerColor, c => { state.markerColor = c; });
+    initColorPicker('sliderColorBtn', 'sliderColorPop', SLIDER_COLORS,
+        () => state.sliderColor, c => { state.sliderColor = c; });
+    bindExtraFontSizeControls();
 
     document.querySelectorAll('input, #extraInput, #drNameInput').forEach(el => {
         el.addEventListener('change', saveState);

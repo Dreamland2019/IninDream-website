@@ -83,7 +83,21 @@
                 <!-- 3. 基础信息 -->
                 <div class="info-section">
                     <h2 class="sec-title">
-                        <span class="title-box title-box--basic">基础信息</span>
+                        <span class="title-box-wrap">
+                            <span class="title-box title-box--basic">基础信息</span>
+                            <!-- 导出马克笔颜色选择（导出时隐藏）：悬浮于标签右侧，不遮挡射线 -->
+                            <span class="sec-tools">
+                                <button type="button" class="btn-action btn-small color-btn" id="markerColorBtn" title="导出时基础信息选中项的马克笔颜色">马克笔<span class="color-dot" id="markerColorDot"></span></button>
+                                <div class="color-pop" id="markerColorPop">
+                                    <span class="color-pop-title">马克笔颜色</span>
+                                    <div class="color-swatches"></div>
+                                    <div class="color-custom">
+                                        <button type="button" class="color-custom-btn" id="markerCustomBtn">自定义…</button>
+                                        <input type="color" id="markerCustomInput" value="#ff2d2d" />
+                                    </div>
+                                </div>
+                            </span>
+                        </span>
                         <span class="title-ray"></span>
                     </h2>
                     <div class="info-grid">
@@ -202,7 +216,21 @@
         <div class="bottom-row">
             <div class="bottom-header">
                 <h2 class="sec-title">
-                    <span class="title-box title-box--detail">详细资料</span>
+                    <span class="title-box-wrap">
+                        <span class="title-box title-box--detail">详细资料</span>
+                        <!-- 导出滑块颜色选择（导出时隐藏）：悬浮于标签右侧，不遮挡射线 -->
+                        <span class="sec-tools">
+                            <button type="button" class="btn-action btn-small color-btn" id="sliderColorBtn" title="导出时滑块的颜色">滑块<span class="color-dot" id="sliderColorDot"></span></button>
+                            <div class="color-pop" id="sliderColorPop">
+                                <span class="color-pop-title">滑块颜色</span>
+                                <div class="color-swatches"></div>
+                                <div class="color-custom">
+                                    <button type="button" class="color-custom-btn" id="sliderCustomBtn">自定义…</button>
+                                    <input type="color" id="sliderCustomInput" value="#1a1a1a" />
+                                </div>
+                            </div>
+                        </span>
+                    </span>
                     <span class="title-ray"></span>
                 </h2>
             </div>
@@ -230,7 +258,15 @@
                     </div>
                     <!-- 右侧下方：补充 -->
                     <div class="footer-section">
-                        <h3 class="sub-title">补充</h3>
+                        <div class="footer-head">
+                            <h3 class="sub-title">补充</h3>
+                            <!-- 字号调节工具（导出时隐藏） -->
+                            <div class="footer-tools">
+                                <button type="button" class="btn-action btn-small font-btn" id="extraFontMinusBtn" title="减小补充文字字号">A−</button>
+                                <button type="button" class="btn-action btn-small font-btn" id="extraFontPlusBtn" title="增大补充文字字号">A+</button>
+                                <span class="font-hint">点击 ± 可调整字号</span>
+                            </div>
+                        </div>
                         <textarea id="extraInput" placeholder="写点补充说明、游戏ID、碎碎念……"></textarea>
                     </div>
                 </div>
