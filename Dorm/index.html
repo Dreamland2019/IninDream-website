@@ -3,7 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>宿舍 · 走走看</title>
+<meta name="theme-color" content="#05070b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- ★ 内联 favicon：避免浏览器请求 /favicon.ico 产生 404（控制台报错） -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b111a'/%3E%3Cpath d='M9 22V10l7 6 7-6v12' stroke='%235fd8e8' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>宿舍 · 第一人称漫游 | 可露希尔工作室</title>
 <style>
 :root{
   --bg:#05070b; --panel:rgba(8,13,21,.80); --line:rgba(120,200,220,.22);
@@ -229,6 +235,73 @@ body.shake > *{animation:shake .075s infinite !important}
   #trustlabel{font-size:9.5px}
   #cross{opacity:.35}
 }
+
+/* ═══════════════════════════════════════════════════
+   ★ 手机端布局（竖屏为主）
+   要点：
+     ① 键盘提示在手机上【完全没意义】→ 整块隐藏，换成触摸提示
+     ② 所有 UI 缩小，别挡住 3D 画面
+     ③ 加【蹲下按钮】（手机上没键盘）
+     ④ 加【隐藏手势】触发彩蛋（连点标题 5 次）
+   ═══════════════════════════════════════════════════ */
+#touchhelp{display:none}
+#crouchbtn{display:none}
+#hintbar{display:none}
+
+@media (pointer: coarse), (max-width:820px){
+  /* 隐藏键盘提示 */
+  #keyhelp{display:none}
+
+  /* 手机版品牌标识（更小） */
+  #topbar{padding:9px 12px}
+  .brand{gap:6px;padding-top:2px}
+  .brand .dot{width:5px;height:5px}
+  .brand h1{font-size:10px;letter-spacing:.14em}
+  .brand h1 em{display:none}
+
+  /* 触摸操作提示（几秒后淡出） */
+  #touchhelp{display:flex;position:fixed;left:50%;top:52px;transform:translateX(-50%);
+    z-index:23;gap:14px;font-size:10.5px;color:var(--dim);letter-spacing:.08em;
+    background:rgba(11,17,26,.85);border:1px solid var(--line);border-radius:3px;
+    padding:6px 12px;white-space:nowrap;transition:opacity .6s;pointer-events:none}
+  #touchhelp.fade{opacity:0}
+  #touchhelp b{color:var(--accent);font-weight:600}
+
+  /* 摇杆缩小一点，别太占地方 */
+  #stick{width:92px;height:92px;left:18px;bottom:78px}
+  #stick i{width:38px;height:38px;margin:-19px 0 0 -19px}
+
+  /* ★ 蹲下按钮（右下角，摇杆对称位置） */
+  #crouchbtn{display:flex;position:fixed;right:18px;bottom:78px;z-index:26;
+    width:66px;height:66px;border-radius:50%;border:1.5px solid rgba(120,200,220,.35);
+    background:rgba(11,17,26,.6);color:var(--dim);font-size:10.5px;
+    letter-spacing:.04em;line-height:1.25;text-align:center;
+    align-items:center;justify-content:center;flex-direction:column;
+    touch-action:none;user-select:none;-webkit-user-select:none;
+    font-family:inherit;padding:0;cursor:pointer;
+    transition:background .18s,border-color .18s,color .18s,transform .12s}
+  #crouchbtn .cb-ico{font-size:17px;line-height:1;margin-bottom:2px}
+  #crouchbtn.on{background:rgba(95,216,232,.22);border-color:rgba(95,216,232,.8);
+    color:var(--accent);transform:scale(.94)}
+
+  /* 信赖条更紧凑 */
+  #bottom{padding:0 14px 12px;gap:7px}
+  #trustwrap{width:100%}
+  #trustlabel{font-size:9.5px;letter-spacing:.1em;margin-bottom:4px}
+  #trustlabel b{font-size:11px}
+  #trustbar{height:5px}
+  #trusthint{font-size:9.5px;letter-spacing:.06em;margin-top:5px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* 静音按钮挪到蹲下按钮上方，别和它挤 */
+  #mutebtn{right:18px;bottom:152px;width:30px;height:30px;font-size:13px}
+
+  /* 准星淡一点 */
+  #cross{opacity:.28;width:11px;height:11px}
+
+  /* 性能面板在手机上小一点 */
+  #fps{font-size:10px !important;padding:6px 9px !important;left:12px !important;bottom:62px !important}
+}
 </style>
 </head>
 <body>
@@ -236,7 +309,7 @@ body.shake > *{animation:shake .075s infinite !important}
 <div id="cross"></div>
 
 <div class="hud" id="topbar">
-  <div class="brand"><span class="dot"></span><h1>CLOSURE ROOM<em>FIRST PERSON</em></h1></div>
+  <div class="brand"><span class="dot"></span><h1 id="brandTitle">CLOSURE ROOM<em>FIRST PERSON</em></h1></div>
 
   <!-- ★ 右上角按键提示 -->
   <div id="keyhelp">
@@ -261,6 +334,10 @@ body.shake > *{animation:shake .075s infinite !important}
 </div>
 
 <div id="stick"><i></i></div>
+
+<!-- ★ 手机端：蹲下按钮 + 触摸提示 -->
+<button id="crouchbtn" title="切换蹲下"><span class="cb-ico">🧎</span>COS杜林</button>
+<div id="touchhelp"><span>左下 <b>摇杆</b> 移动</span><span>拖动屏幕 <b>转头</b></span></div>
 
 <div id="dark"></div>
 <div id="noise"></div>
@@ -825,6 +902,51 @@ function lock(){
   renderer.domElement.requestPointerLock?.();
 }
 
+/* ═══════════════════════════════════════════════════ 手机端交互
+   ★ 手机上没键盘 → 加屏幕按钮：
+     · 蹲下按钮（右下角）
+     · 连点标题 5 次 = 填满信赖（调试彩蛋用，访客不会发现） */
+(function initTouchUI(){
+  const cb = document.getElementById('crouchbtn');
+  if (cb){
+    // 用 touchstart 而不是 click —— 响应更快，且和拖拽不冲突
+    const fire = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleCrouch();
+      cb.classList.toggle('on', crouchOn);
+      cb.classList.remove('pressed'); void cb.offsetWidth; cb.classList.add('pressed');
+    };
+    cb.addEventListener('touchstart', fire, { passive:false });
+    cb.addEventListener('mousedown', fire);
+    // 防止长按弹出菜单/选中
+    cb.addEventListener('contextmenu', e => e.preventDefault());
+  }
+
+  // ★ 隐藏手势：连点页面标题 5 次 → 填满信赖（手机上没法按 T）
+  const title = document.getElementById('brandTitle');
+  if (title){
+    let hits = 0, timer = 0;
+    const tap = () => {
+      hits++;
+      clearTimeout(timer);
+      timer = setTimeout(()=>{ hits = 0; }, 1400);
+      if (hits >= 5){
+        hits = 0;
+        fillTrust(100);
+        say('（隐藏调试：信赖已填满）');
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
+    };
+    title.addEventListener('click', tap);
+    title.addEventListener('touchstart', e => { e.stopPropagation(); tap(); }, { passive:true });
+  }
+
+  // 触摸提示几秒后淡出
+  const th = document.getElementById('touchhelp');
+  if (th) setTimeout(()=>th.classList.add('fade'), 6000);
+})();
+
 // ★ 进入游戏（必须点按钮才会调到）
 let entered = false;
 function enterGame(){
@@ -839,38 +961,35 @@ function enterGame(){
 }
 
 /* ═══════════════════════════════════════════════════ 手机端屏幕方向
-   进游戏时提示「建议竖屏游玩」；如果现在是横屏，提示会变成"转过来"并持续显示
-   竖屏下相机 FOV 会自动放大（否则水平视野太窄，像从门缝里看） */
+   ★ 之前的 bug：orientationchange 时调 updateRotateHint(true) 会重新加 .on，
+     但没重设定时器 → 竖屏时提示永远不消失
+   → 现在统一由 refreshRotateHint() 处理"显示 + 定时隐藏"两件事 */
 const isPhone = matchMedia('(pointer: coarse)').matches &&
                 Math.min(innerWidth, innerHeight) < 820;
 let rotateTimer = 0;
 
-function showRotateHint(){
+function refreshRotateHint(){
   const el = document.getElementById('rotatehint');
   if (!el || !isPhone) return;
-  updateRotateHint(true);
   clearTimeout(rotateTimer);
-  // 竖屏 → 4 秒后自动消失；横屏 → 一直显示到转过来
-  rotateTimer = setTimeout(()=>{
-    if (innerHeight >= innerWidth) el.classList.remove('on');
-  }, 4000);
-}
 
-function updateRotateHint(show){
-  const el = document.getElementById('rotatehint');
-  if (!el || !isPhone) return;
   const portrait = innerHeight >= innerWidth;
   const sub = document.getElementById('rhsub');
+
   if (portrait){
+    // 竖屏：提示一下，4 秒后自动消失
     el.classList.remove('turn');
-    sub.innerHTML = '单手操作更方便<br>左下角摇杆移动 · 拖动屏幕转头';
-    if (show) el.classList.add('on');
-  } else {
-    el.classList.add('turn');
+    if (sub) sub.innerHTML = '单手操作更方便<br>左下角摇杆移动 · 拖动屏幕转头';
     el.classList.add('on');
+    rotateTimer = setTimeout(()=>el.classList.remove('on'), 4000);
+  } else {
+    // 横屏：图标转成旋转动画，一直显示到转过来为止
+    el.classList.add('turn', 'on');
     if (sub) sub.innerHTML = '请把手机转成竖直<br>（横屏时视角会变得很窄）';
   }
 }
+
+function showRotateHint(){ refreshRotateHint(); }
 
 /* ★ 相机 FOV 随宽高比自适应
    竖屏时把垂直 FOV 放大，保证水平视野不至于太窄 */
@@ -892,7 +1011,7 @@ updateCameraFov();
 
 // 注：resize 由末尾的主监听器统一处理（它会设 aspect 再调 updateCameraFov）
 addEventListener('orientationchange', () => {
-  setTimeout(()=>{ updateCameraFov(); updateRotateHint(entered); }, 120);
+  setTimeout(()=>{ updateCameraFov(); refreshRotateHint(); }, 120);
 });
 
 document.getElementById('startbtn').addEventListener('click', e => {
