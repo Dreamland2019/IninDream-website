@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>宿舍 · 走走看</title>
+<style>
+:root{
+  --bg:#05070b; --panel:rgba(8,13,21,.80); --line:rgba(120,200,220,.22);
+  --txt:#e2ecf4; --dim:#8298ac; --accent:#5fd8e8; --accent2:#e0574a;
+  --trust:#f0c34a;
+  --shadow:0 16px 44px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font-family:"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;user-select:none}
+canvas{display:block;outline:none}
+
+.hud{position:fixed;z-index:20;pointer-events:none}
+.hud > *{pointer-events:auto}
+
+/* ── 顶栏 ── */
+#topbar{top:0;left:0;right:0;display:flex;align-items:flex-start;gap:14px;padding:14px 20px;
+  pointer-events:none}
+#topbar > *{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:9px;padding-top:4px}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);
+  box-shadow:0 0 10px var(--accent2)}
+.brand h1{font-size:13px;font-weight:600;letter-spacing:.2em}
+.brand h1 em{font-style:normal;color:var(--dim);font-weight:400;font-size:10px;
+  letter-spacing:.14em;margin-left:7px}
+
+/* ★ 右上角按键提示卡
+   ⚠ 这里【绝对不能用 backdrop-filter】！
+   backdrop-filter 要求浏览器每帧回读背后的合成结果再做高斯模糊，
+   而 canvas 每帧都在变 → 每帧一次全屏级别的回读+模糊 → CPU 直接爆炸
+   （实测：CPU 15%→70%，GPU 反而空闲，降画质完全无效）
+   改用不透明背景 + 细边框，视觉几乎一样但零成本 */
+#keyhelp{margin-left:auto;background:rgba(11,17,26,.92);border:1px solid var(--line);
+  border-radius:4px;padding:11px 14px;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;gap:7px;min-width:150px}
+#keyhelp .kh-title{font-size:9.5px;letter-spacing:.22em;color:var(--dim);
+  border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:1px}
+#keyhelp .row{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim)}
+#keyhelp .row .ks{display:flex;gap:3px;min-width:78px}
+#keyhelp kbd{font-family:inherit;font-size:10px;font-weight:600;color:var(--txt);
+  background:linear-gradient(180deg,rgba(120,200,220,.16),rgba(120,200,220,.07));
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;
+  padding:2px 6px;min-width:19px;text-align:center;line-height:1.3}
+#keyhelp .row.new kbd{color:var(--accent);border-color:rgba(95,216,232,.55);
+  background:linear-gradient(180deg,rgba(95,216,232,.24),rgba(95,216,232,.1))}
+#keyhelp .row.new{color:var(--txt)}
+#keyhelp .row.off{opacity:.42;text-decoration:line-through}
+#keyhelp .row.off kbd{text-decoration:none}
+#keyhelp .note{font-size:9.5px;color:var(--accent2);letter-spacing:.06em;
+  border-top:1px solid var(--line);padding-top:6px;margin-top:1px;line-height:1.6}
+
+/* ── 底部：信赖条 ── */
+#bottom{bottom:0;left:0;right:0;padding:0 20px 18px;
+  display:flex;flex-direction:column;gap:10px;align-items:center}
+#trustwrap{width:min(520px,92vw)}
+#trustlabel{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:10.5px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px}
+#trustlabel b{color:var(--trust);font-weight:600;font-size:12px;letter-spacing:.06em}
+#trustbar{height:6px;border-radius:3px;background:rgba(130,152,172,.18);overflow:hidden;
+  border:1px solid rgba(240,195,74,.18);position:relative}
+/* ★ 去掉 width 过渡：JS 每帧写 width，带过渡会导致合成器一直在动画 + 每帧布局 */
+#trustfill{height:100%;width:0%;border-radius:2px;
+  background:linear-gradient(90deg,#8a6a1e,#f0c34a 60%,#ffe9a8);
+  box-shadow:0 0 12px rgba(240,195,74,.55)}
+#trusthint{font-size:10.5px;color:var(--dim);letter-spacing:.1em;margin-top:7px;text-align:center;
+  transition:color .3s}
+#trusthint.full{color:var(--trust);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.55}50%{opacity:1}}
+
+/* ── 十字准星 ── */
+#cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:15;
+  width:14px;height:14px;pointer-events:none;opacity:.5}
+#cross::before,#cross::after{content:'';position:absolute;background:var(--txt)}
+#cross::before{left:50%;top:0;width:1px;height:100%;transform:translateX(-50%)}
+#cross::after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%)}
+
+/* ── 开始遮罩 ── */
+#start{position:fixed;inset:0;z-index:60;background:radial-gradient(circle at 50% 45%,#101a26,#05070b 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  transition:opacity .5s;cursor:pointer}
+#start.done{opacity:0;pointer-events:none}
+#start h2{font-size:20px;font-weight:600;letter-spacing:.3em}
+#start .sub{font-size:11.5px;color:var(--dim);letter-spacing:.16em;line-height:2;text-align:center}
+#start .btn{margin-top:6px;border:1px solid rgba(95,216,232,.5);border-radius:3px;
+  padding:11px 26px;font-size:12.5px;letter-spacing:.18em;color:var(--accent);
+  background:rgba(95,216,232,.09);transition:background .2s,transform .2s}
+#start:hover .btn{background:rgba(95,216,232,.2);transform:scale(1.03)}
+#start .keys{display:flex;gap:20px;margin-top:10px;font-size:11px;color:var(--dim)}
+#start .keys span b{color:var(--txt);font-weight:500;border:1px solid var(--line);
+  border-radius:2px;padding:1px 6px;background:rgba(120,200,220,.08)}
+/* 按钮未就绪时不可点 */
+#start .btn.waiting{opacity:.45;pointer-events:none;
+  border-color:rgba(120,200,220,.25);color:var(--dim);background:transparent}
+
+/* ★ 性能提示 */
+#start #bootError{display:none;max-width:90vw;margin-bottom:14px;padding:10px 14px;
+  font:500 11.5px/1.7 ui-monospace,Consolas,monospace;color:#ffb3a8;
+  background:rgba(224,87,74,.14);border:1px solid rgba(224,87,74,.5);
+  border-radius:3px;word-break:break-all;text-align:left}
+#start .perfnote{margin-top:22px;max-width:420px;text-align:center;
+  border-top:1px solid rgba(120,200,220,.14);padding-top:16px}
+#start .pn-title{font-size:10.5px;letter-spacing:.2em;color:var(--dim);margin-bottom:9px}
+#start .pn-body{font-size:11px;line-height:2;color:var(--dim)}
+#start .pn-body b{color:var(--accent);font-weight:600}
+#start .pn-path{font-size:10px;color:#5c7086}
+#start .pn-path code{color:var(--dim);background:rgba(120,200,220,.08);
+  border-radius:2px;padding:1px 5px;font-size:10px}
+#start .pn-warn{margin-top:12px;font-size:11.5px;line-height:1.8;padding:9px 12px;
+  border-radius:3px;display:none}
+#start .pn-warn.bad{display:block;color:#ffb3a8;background:rgba(224,87,74,.16);
+  border:1px solid rgba(224,87,74,.5)}
+#start .pn-warn.warn{display:block;color:#ffe0a0;background:rgba(240,195,74,.13);
+  border:1px solid rgba(240,195,74,.42)}
+#start .pn-warn code{color:#fff;background:rgba(0,0,0,.3);border-radius:2px;padding:1px 5px}
+
+/* ── 手机摇杆 ── */
+#stick{position:fixed;left:24px;bottom:96px;z-index:25;width:112px;height:112px;
+  border-radius:50%;border:1.5px solid rgba(120,200,220,.28);background:rgba(8,13,21,.42);
+  display:none;touch-action:none}
+#stick.on{display:block}
+#stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
+  border-radius:50%;background:rgba(95,216,232,.32);border:1.5px solid rgba(95,216,232,.7);
+  box-shadow:0 0 18px rgba(95,216,232,.35)}
+
+/* ── 彩蛋：跳脸 ── */
+#egg{position:fixed;inset:0;z-index:44;pointer-events:none;
+  display:none;overflow:hidden;background:#000;}
+#egg.pop{display:flex;align-items:center;justify-content:center}
+/* ★ 对比度/亮度已【烘焙进图片】—— 不用 CSS filter
+   （全屏 CSS filter 每帧都要重新光栅化，跳脸时正好卡） */
+#egg img{width:100%;height:100%;object-fit:cover;object-position:50% 45%}
+
+/* ── 博士的手：暂时移除（等游戏素材）──
+   要恢复的话：
+   ① 把 assets/doctor_hand.webp 放回去
+   ② HTML 里加 <div id="hand"><img src="assets/doctor_hand.webp"></div>
+   ③ 恢复下面的 CSS
+   ④ JS 里恢复 handStep 那段
+#hand{position:fixed;inset:0;z-index:45;pointer-events:none;opacity:0;
+  display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+#hand img{width:min(78vh,62vw);height:auto;display:block;
+  transform:translateY(72%) scale(.62);transform-origin:50% 100%;
+  transition:transform 1.15s cubic-bezier(.25,.75,.35,1)}
+#hand.in{opacity:1}
+#hand.in img{transform:translateY(6%) scale(1.06)}
+#hand.poke img{transform:translateY(-16%) scale(1.62);
+  transition:transform .22s cubic-bezier(.15,.9,.3,1)}
+#hand.cover img{transform:translateY(-6%) scale(3.4);
+  transition:transform .40s cubic-bezier(.5,.05,.75,.4)}
+#hand.out{opacity:0;transition:opacity .22s}
+*/
+
+/* 屏幕抖动（整个页面一起抖） */
+@keyframes shake{
+  0%  {transform:translate(0,0) rotate(0deg)}
+  20% {transform:translate(-9px,7px) rotate(-.45deg)}
+  40% {transform:translate(8px,-6px) rotate(.4deg)}
+  60% {transform:translate(-7px,-8px) rotate(-.35deg)}
+  80% {transform:translate(9px,6px) rotate(.45deg)}
+  100%{transform:translate(0,0) rotate(0deg)}
+}
+body.shake > *{animation:shake .075s infinite !important}
+
+/* 黑幕
+   ★ 注意：3D 模式（巨人）下【不能用这个】—— 它在 canvas 之上，会把 3D 的博士盖住
+   巨人模式改用 dimLights() 把房间的灯调暗：
+     博士的头是 MeshBasicMaterial（不受光照），所以房间暗下去、他不变
+   → 房间自然沉入黑暗，而他从黑暗里"显"出来，比盖黑幕真实得多 */
+#dark{position:fixed;inset:0;z-index:38;background:#000;opacity:0;
+  pointer-events:none;transition:opacity .25s}
+#dark.on{opacity:1}
+/* 轻微的暗角：只压边缘，中间留亮（巨人模式用这个） */
+#dark.vignette{background:radial-gradient(ellipse at 50% 42%,
+  rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,.88) 100%)}
+#dark.vignette.on{opacity:1}
+
+/* 噪点（★ 用 display 切换，不用 opacity
+   —— feTurbulence 是 SVG 滤镜，留在页面上即使透明也可能被光栅化） */
+#noise{position:fixed;inset:0;z-index:42;pointer-events:none;display:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.5'/></svg>");
+  mix-blend-mode:screen}
+#noise.on{display:block;opacity:.26;animation:noisemove .06s steps(3) infinite}
+@keyframes noisemove{0%{background-position:0 0}50%{background-position:40px 25px}100%{background-position:-30px 18px}}
+
+#say{position:fixed;left:50%;top:76px;transform:translate(-50%,-6px);z-index:50;
+  background:rgba(11,17,26,.94);border:1px solid var(--line);border-radius:3px;
+  padding:7px 14px;font-size:12px;opacity:0;pointer-events:none;
+  transition:opacity .22s,transform .22s}
+#say.on{opacity:1;transform:translate(-50%,0)}
+
+/* ★ 屏幕方向提示（手机端） */
+#rotatehint{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);
+  z-index:55;opacity:0;pointer-events:none;transition:opacity .35s,transform .35s;
+  background:rgba(11,17,26,.95);border:1px solid rgba(95,216,232,.4);
+  border-radius:5px;padding:20px 28px;text-align:center;
+  box-shadow:0 20px 50px rgba(0,0,0,.75)}
+#rotatehint.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#rotatehint .rh-icon{font-size:34px;line-height:1;margin-bottom:12px;
+  display:inline-block}
+#rotatehint.turn .rh-icon{animation:rot 1.6s ease-in-out infinite}
+@keyframes rot{0%,45%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
+#rotatehint .rh-text{font-size:14px;letter-spacing:.2em;color:var(--accent);margin-bottom:7px}
+#rotatehint .rh-sub{font-size:10.5px;letter-spacing:.1em;color:var(--dim);line-height:1.7}
+
+/* ★ 静音按钮（all:unset 必须放最前面，否则会重置后面的 position:fixed）
+   ⚠ 同样不能用 backdrop-filter */
+#mutebtn{all:unset;position:fixed;right:20px;bottom:18px;z-index:24;
+  cursor:pointer;width:32px;height:32px;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  color:var(--dim);background:rgba(11,17,26,.92);border:1px solid var(--line);
+  transition:color .2s,border-color .2s,background .2s}
+#mutebtn:hover{color:var(--txt);border-color:rgba(95,216,232,.5);background:rgba(95,216,232,.1)}
+#mutebtn.on{color:var(--accent);border-color:rgba(95,216,232,.55)}
+#mutebtn.err{color:#5a6a78;opacity:.4}
+
+@media (max-width:760px){
+  #topbar{padding:10px 12px}
+  .brand h1{font-size:11px}.brand h1 em{display:none}
+  #tips{font-size:9.5px}
+  #tips .pc{display:none}
+  #bottom{padding:0 12px 14px}
+  #trustlabel{font-size:9.5px}
+  #cross{opacity:.35}
+}
+</style>
+</head>
+<body>
+
+<div id="cross"></div>
+
+<div class="hud" id="topbar">
+  <div class="brand"><span class="dot"></span><h1>CLOSURE ROOM<em>FIRST PERSON</em></h1></div>
+
+  <!-- ★ 右上角按键提示 -->
+  <div id="keyhelp">
+    <div class="kh-title">操作 / CONTROLS</div>
+    <div class="row"><span class="ks"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>移动</span></div>
+    <div class="row new"><span class="ks"><kbd>C</kbd></span><span>COS杜林</span></div>
+    <div class="row"><span class="ks"><kbd>Shift</kbd></span><span>快走</span></div>
+    <div class="row"><span class="ks"><kbd>鼠标</kbd></span><span>转头</span></div>
+    <div class="row"><span class="ks"><kbd>Q</kbd></span><span>画质 高/中/低</span></div>
+    <div class="row"><span class="ks"><kbd>M</kbd></span><span>静音 / 取消静音</span></div>
+    <div class="row"><span class="ks"><kbd>Esc</kbd></span><span>松开鼠标</span></div>
+    <div class="row"><span class="ks"><kbd>F</kbd></span><span>性能面板</span></div>
+  </div>
+</div>
+
+<div class="hud" id="bottom">
+  <div id="trustwrap">
+    <div id="trustlabel"><span>信赖</span><b id="trustpct">0%</b></div>
+    <div id="trustbar"><div id="trustfill"></div></div>
+    <div id="trusthint">在宿舍里走动可以慢慢积累信赖…</div>
+  </div>
+</div>
+
+<div id="stick"><i></i></div>
+
+<div id="dark"></div>
+<div id="noise"></div>
+<div id="egg"><img id="eggimg" src="assets/doctor_face.webp" alt=""></div>
+<div id="say"></div>
+
+<!-- ★ 手机端屏幕方向提示 -->
+<div id="rotatehint">
+  <div class="rh-icon">📱</div>
+  <div class="rh-text">建议竖屏游玩</div>
+  <div class="rh-sub" id="rhsub">单手操作更方便<br>左下角摇杆移动 · 拖动屏幕转头</div>
+</div>
+
+<!-- ★ 背景音乐：生命流 - 塞壬唱片-MSR,BaoUner（原 FLAC 19MB → MP3 5.2MB）
+     preload=metadata：只下载文件头，点「进入」后才开始拉流（避免首屏就下载 5MB） -->
+<audio id="bgm" src="assets/bgm.mp3" loop preload="metadata"></audio>
+<button class="hud" id="mutebtn" title="静音 / 取消静音（M）">♪</button>
+
+<div id="start">
+  <h2>宿舍</h2>
+  <div class="sub">用第一人称走进这间工作室<br>四处看看</div>
+  <div class="btn" id="startbtn">载入中…</div>
+  <div class="keys pc">
+    <span><b>W</b><b>A</b><b>S</b><b>D</b> 移动</span>
+    <span><b>C</b> COS杜林</span>
+    <span><b>Shift</b> 快走</span>
+    <span><b>鼠标</b> 转头</span>
+    <span><b>Esc</b> 退出</span>
+  </div>
+  <!-- ★ 启动错误显示（出错时才会出现） -->
+  <div id="bootError"></div>
+  <!-- ★ 性能提示 -->
+  <div class="perfnote">
+    <div class="pn-title">画面很卡？</div>
+    <div class="pn-body">
+      请检查浏览器是否开启了<b>硬件加速</b><br>
+      <span class="pn-path">Chrome / Edge：设置 → 系统 → 「使用硬件加速(如可用)」</span><br>
+      <span class="pn-path">改完需要重启浏览器 · 可在 <code>chrome://gpu</code> 里确认</span>
+    </div>
+    <div class="pn-warn" id="hwWarn" style="display:none"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "./lib/three.module.js",
+    "three/addons/": "./lib/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from './lib/GLTFLoader.js';
+
+// ═══════════════════════════════════════════════════ 全局错误捕获
+// ★ 任何 JS 错误都直接显示在开始页上 —— 否则只会看到"载入中…"卡住，无从排查
+function showFatal(msg, detail){
+  const btn = document.getElementById('startbtn');
+  if (btn){
+    btn.textContent = msg;
+    btn.classList.add('waiting');
+  }
+  const el = document.getElementById('bootError');
+  if (el){
+    el.style.display = 'block';
+    el.textContent = detail || msg;
+  }
+  console.error('[启动错误]', msg, detail || '');
+}
+addEventListener('error', e => {
+  showFatal('启动出错：' + (e.message || '未知'), (e.filename || '') + ':' + (e.lineno || ''));
+});
+addEventListener('unhandledrejection', e => {
+  showFatal('异步出错：' + ((e.reason && e.reason.message) || e.reason || '未知'));
+});
+
+// ═══════════════════════════════════════════════════ 基础
+// ★ 探测 WebGL 到底跑在哪块 GPU 上
+//   —— "GPU 占用 3% 却只有 50 帧" 这种数据，第一嫌疑就是跑核显或软件渲染
+let GPU_INFO = { vendor:'?', renderer:'?', software:false, integrated:false };
+function probeGPU(){
+  try {
+    const gl = renderer.getContext();
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    if (dbg){
+      GPU_INFO.vendor   = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '?';
+      GPU_INFO.renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '?';
+    } else {
+      GPU_INFO.renderer = gl.getParameter(gl.RENDERER) || '?';
+    }
+    const low = String(GPU_INFO.renderer).toLowerCase();
+    GPU_INFO.software = /swiftshader|software|llvmpipe|basic render/.test(low);
+    GPU_INFO.integrated = /intel|uhd|iris|vega|radeon\(tm\) graphics/.test(low) && !GPU_INFO.software;
+    console.log('%c★ WebGL 渲染器：' + GPU_INFO.renderer, 'color:#5fd8e8;font-weight:bold');
+    console.log('  厂商：' + GPU_INFO.vendor);
+    if (GPU_INFO.software)   console.error('%c⚠⚠ 正在用【软件渲染】(SwiftShader)！性能会差 10~50 倍', 'color:#e0574a;font-weight:bold');
+    else if (GPU_INFO.integrated) console.warn('%c⚠ 看起来在用【核显】，独显没被调用', 'color:#f0c34a;font-weight:bold');
+    else console.log('%c✓ 硬件加速正常', 'color:#5fd8e8');
+  } catch(e){ console.warn('GPU 探测失败', e); }
+}
+
+const QUALITY = [
+  { name:'高', label:'高画质', short:'HIGH',
+    pr: () => Math.min(devicePixelRatio || 1, 2.0), aniso: 16, fullLights: true,  auto: false,
+    desc:'像素比 2.0 · 各向异性 16x · 4 光源 · 不自动降质' },
+  { name:'中', label:'中画质', short:'MID',
+    pr: () => Math.min(devicePixelRatio || 1, 1.5), aniso: 4,  fullLights: false, auto: true,
+    desc:'像素比 1.5 · 各向异性 4x · 2 光源 · 自动降质' },
+  { name:'低', label:'低画质', short:'LOW',
+    pr: () => 1.0,                                  aniso: 1,  fullLights: false, auto: true,
+    desc:'像素比 1.0 · 关闭各向异性 · 2 光源 · 自动降质' },
+];
+let qualityIdx = 0;                 // ★ 默认高画质
+let PR_MAX = QUALITY[0].pr();
+let pixelRatio = PR_MAX;
+const PR_MIN = 0.65;
+
+// ★ MSAA 开着（高画质要锐利），主要成本由像素比控制
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance',
+  stencil: false,
+});
+renderer.setPixelRatio(pixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.shadowMap.enabled = false;
+renderer.info.autoReset = false;
+document.body.insertBefore(renderer.domElement, document.body.firstChild);
+
+// ★ renderer 建好了 → 这时候才能探测 GPU（之前放在前面会 TDZ 报错）
+probeGPU();
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);    // 外面是黑的（彩蛋要用）
+scene.fog = new THREE.FogExp2(0x000000, 0.045);
+
+const camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.03, 220);
+camera.rotation.order = 'YXZ';
+
+// ── 灯光：建好两套，按画质档切换 visible
+//    高画质 = 环境光 + 3 平行光（有立体感）
+const amb  = new THREE.AmbientLight(0xffffff, 0.85);
+const key  = new THREE.DirectionalLight(0xffffff, 1.15); key.position.set(3.0, 4.5, 4.0);
+const fill = new THREE.DirectionalLight(0x9fc6e0, 0.45); fill.position.set(-4.0, 2.2, -3.0);
+const rim  = new THREE.DirectionalLight(0x6fd0e8, 0.30); rim.position.set(0, 1.5, -5.0);
+scene.add(amb, key, fill, rim);
+//    中/低画质 = 半球光 + 1 平行光（省一半光照计算）
+const hemi = new THREE.HemisphereLight(0xe8f2ff, 0x2a2f3d, 1.35);
+hemi.visible = false;
+scene.add(hemi);
+
+// ═══════════════════════════════════════════════════ 房间参数
+// three.js 坐标：X -3.61~3.87   Y 0.22~2.42（高）   Z -1.12~1.08
+// 后墙 Z=-1.12（家具靠那边）；开着的一面 Z=+1.08
+const ROOM = { x0:-3.61, x1:3.87, z0:-1.12, z1:1.08, y0:0.22, y1:2.42 };
+const WALL = 0.30;                                    // 离墙距离
+const BOUND = { x0:ROOM.x0+WALL, x1:ROOM.x1-WALL, z0:ROOM.z0+WALL, z1:ROOM.z1-0.06 };
+const EYE = 1.40;                                     // 站立视线高度（之前 1.52 偏高）
+const EYE_CROUCH = 0.92;                              // 蹲下时
+// ★ base 必须初始化！否则 HEIGHT.target = undefined → cur 变 NaN → 相机坐标 NaN → 黑屏
+const HEIGHT = { base: EYE, cur: EYE, target: EYE };  // 平滑过渡用
+const RADIUS = 0.20;                                  // 玩家碰撞半径
+const INSET  = 0.06;                                  // 障碍盒内缩（避免过于"粘人"）
+
+// ═══════════════════════════════════════════════════ 载入模型
+const boxes = [];          // 碰撞盒 {min:{x,z}, max:{x,z}, name}
+let loaded = false;
+const matCache = new Map();     // ★ 材质复用（同参数的只建一个）
+
+/* ★★★ 性能关键：把 glTF 的 PBR 材质换成 Lambert
+   glTF 默认给 MeshStandardMaterial（PBR：Cook-Torrance BRDF + 能量守恒 + IBL）
+   这套素材是【平涂风格】，完全不需要 PBR
+   Lambert 只算漫反射 → 每个像素省掉一大半计算量
+   仍然保留：贴图、自发光贴图、透明、双面 */
+function toLambert(src){
+  const key = [
+    src.name, src.map ? src.map.uuid : '-', src.emissive.getHexString(),
+    src.emissiveMap ? src.emissiveMap.uuid : '-', src.transparent,
+    src.alphaTest, src.side,
+  ].join('|');
+  if (matCache.has(key)) return matCache.get(key);
+
+  const m = new THREE.MeshLambertMaterial({
+    map: src.map || null,
+    color: src.color ? src.color.clone() : new THREE.Color(0xffffff),
+    emissive: src.emissive ? src.emissive.clone() : new THREE.Color(0x000000),
+    emissiveMap: src.emissiveMap || null,
+    emissiveIntensity: src.emissiveIntensity != null ? src.emissiveIntensity : 1,
+    transparent: !!src.transparent,
+    opacity: src.opacity != null ? src.opacity : 1,
+    alphaTest: src.alphaTest || 0,
+    side: src.side,
+    depthWrite: src.depthWrite !== false,
+    fog: true,
+  });
+  m.name = 'LMB_' + (src.name || 'mat');
+  matCache.set(key, m);
+  return m;
+}
+
+let matSwapped = 0;
+const allTextures = [];        // ★ 收集所有贴图，切换画质时改各向异性用
+
+new GLTFLoader().load('./dorm.glb', gltf => {
+  const root = gltf.scene;
+  const skipped = [];
+  root.traverse(o => {
+    if (!o.isMesh) return;
+
+    // ★ 换成 Lambert
+    if (Array.isArray(o.material)){
+      o.material = o.material.map(src => { matSwapped++; return toLambert(src); });
+    } else if (o.material){
+      o.material = toLambert(o.material);
+      matSwapped++;
+    }
+
+    // 贴图设置
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats){
+      if (m && m.map){
+        m.map.magFilter = THREE.NearestFilter;                 // 像素风 → 放大用最近邻（保持锐利）
+        m.map.minFilter = THREE.LinearMipmapLinearFilter;      // 缩小用 mipmap
+        m.map.generateMipmaps = true;
+        m.map.anisotropy = QUALITY[qualityIdx].aniso;          // ★ 按画质档
+        m.map.needsUpdate = true;
+        allTextures.push(m.map);
+      }
+    }
+    o.frustumCulled = true;
+
+    const n = o.name.toLowerCase();
+    if (n.startsWith('room') || n.startsWith('floor') || n.startsWith('frame')) return;
+
+    // ── 收集碰撞盒
+    const b = new THREE.Box3().setFromObject(o);
+    const w = b.max.x - b.min.x, d = b.max.z - b.min.z, h = b.max.y - b.min.y;
+    if (w < 0.10 || d < 0.10) { skipped.push(o.name + '(太薄)'); return; }
+    if (h < 0.30)            { skipped.push(o.name + '(太矮)'); return; }
+    if (b.min.y > 1.35)      { skipped.push(o.name + '(太高)'); return; }
+    if (b.max.y < 0.45)      { skipped.push(o.name + '(太贴地)'); return; }
+
+    const minX = b.min.x + INSET, maxX = b.max.x - INSET;
+    const minZ = b.min.z + INSET, maxZ = b.max.z - INSET;
+    if (maxX - minX < 0.02 || maxZ - minZ < 0.02) { skipped.push(o.name + '(内缩后太小)'); return; }
+
+    boxes.push({ min:{ x:minX, z:minZ }, max:{ x:maxX, z:maxZ },
+                 y:[b.min.y, b.max.y], name:o.name });
+  });
+  scene.add(root);
+  loaded = true;
+
+  console.log('%c★ 材质已换成 Lambert：' + matSwapped + ' 个槽位，共用 ' + matCache.size + ' 个材质',
+              'color:#5fd8e8;font-weight:bold');
+  console.log('碰撞盒 ' + boxes.length + ' 个：' + boxes.map(b=>b.name).join(', '));
+  if (skipped.length) console.log('已忽略：', skipped.join(', '));
+
+  findSpawn();
+  applyQuality(qualityIdx, true);
+  console.log('出生点', player.pos.x.toFixed(2), player.pos.z.toFixed(2),
+              '卡住?', hitsAny(player.pos.x, player.pos.z));
+
+  // ★ 恢复上次的博士状态（他记得你）
+  //   注意：?reset 参数会在这之前清掉 localStorage，所以这里读到的就是重置后的状态
+  try {
+    if (localStorage.getItem('dorm_doctor_revealed') === '1') DOCTOR.revealed = true;
+    if (localStorage.getItem('dorm_doctor_on') === '0'){ DOCTOR.enabled = false; trust.frozen = true; }
+    if (DOCTOR.revealed && DOCTOR.enabled){
+      DOCTOR.headOp = 1; DOCTOR.headTarget = 1; DOCTOR.head.visible = true;
+      console.log('%c……他在外面等着（上次已经现身过）', 'color:#8298ac');
+      console.log('%c   想重置成"第一次"？按 Shift+R，或访问 walk.html?reset', 'color:#5c7086');
+    }
+  } catch(e){}
+
+  // ★ 模型载好了 —— 但不自动进！等访客点「点击进入」
+  const btn = document.getElementById('startbtn');
+  if (btn){
+    btn.textContent = '点击进入';
+    btn.classList.remove('waiting');
+  }
+  checkHardwareAccel();          // ★ 顺手检查硬件加速，有问题就在开始页警告
+}, undefined, err => {
+  console.error(err);
+  const btn = document.getElementById('startbtn');
+  if (btn){ btn.textContent = '模型载入失败'; btn.classList.add('waiting'); }
+});
+
+/* ★ 硬件加速检测 → 在开始页给出警告 */
+function checkHardwareAccel(){
+  const el = document.getElementById('hwWarn');
+  if (!el) return;
+  if (GPU_INFO.software){
+    el.className = 'pn-warn bad';
+    el.innerHTML = '⚠ 检测到浏览器正在用<b>软件渲染</b>（' +
+      String(GPU_INFO.renderer).slice(0,40) + '…）<br>' +
+      '请务必开启硬件加速，否则帧率会低 10~50 倍。';
+    console.error('⚠ 软件渲染中');
+  } else if (GPU_INFO.integrated){
+    el.className = 'pn-warn warn';
+    el.innerHTML = '⚠ 检测到使用的是<b>集成显卡</b>（' +
+      String(GPU_INFO.renderer).slice(0,40) + '…）<br>' +
+      '如果感觉卡，可在显卡驱动里指定浏览器用独立显卡。';
+    console.warn('⚠ 疑似核显');
+  } else {
+    el.style.display = 'none';
+    console.log('%c✓ 硬件加速正常：' + GPU_INFO.renderer, 'color:#5fd8e8');
+  }
+}
+
+/* ★ 应用画质档位 */
+function applyQuality(idx, silent){
+  qualityIdx = idx;
+  const q = QUALITY[idx];
+
+  // ① 像素比
+  PR_MAX = q.pr();
+  pixelRatio = PR_MAX;
+  renderer.setPixelRatio(pixelRatio);
+
+  // ② 灯光：高画质用 4 盏，中/低用 2 盏
+  amb.visible  = q.fullLights;
+  fill.visible = q.fullLights;
+  rim.visible  = q.fullLights;
+  hemi.visible = !q.fullLights;
+  key.intensity = q.fullLights ? 1.15 : 1.30;
+
+  // ③ 各向异性过滤（决定斜看地面/墙壁清不清晰）
+  for (const t of allTextures){
+    t.anisotropy = q.aniso;
+    t.needsUpdate = true;
+  }
+
+  // ④ 性能面板
+  perf.autoEnabled = q.auto;         // 高画质不自动降质
+  perf.adjustCount = 0;
+
+  if (!silent) say('画质：' + q.label + '　' + q.desc);
+  console.log('%c★ 画质切到【' + q.label + '】' + q.desc,
+              'color:#5fd8e8;font-weight:bold');
+  if (perf.shown) updateFpsHud();
+}
+
+/* Q 键循环切换画质 */
+function cycleQuality(){
+  applyQuality((qualityIdx + 1) % QUALITY.length);
+}
+
+/* 从房间前部中央开始，向四周找一个不卡住的位置 */
+function findSpawn(){
+  const cands = [];
+  for (let z = 0.86; z >= 0.30; z -= 0.08){
+    for (let dx = 0; dx <= 3.4; dx += 0.24){
+      for (const sx of (dx === 0 ? [0] : [dx, -dx])){
+        cands.push([0.13 + sx, z]);
+      }
+    }
+  }
+  for (const [x, z] of cands){
+    if (!hitsAny(x, z)){
+      player.pos.set(x, EYE, z);
+      player.home.copy(player.pos);
+      console.log('找到空地', x.toFixed(2), z.toFixed(2));
+      return;
+    }
+  }
+  player.pos.set(0.13, EYE, 0.90);
+  player.home.copy(player.pos);
+  console.warn('没找到空地，用兜底位置');
+}
+
+// ═══════════════════════════════════════════════════ 玩家
+const player = {
+  pos: new THREE.Vector3(0.13, EYE, 0.86),   // 占位，载入模型后由 findSpawn() 自动找空地
+  home: new THREE.Vector3(0.13, EYE, 0.86),  // 记住出生点（R 键回位）
+  yaw: 0,        // yaw=0 → 朝 -Z → 看向后墙的家具
+  pitch: -0.06,
+};
+const keys = Object.create(null);
+addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyT') fillTrust(100);        // 调试：直接填满信赖
+  if (e.code === 'KeyR'){
+    // ★ R = 回到出生点   Shift+R = 重置博士记忆（调试用）
+    if (e.shiftKey) resetDoctorMemory();
+    else resetPlayer();
+  }
+  if (e.code === 'KeyN') toggleFreeze();        // 关闭/开启博士事件（= 冻结信赖 + 让他消失）
+  if (e.code === 'KeyM') toggleMute();          // 静音 / 取消静音
+  if (e.code === 'KeyQ' && !e.repeat) cycleQuality();   // ★ 切换画质（高→中→低）
+  if (e.code === 'KeyK' && !e.repeat){                  // ★ 切换彩蛋演出方式
+    eggMode = eggMode === 'giant' ? 'screen' : 'giant';
+    say(eggMode === 'giant'
+        ? '博士演出：巨人从外面看进来（3D）'
+        : '博士演出：全屏贴脸（旧的 2D 跳脸）');
+  }
+  // ★ F 显示/隐藏性能面板
+  if (e.code === 'KeyF' && !e.repeat){
+    perf.shown = !perf.shown;
+    const el = document.getElementById('fps');
+    if (!perf.shown && el) el.remove();
+    else updateFpsHud();
+    say(perf.shown ? '显示性能面板' : '隐藏性能面板');
+  }
+  // ★ C 改成【切换】而不是按住（e.repeat 防止长按连发）
+  if (e.code === 'KeyC' && !e.repeat) toggleCrouch();
+  if (e.code === 'BracketLeft')  { HEIGHT.base = Math.max(0.6, HEIGHT.base - 0.05); say('视线高度 ' + HEIGHT.base.toFixed(2) + ' m'); }
+  if (e.code === 'BracketRight') { HEIGHT.base = Math.min(2.0, HEIGHT.base + 0.05); say('视线高度 ' + HEIGHT.base.toFixed(2) + ' m'); }
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ★ COS 杜林（切换式蹲下）
+let crouchOn = false;
+function toggleCrouch(){
+  crouchOn = !crouchOn;
+  say(crouchOn ? 'COS 杜林 · 身高 -34cm' : '站起来了');
+}
+
+// ★ N 键：关闭 / 开启整个博士事件
+//   关闭 = 他消失 + 信赖冻结（不会再触发）
+//   开启 = 若已现过身，他回到黑暗里继续看着你
+function toggleFreeze(){
+  setDoctorEvent(!DOCTOR.enabled);
+}
+
+/* ★ 重置博士记忆（调试用）
+   Shift+R 键，或 URL 加 ?reset
+   作用：他"忘掉"你 —— 下次信赖满是【第一次现身】而不是【伸手点你】 */
+function resetDoctorMemory(quiet){
+  try {
+    localStorage.removeItem('dorm_doctor_revealed');
+    localStorage.removeItem('dorm_doctor_on');
+  } catch(e){}
+  DOCTOR.revealed = false;
+  DOCTOR.enabled = true;
+  DOCTOR.headTarget = 0;
+  DOCTOR.headOp = 0;
+  DOCTOR.handTarget = 0;
+  DOCTOR.handOp = 0;
+  DOCTOR.handZ = DOCTOR.handStartZ;
+  DOCTOR.handZTarget = DOCTOR.handStartZ;
+  trust.frozen = false;
+  trust.triggered = 0;
+  trust.v = 0;
+  trust.stepDist = 0;
+  console.log('%c↺ 博士记忆已重置：下次信赖满是「第一次现身」', 'color:#f0c34a;font-weight:bold');
+  if (!quiet) say('已重置 · 博士忘掉你了（再按 T 就是第一次现身）');
+}
+
+/* ★ URL 参数 ?reset —— 方便分享给别人体验"第一次"
+   例：walk.html?reset */
+if (/[?&]reset\b/.test(location.search)){
+  setTimeout(()=>resetDoctorMemory(true), 0);
+  setTimeout(()=>say('已通过 ?reset 重置 · 博士忘掉你了'), 2000);
+}
+
+/* ★ 启动时在控制台列出调试键（不占用界面，需要时按 F12 看） */
+setTimeout(()=>{
+  console.log('%c─── 调试键 ───────────────────────', 'color:#8298ac');
+  console.log('  T        填满信赖（触发博士演出）');
+  console.log('  Shift+R  重置博士记忆（回到"第一次"）');
+  console.log('  R        回到出生点');
+  console.log('  N        关闭/开启博士事件');
+  console.log('  K        切换演出方式（3D 巨人 / 全屏贴脸）');
+  console.log('  Q        画质 高/中/低');
+  console.log('  F        性能面板');
+  console.log('  M        静音');
+  console.log('  [ ]      视线高度微调');
+  console.log('  URL ?reset  重置博士记忆');
+  console.log('%c─────────────────────────────────', 'color:#8298ac');
+}, 1200);
+
+// 临时提示（调高度时看数值）
+let sayT = 0;
+function say(msg){
+  let el = document.getElementById('say');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(sayT);
+  sayT = setTimeout(()=>el.classList.remove('on'), 1500);
+}
+
+// ── 鼠标转头（Pointer Lock）
+let locked = false;
+const startEl = document.getElementById('start');
+
+// ═══════════════════════════════════════════════════ 背景音乐
+// ★ 浏览器自动播放策略很挑：
+//   必须在"用户手势"的同步调用栈里调 play()，而且失败了要能重试。
+//   所以这里：① 任何首次交互都试一次 ② 失败了记录状态，下次交互再试
+const bgm = document.getElementById('bgm');
+const muteBtn = document.getElementById('mutebtn');
+bgm.volume = 0.32;
+let bgmOn = false;          // 正在播放
+let bgmBlocked = false;     // 被策略拦过
+let bgmUserMuted = false;   // 用户主动静音（不再自动重试）
+
+function bgmState(){
+  return {
+    就绪: bgm.readyState, 网络: bgm.networkState,
+    时长: bgm.duration ? bgm.duration.toFixed(1) : null,
+    暂停: bgm.paused, 音量: bgm.volume,
+    错误: bgm.error ? (bgm.error.code + '/' + bgm.error.message) : '无',
+  };
+}
+
+function startBgm(fromUser){
+  if (bgmUserMuted && !fromUser) return;
+  if (!bgm.paused) return;                     // 已在播
+  const p = bgm.play();
+  if (p && p.then){
+    p.then(()=>{
+      bgmOn = true; bgmBlocked = false;
+      muteBtn.classList.add('on'); muteBtn.classList.remove('err');
+      console.log('%c♪ BGM 开始播放', 'color:#5fd8e8', bgmState());
+    }).catch(err=>{
+      bgmOn = false; bgmBlocked = true;
+      muteBtn.classList.add('err');
+      console.warn('❌ BGM 播放被拒（等下次交互再试）:', err.name, err.message, bgmState());
+    });
+  }
+}
+
+function toggleMute(){
+  if (bgm.paused){
+    bgmUserMuted = false;
+    startBgm(true);
+  } else {
+    bgm.pause();
+    bgmOn = false; bgmUserMuted = true;
+    muteBtn.classList.remove('on');
+    console.log('♪ BGM 已暂停（用户静音）');
+  }
+}
+muteBtn.addEventListener('click', e=>{ e.stopPropagation(); toggleMute(); });
+
+bgm.addEventListener('error', ()=>{
+  muteBtn.classList.add('err');
+  console.error('❌ BGM 载入失败:', bgmState());
+});
+bgm.addEventListener('loadedmetadata', ()=>{
+  console.log('%c♪ BGM 元数据就绪 ' + (bgm.duration||0).toFixed(1) + ' 秒', 'color:#5fd8e8');
+});
+bgm.addEventListener('playing', ()=>{
+  bgmOn = true; bgmBlocked = false;
+  muteBtn.classList.add('on'); muteBtn.classList.remove('err');
+});
+
+// ★ 任何首次用户交互都尝试启动（点击 / 按键 / 触摸）
+//   浏览器只要"有一次手势"，之后就能播了
+function kickBgm(){
+  if (bgmUserMuted) return;
+  if (!bgm.paused) return;
+  startBgm();
+}
+['pointerdown','click','keydown','touchstart'].forEach(ev=>{
+  addEventListener(ev, kickBgm, { passive: true });
+});
+
+function lock(){
+  renderer.domElement.requestPointerLock?.();
+}
+
+// ★ 进入游戏（必须点按钮才会调到）
+let entered = false;
+function enterGame(){
+  if (entered || !loaded) return;      // 没载完不让进
+  entered = true;
+  startBgm(true);                      // 用户点击 → 可以播音频了
+  lock();
+  startEl.classList.add('done');
+  setTimeout(()=>startEl.remove(), 600);
+  showRotateHint();                    // ★ 手机端提示屏幕方向
+  console.log('%c▶ 进入第一人称', 'color:#5fd8e8;font-weight:bold');
+}
+
+/* ═══════════════════════════════════════════════════ 手机端屏幕方向
+   进游戏时提示「建议竖屏游玩」；如果现在是横屏，提示会变成"转过来"并持续显示
+   竖屏下相机 FOV 会自动放大（否则水平视野太窄，像从门缝里看） */
+const isPhone = matchMedia('(pointer: coarse)').matches &&
+                Math.min(innerWidth, innerHeight) < 820;
+let rotateTimer = 0;
+
+function showRotateHint(){
+  const el = document.getElementById('rotatehint');
+  if (!el || !isPhone) return;
+  updateRotateHint(true);
+  clearTimeout(rotateTimer);
+  // 竖屏 → 4 秒后自动消失；横屏 → 一直显示到转过来
+  rotateTimer = setTimeout(()=>{
+    if (innerHeight >= innerWidth) el.classList.remove('on');
+  }, 4000);
+}
+
+function updateRotateHint(show){
+  const el = document.getElementById('rotatehint');
+  if (!el || !isPhone) return;
+  const portrait = innerHeight >= innerWidth;
+  const sub = document.getElementById('rhsub');
+  if (portrait){
+    el.classList.remove('turn');
+    sub.innerHTML = '单手操作更方便<br>左下角摇杆移动 · 拖动屏幕转头';
+    if (show) el.classList.add('on');
+  } else {
+    el.classList.add('turn');
+    el.classList.add('on');
+    if (sub) sub.innerHTML = '请把手机转成竖直<br>（横屏时视角会变得很窄）';
+  }
+}
+
+/* ★ 相机 FOV 随宽高比自适应
+   竖屏时把垂直 FOV 放大，保证水平视野不至于太窄 */
+const FOV_BASE = 72;
+function updateCameraFov(){
+  const aspect = innerWidth / innerHeight;
+  if (aspect < 1){
+    // 竖屏：按"目标水平视野 ≈ 75°"反推垂直 FOV
+    const targetH = 75 * Math.PI / 180;
+    let v = 2 * Math.atan(Math.tan(targetH / 2) / aspect) * 180 / Math.PI;
+    v = Math.min(v, 104);              // 上限，再大就鱼眼了
+    camera.fov = v;
+  } else {
+    camera.fov = FOV_BASE;
+  }
+  camera.updateProjectionMatrix();
+}
+updateCameraFov();
+
+// 注：resize 由末尾的主监听器统一处理（它会设 aspect 再调 updateCameraFov）
+addEventListener('orientationchange', () => {
+  setTimeout(()=>{ updateCameraFov(); updateRotateHint(entered); }, 120);
+});
+
+document.getElementById('startbtn').addEventListener('click', e => {
+  e.stopPropagation();
+  enterGame();
+});
+startEl.addEventListener('click', enterGame);
+// 点了画布也能进（遮罩还在的时候）
+renderer.domElement.addEventListener('click', () => {
+  if (!entered){ enterGame(); return; }
+  if (!locked && !eggActive) lock();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === renderer.domElement;
+});
+document.addEventListener('mousemove', e => {
+  if (!locked || eggActive) return;
+  player.yaw   -= e.movementX * 0.0022;
+  player.pitch -= e.movementY * 0.0022;
+  player.pitch = Math.max(-1.35, Math.min(1.35, player.pitch));
+});
+
+// ── 手机：摇杆 + 拖动转头
+const stickEl = document.getElementById('stick');
+const stickKnob = stickEl.querySelector('i');
+const isTouch = matchMedia('(pointer: coarse)').matches;
+if (isTouch) stickEl.classList.add('on');
+
+const stick = { x:0, y:0, id:null, cx:0, cy:0 };
+function stickStart(e){
+  const t = e.changedTouches ? e.changedTouches[0] : e;
+  const r = stickEl.getBoundingClientRect();
+  stick.id = t.identifier ?? 'mouse';
+  stick.cx = r.left + r.width/2; stick.cy = r.top + r.height/2;
+  stickMove(e);
+}
+function stickMove(e){
+  if (stick.id === null) return;
+  let t = null;
+  if (e.changedTouches){
+    for (const c of e.touches) if ((c.identifier ?? 'mouse') === stick.id) t = c;
+    if (!t) return;
+  } else t = e;
+  let dx = t.clientX - stick.cx, dy = t.clientY - stick.cy;
+  const max = 44;
+  const len = Math.hypot(dx, dy) || 1;
+  const k = Math.min(1, len / max);
+  dx = dx/len*k; dy = dy/len*k;
+  stick.x = dx; stick.y = dy;
+  stickKnob.style.transform = `translate(${dx*max}px, ${dy*max}px)`;
+}
+function stickEnd(e){
+  if (e.changedTouches){
+    let found = false;
+    for (const c of e.touches) if ((c.identifier ?? 'mouse') === stick.id) found = true;
+    if (found) return;
+  }
+  stick.id = null; stick.x = 0; stick.y = 0;
+  stickKnob.style.transform = 'translate(0,0)';
+}
+stickEl.addEventListener('touchstart', e=>{e.preventDefault();stickStart(e);}, {passive:false});
+stickEl.addEventListener('touchmove',  e=>{e.preventDefault();stickMove(e);},  {passive:false});
+stickEl.addEventListener('touchend',   e=>{e.preventDefault();stickEnd(e);},   {passive:false});
+stickEl.addEventListener('touchcancel',stickEnd);
+
+// 拖动屏幕转头（手机）
+let look = { id:null, x:0, y:0 };
+renderer.domElement.addEventListener('touchstart', e=>{
+  if (eggActive) return;
+  const t = e.changedTouches[0];
+  look.id = t.identifier; look.x = t.clientX; look.y = t.clientY;
+}, {passive:true});
+renderer.domElement.addEventListener('touchmove', e=>{
+  if (eggActive || look.id === null) return;
+  for (const t of e.changedTouches){
+    if (t.identifier !== look.id) continue;
+    player.yaw   -= (t.clientX - look.x) * 0.0055;
+    player.pitch -= (t.clientY - look.y) * 0.0055;
+    player.pitch = Math.max(-1.35, Math.min(1.35, player.pitch));
+    look.x = t.clientX; look.y = t.clientY;
+  }
+}, {passive:true});
+renderer.domElement.addEventListener('touchend', e=>{
+  for (const t of e.changedTouches) if (t.identifier === look.id) look.id = null;
+}, {passive:true});
+
+function resetPlayer(){
+  player.pos.copy(player.home);
+  player.yaw = 0; player.pitch = -0.06;
+}
+
+// ═══════════════════════════════════════════════════ 碰撞
+function hitsAny(x, z){
+  if (x < BOUND.x0 || x > BOUND.x1 || z < BOUND.z0 || z > BOUND.z1) return true;
+  for (const b of boxes){
+    if (x > b.min.x - RADIUS && x < b.max.x + RADIUS &&
+        z > b.min.z - RADIUS && z < b.max.z + RADIUS) return true;
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════════════════ 信赖系统
+// ★ 按"每走一步"加信赖（房间只有 2.2 米进深，按时间涨太慢）
+// ★ 跳脸触发后，每步增加量【递减】，避免走几步就跳
+const trust = {
+  v: 0,
+  stepDist: 0,      // 累计走动距离
+  stepLen: 0.70,    // 走 0.7 米算"一步"
+  steps: 0,         // 走了几步
+  triggered: 0,     // 跳脸触发过几次
+  frozen: false,    // ★ 按 N 冻结（不再增长）
+  lastShown: -1,    // ★ 上次写进 DOM 的数值（避免每帧写）
+  lastTxt: '',      // ★ 上次写进 DOM 的文案
+};
+// 第 1 / 2 / 3 / 4+ 轮时，每步增加量的 [最小%, 最大%]
+//   每步 = 0.7 米；房间宽 7.5 米 → 一个来回约 21 步
+const STEP_GAIN = [
+  [2.0, 4.0],     // 第 1 轮（第一次触发前）→ 平均 3% → 约 33 步填满 ≈ 3 个来回
+  [1.0, 1.8],     // 第 2 轮
+  [0.7, 1.3],     // 第 3 轮
+  [0.5, 1.0],     // 第 4 轮起
+];
+
+function stepGain(){
+  const g = STEP_GAIN[Math.min(trust.triggered, STEP_GAIN.length - 1)];
+  return g[0] + Math.random() * (g[1] - g[0]);
+}
+
+const fillEl  = document.getElementById('trustfill');
+const pctEl   = document.getElementById('trustpct');
+const hintEl  = document.getElementById('trusthint');
+const HINTS = [
+  '在宿舍里走动可以慢慢积累信赖…',
+  '信赖增长中 · 据说满了会有事发生',
+  '快满了…',
+];
+function fillTrust(v){ trust.v = Math.min(100, v); }
+
+function updateTrust(dt, movedDist){
+  if (eggActive) return;
+  // ★ 按走过的距离加信赖（冻结时不加）
+  if (movedDist > 0 && !trust.frozen){
+    trust.stepDist += movedDist;
+    while (trust.stepDist >= trust.stepLen){
+      trust.stepDist -= trust.stepLen;
+      trust.steps++;
+      trust.v = Math.min(100, trust.v + stepGain());
+    }
+  }
+  const p = trust.v;
+
+  // ★ 只在【数值真的变了】才写 DOM（每帧写会触发布局+重绘）
+  if (Math.abs(p - trust.lastShown) >= 0.5 || Math.floor(p) !== Math.floor(trust.lastShown)){
+    trust.lastShown = p;
+    fillEl.style.width = p.toFixed(1) + '%';
+    pctEl.textContent = Math.floor(p) + '%';
+  }
+
+  // 提示文案
+  let txt;
+  if (trust.frozen){
+    txt = '信赖已冻结 · 按 N 解冻';
+  } else if (p >= 100){
+    txt = '★ 信赖已满 · 特殊事件即将发生';
+  } else {
+    txt = HINTS[p > 66 ? 2 : (p > 33 ? 1 : 0)];
+    if (trust.triggered > 0) txt += '　（按 N 冻结信赖）';
+  }
+  if (txt !== trust.lastTxt){
+    trust.lastTxt = txt;
+    hintEl.textContent = txt;
+  }
+  hintEl.classList.toggle('full', !trust.frozen && p >= 100);
+
+  if (!trust.frozen && p >= 100 && !eggArmed){
+    eggArmed = true;
+    setTimeout(()=>{ if (trust.v >= 100 && !trust.frozen) triggerEgg(); }, 900);
+  } else if (p < 100){
+    eggArmed = false;
+  }
+}
+let eggArmed = false;
+
+// ═══════════════════════════════════════════════════ 博士：真 3D 巨人
+// ★ 为什么不用全屏 2D 贴图：
+//   2D 贴图没有空间关系，观众只觉得"有张图盖住我了"，不像"有个人在外面"
+//   做成 3D 物体才能获得四个关键线索：
+//     ① 尺度 —— 头 6.5 米 > 房间高 2.2 米
+//     ② 仰视 —— 头中心在 Y=3.2，必须抬头看
+//     ③ 视差 —— 玩家移动时，远处的头移动得慢（自动产生）
+//     ④ 遮挡 —— 房间开口的边缘裁掉它的一部分
+//
+// ★★ 叙事设计（三段式）：
+//     第一次信赖满 → 他从黑暗里现身，然后【永久留在那里看着你】
+//     之后信赖满   → 只伸一只手进来"点"你一下（= 原游戏点干员加信赖的动作）
+//     按 N         → 关掉整个事件（他也消失），再按恢复
+const DOCTOR = {
+  head: null, headMat: null,
+  hand: null, handMat: null,
+  headOp: 0, headTarget: 0,        // 头的透明度
+  handOp: 0, handTarget: 0,        // 手的透明度
+  handZ: 6.5, handZTarget: 6.5,    // 手在 Z 轴的深度（越小越靠近玩家）
+  revealed: false,                 // ★ 是否已经"现身"过（现身后永久留在黑暗里）
+  enabled: true,                   // ★ N 键总开关
+  // 位置：房间外的黑暗里（房间开的那面在 Z = +1.08）
+  headPos: new THREE.Vector3(0.2, 3.2, 4.2),
+  headHeight: 6.5,
+  handStartZ: 6.5,                 // 手从很远的地方伸过来
+  handEndZ: 0.15,                  // 伸到几乎戳到玩家
+};
+
+const headTex = new THREE.TextureLoader().load('assets/doctor_face.webp', t => {
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+});
+const handTex = new THREE.TextureLoader().load('assets/doctor_hand.webp', t => {
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+});
+
+(function buildDoctor(){
+  // ── 头
+  const ar = 1500 / 1125;
+  const h = DOCTOR.headHeight;
+  DOCTOR.headMat = new THREE.MeshBasicMaterial({
+    map: headTex, transparent: true, depthWrite: false, depthTest: true,
+    opacity: 0, fog: false, side: THREE.DoubleSide,
+    // ★ MeshBasicMaterial = 不受光照影响。这是【故意的】：
+    //   把房间的灯关掉时，房间变暗而他不变 → 他从黑暗里"显"出来
+    color: 0xffffff, toneMapped: false,
+  });
+  DOCTOR.head = new THREE.Mesh(new THREE.PlaneGeometry(h * ar, h), DOCTOR.headMat);
+  DOCTOR.head.position.copy(DOCTOR.headPos);
+  DOCTOR.head.renderOrder = 5;
+  DOCTOR.head.visible = false;
+  scene.add(DOCTOR.head);
+
+  // ── 手（从房间外的黑暗里伸进来）
+  DOCTOR.handMat = new THREE.MeshBasicMaterial({
+    map: handTex, transparent: true, depthWrite: false, depthTest: true,
+    opacity: 0, fog: false, side: THREE.DoubleSide,
+    color: 0xffffff, toneMapped: false,
+  });
+  DOCTOR.hand = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), DOCTOR.handMat);
+  DOCTOR.hand.position.set(0.2, 1.1, DOCTOR.handStartZ);
+  DOCTOR.hand.renderOrder = 6;
+  DOCTOR.hand.visible = false;
+  scene.add(DOCTOR.hand);
+
+  console.log('%c★ 博士已就位：头高 ' + h + ' 米（房间才 2.2 米），站在 Z=+' +
+              DOCTOR.headPos.z + '（房间外）', 'color:#5fd8e8');
+})();
+
+/* ★ 把房间的灯调暗（代替黑幕）
+   博士的头/手是 MeshBasicMaterial，不受这个影响 → 房间暗、他亮 */
+const LIGHT_BASE = { amb: 0.85, key: 1.15, fill: 0.45, rim: 0.30, hemi: 1.35 };
+function dimLights(f){
+  amb.intensity  = LIGHT_BASE.amb  * f;
+  key.intensity  = (QUALITY[qualityIdx].fullLights ? LIGHT_BASE.key : 1.30) * f;
+  fill.intensity = LIGHT_BASE.fill * f;
+  rim.intensity  = LIGHT_BASE.rim  * f;
+  hemi.intensity = LIGHT_BASE.hemi * f;
+}
+
+/* 每帧：让头和手始终面向玩家（只绕 Y 轴，保持竖直） */
+function updateDoctorBillboard(){
+  for (const m of [DOCTOR.head, DOCTOR.hand]){
+    if (!m || !m.visible) continue;
+    m.rotation.y = Math.atan2(
+      camera.position.x - m.position.x,
+      camera.position.z - m.position.z
+    );
+  }
+}
+
+/* 每帧：淡入淡出 + 手的前进 */
+function updateDoctorFade(dt){
+  const k = Math.min(1, dt * 3.2);
+
+  DOCTOR.headOp += (DOCTOR.headTarget - DOCTOR.headOp) * k;
+  if (DOCTOR.headMat) DOCTOR.headMat.opacity = DOCTOR.headOp;
+  if (DOCTOR.head) DOCTOR.head.visible = DOCTOR.headOp > 0.004;
+
+  DOCTOR.handOp += (DOCTOR.handTarget - DOCTOR.handOp) * Math.min(1, dt * 4.5);
+  if (DOCTOR.handMat) DOCTOR.handMat.opacity = DOCTOR.handOp;
+  if (DOCTOR.hand){
+    DOCTOR.hand.visible = DOCTOR.handOp > 0.004;
+    // ★ 手往玩家方向前进 —— 3D 里这是天然的透视放大，比手动 scale 真实
+    DOCTOR.handZ += (DOCTOR.handZTarget - DOCTOR.handZ) * Math.min(1, dt * 2.6);
+    DOCTOR.hand.position.z = DOCTOR.handZ;
+    // 手伸近时稍微上抬，做出"戳"的动作
+    const t = 1 - Math.min(1, Math.max(0, (DOCTOR.handZ - DOCTOR.handEndZ) /
+                                           (DOCTOR.handStartZ - DOCTOR.handEndZ)));
+    DOCTOR.hand.position.y = 1.1 + t * t * 0.55;
+  }
+}
+
+/* ★ 关闭 / 开启整个博士事件（N 键）
+   关闭 = 他消失 + 信赖冻结
+   开启 = 若已现过身，他回到黑暗里继续看着 */
+function setDoctorEvent(on, silent){
+  DOCTOR.enabled = on;
+  trust.frozen = !on;
+  if (on){
+    DOCTOR.headTarget = DOCTOR.revealed ? 1 : 0;
+    say(DOCTOR.revealed ? '……他又回到那儿了' : '博士事件：已开启');
+  } else {
+    DOCTOR.headTarget = 0;
+    DOCTOR.handTarget = 0;
+    DOCTOR.handZTarget = DOCTOR.handStartZ;
+    say('博士事件：已关闭 · 信赖已冻结');
+  }
+  try { localStorage.setItem('dorm_doctor_on', on ? '1' : '0'); } catch(e){}
+}
+// ═══════════════════════════════════════════════════ 彩蛋：博士
+// ★ 三段式叙事：
+//     第一次信赖满 → 他从黑暗里【现身】，之后【永久留在那里看着你】
+//     之后信赖满   → 只伸一只手进来"点"你一下
+//     按 N         → 关掉整个事件（他也消失），再按恢复
+//
+//   头位置：Z=+4.2（房间外，开口在 Z=+1.08）   高 6.5 米（房间才 2.2 米高）
+//   手从 Z=+6.5 伸到 Z=+0.15，跨过房间开口那一瞬间最有冲击力
+let eggActive = false, eggT = 0, eggPhase = 0;
+const eggEl   = document.getElementById('egg');
+const darkEl  = document.getElementById('dark');
+const noiseEl = document.getElementById('noise');
+const eggImg  = document.getElementById('eggimg');
+
+// 两种演出模式，按 K 切换：'giant' = 3D 巨人（默认）· 'screen' = 全屏 2D 旧版
+let eggMode = 'giant';
+
+// ── 合成音效（不依赖音频文件）
+let audioCtx = null;
+function getAudio(){
+  if (!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playScare(){
+  const ctx = getAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.85;
+  master.connect(ctx.destination);
+
+  // ① 宽频噪声（"嘶——"）
+  const len = Math.floor(ctx.sampleRate * 1.9);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++){
+    const t = i / len;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.5);
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(2400, now);
+  bp.frequency.exponentialRampToValueAtTime(320, now + 1.5);
+  bp.Q.value = 0.8;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, now);
+  ng.gain.exponentialRampToValueAtTime(0.5, now + 0.01);
+  ng.gain.exponentialRampToValueAtTime(0.0008, now + 1.8);
+  src.connect(bp); bp.connect(ng); ng.connect(master);
+  src.start(now);
+
+  // ② 低频轰鸣（"咚——"）
+  const osc = ctx.createOscillator(); osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(170, now);
+  osc.frequency.exponentialRampToValueAtTime(26, now + 1.3);
+  const og = ctx.createGain();
+  og.gain.setValueAtTime(0.0001, now);
+  og.gain.exponentialRampToValueAtTime(0.42, now + 0.015);
+  og.gain.exponentialRampToValueAtTime(0.0008, now + 1.6);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420;
+  osc.connect(lp); lp.connect(og); og.connect(master);
+  osc.start(now); osc.stop(now + 1.9);
+}
+
+// ── 点击音效（"咔" —— 手指戳到屏幕）
+function playClick(){
+  const ctx = getAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.7;
+  master.connect(ctx.destination);
+
+  // ① 高频"咔"：方波快速下滑
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(2100, now);
+  osc.frequency.exponentialRampToValueAtTime(300, now + 0.055);
+  const g1 = ctx.createGain();
+  g1.gain.setValueAtTime(0.0001, now);
+  g1.gain.exponentialRampToValueAtTime(0.40, now + 0.003);
+  g1.gain.exponentialRampToValueAtTime(0.0008, now + 0.13);
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 1500; bp.Q.value = 0.9;
+  osc.connect(bp); bp.connect(g1); g1.connect(master);
+  osc.start(now); osc.stop(now + 0.15);
+
+  // ② 短噪声：让它听起来"实"（像指甲敲玻璃）
+  const len = Math.floor(ctx.sampleRate * 0.09);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++){
+    const t = i / len;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3);
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2200;
+  const g2 = ctx.createGain(); g2.gain.value = 0.30;
+  src.connect(hp); hp.connect(g2); g2.connect(master);
+  src.start(now + 0.004);
+
+  // ③ 低频"闷响"：加了厚度
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(170, now);
+  osc2.frequency.exponentialRampToValueAtTime(55, now + 0.11);
+  const g3 = ctx.createGain();
+  g3.gain.setValueAtTime(0.0001, now);
+  g3.gain.exponentialRampToValueAtTime(0.34, now + 0.006);
+  g3.gain.exponentialRampToValueAtTime(0.0008, now + 0.20);
+  osc2.connect(g3); g3.connect(master);
+  osc2.start(now); osc2.stop(now + 0.22);
+}
+
+// ── 低频轰鸣（巨人登场专用："咚——"）
+//   比 playScare 温和但更沉，营造"庞大物体在移动"的压迫感
+function playRumble(scale){
+  const ctx = getAudio();
+  if (!ctx) return;
+  const s = scale || 1;
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.8 * s;
+  master.connect(ctx.destination);
+
+  // ① 深层低频：40Hz → 22Hz，很长
+  const osc = ctx.createOscillator(); osc.type = 'sine';
+  osc.frequency.setValueAtTime(44, now);
+  osc.frequency.exponentialRampToValueAtTime(22, now + 2.2);
+  const g1 = ctx.createGain();
+  g1.gain.setValueAtTime(0.0001, now);
+  g1.gain.exponentialRampToValueAtTime(0.52, now + 0.25);
+  g1.gain.exponentialRampToValueAtTime(0.0008, now + 2.6);
+  osc.connect(g1); g1.connect(master);
+  osc.start(now); osc.stop(now + 2.7);
+
+  // ② 次低频：给"体感"（55Hz 的锯齿，过极低通）
+  const osc2 = ctx.createOscillator(); osc2.type = 'sawtooth';
+  osc2.frequency.setValueAtTime(58, now);
+  osc2.frequency.exponentialRampToValueAtTime(31, now + 1.8);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130;
+  const g2 = ctx.createGain();
+  g2.gain.setValueAtTime(0.0001, now);
+  g2.gain.exponentialRampToValueAtTime(0.26, now + 0.3);
+  g2.gain.exponentialRampToValueAtTime(0.0008, now + 2.2);
+  osc2.connect(lp); lp.connect(g2); g2.connect(master);
+  osc2.start(now); osc2.stop(now + 2.3);
+
+  // ③ 一层很轻的噪声：像"气流/衣料摩擦"，让巨人显得有实体
+  const len = Math.floor(ctx.sampleRate * 1.6);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++){
+    const t = i / len;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.2);
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 320; bp.Q.value = 0.5;
+  const g3 = ctx.createGain(); g3.gain.value = 0.10 * s;
+  src.connect(bp); bp.connect(g3); g3.connect(master);
+  src.start(now);
+}
+// ── 触发
+const eggRestore = { yaw: 0, pitch: 0 };     // ★ 记住跳脸【之前】的视角
+let eggPhase2Pulsed = false;                 // "他注意到你了"那一下只放一次
+
+function triggerEgg(){
+  if (eggActive || !DOCTOR.enabled) return;
+  eggActive = true;
+  eggPhase = 0; eggT = 0;
+  eggArmed = false;
+  eggPhase2Pulsed = false;
+  // ★ 存下当前视角，演完要转回来
+  eggRestore.yaw   = player.yaw;
+  eggRestore.pitch = player.pitch;
+  if (document.pointerLockElement) document.exitPointerLock();
+  eggImg.src = 'assets/doctor_face.webp?' + Date.now();
+
+  // ★★ 分两种演出：
+  //   还没现过身 → 【现身演出】（第一次）
+  //   已经现过身 → 【伸手点你】（之后每次）
+  eggVariant = DOCTOR.revealed ? 'poke' : 'reveal';
+  if (eggVariant === 'reveal'){
+    DOCTOR.headOp = 0;
+    DOCTOR.headTarget = 0;
+    DOCTOR.head.visible = false;
+  }
+  DOCTOR.handOp = 0;
+  DOCTOR.handTarget = 0;
+  DOCTOR.handZ = DOCTOR.handStartZ;
+  DOCTOR.handZTarget = DOCTOR.handStartZ;
+
+  hintEl.textContent = '……';
+  hintEl.classList.remove('full');
+  getAudio();
+  console.log('%c★ 博士演出：' + (eggVariant === 'reveal' ? '第一次现身' : '伸手点你'),
+              'color:#5fd8e8');
+}
+let eggVariant = 'reveal';
+
+// ── 每帧推进
+function updateEgg(dt){
+  if (!eggActive) return;
+  eggT += dt;
+  const GIANT = eggMode === 'giant';
+
+  // 阶段 0：死寂 —— 画面压黑
+  if (eggPhase === 0){
+    if (GIANT){
+      // ★ 巨人模式：不盖黑幕（会挡住 3D 的博士），改成【把房间的灯关掉】
+      //   博士是 MeshBasicMaterial 不受光照 → 房间暗下去，他显出来
+      darkEl.classList.remove('on');
+      darkEl.classList.remove('vignette');
+      dimLights(0.10);
+    } else {
+      darkEl.classList.add('on');            // 旧的 2D 模式：全黑幕
+    }
+    // 视角转向"外面"（+Z，yaw = π）
+    const k = Math.min(1, eggT / 0.9);
+    const e = 1 - Math.pow(1 - k, 2.4);
+    player.yaw   += (Math.PI - player.yaw) * e * 0.16;
+    // ★ 巨人模式：视线略微【上抬】—— 他比你高得多，你要抬头看他
+    const targetPitch = GIANT ? 0.30 : 0.02;
+    player.pitch += (targetPitch - player.pitch) * e * 0.14;
+    if (eggT > 0.55){ eggPhase = 1; eggT = 0; }
+  }
+  // 阶段 1：噪点渐入 + 视角猛拉
+  else if (eggPhase === 1){
+    noiseEl.classList.add('on');
+    const k = Math.min(1, eggT / 0.40);
+    const e = k * k;
+    player.yaw   += (Math.PI - player.yaw) * e * 0.55;
+    const targetPitch = GIANT ? (eggVariant === 'reveal' ? 0.34 : 0.16) : 0.06;
+    player.pitch += (targetPitch - player.pitch) * e * 0.5;
+    if (eggT > 0.40){
+      if (GIANT){
+        darkEl.classList.add('vignette');     // 暗角，聚焦视线
+        darkEl.classList.add('on');
+        if (eggVariant === 'reveal'){
+          // ★★★ 第一次：他从黑暗里【现身】+ 电影感低频轰鸣
+          DOCTOR.headTarget = 1;
+          DOCTOR.head.visible = true;
+          playRumble(1.0);
+          if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
+        } else {
+          // ★★★ 之后每次：他已经在外面了，只伸一只手进来
+          DOCTOR.handTarget = 1;
+          DOCTOR.handZTarget = DOCTOR.handEndZ;   // 往玩家方向伸
+          if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+        }
+      } else {
+        // 旧的 2D 跳脸：瞬间贴满屏幕 + 抖动
+        eggEl.classList.add('pop');
+        document.body.classList.add('shake');
+        playScare();
+        if (navigator.vibrate) navigator.vibrate([45, 30, 90, 25, 160]);
+      }
+      eggPhase = 2; eggT = 0;
+    }
+  }
+  // 阶段 2：他在外面看着你 / 手戳过来
+  else if (eggPhase === 2){
+    if (!GIANT && eggT > 0.40 && document.body.classList.contains('shake')){
+      document.body.classList.remove('shake');
+    }
+    if (GIANT){
+      if (eggVariant === 'reveal'){
+        // ★ 他"注意到你"了 —— 再来一次低频轰鸣
+        if (eggT > 0.65 && !eggPhase2Pulsed){
+          eggPhase2Pulsed = true;
+          playRumble(0.7);
+          if (navigator.vibrate) navigator.vibrate([35, 60, 90]);
+        }
+        if (eggT > 2.60){ eggPhase = 3; eggT = 0; }
+      } else {
+        // ★ 手：伸到跟前 → 戳！ → 缩回
+        if (eggT > 1.15 && !eggPhase2Pulsed){
+          eggPhase2Pulsed = true;
+          playClick();                                   // ★ 戳中的"咔"
+          document.body.classList.add('shake');
+          setTimeout(()=>document.body.classList.remove('shake'), 180);
+          if (navigator.vibrate) navigator.vibrate([70, 25, 110]);
+          console.log('%c★ 戳！', 'color:#f0c34a;font-weight:bold');
+        }
+        if (eggT > 2.30){ eggPhase = 3; eggT = 0; }
+      }
+    } else {
+      if (eggT > 2.60){ eggPhase = 3; eggT = 0; }
+    }
+  }
+  // 阶段 3：收场
+  else if (eggPhase === 3){
+    // ★ 在画面还暗着的时候，把视角转回原位 —— 否则玩家会看到"一片黑"
+    if (eggT === 0 || player.yaw !== eggRestore.yaw){
+      player.yaw   = eggRestore.yaw;
+      player.pitch = eggRestore.pitch;
+    }
+    // ★★ 关键：现身演出结束后，头【不淡出】—— 他留在黑暗里看着你
+    if (eggVariant === 'reveal'){
+      DOCTOR.revealed = true;
+      DOCTOR.headTarget = DOCTOR.enabled ? 1 : 0;      // 永久留下
+    } else {
+      DOCTOR.headTarget = DOCTOR.enabled ? 1 : 0;      // 本来就该在
+      DOCTOR.handTarget = 0;                           // 手收回去
+      DOCTOR.handZTarget = DOCTOR.handStartZ;
+    }
+    dimLights(1.0);                          // ★ 把灯调回正常
+    eggEl.classList.remove('pop');
+    document.body.classList.remove('shake');
+    noiseEl.classList.remove('on');
+    darkEl.classList.remove('vignette');
+    if (eggT > 0.7){
+      darkEl.classList.remove('on');
+      darkEl.classList.remove('vignette');
+      eggActive = false;
+      eggPhase2Pulsed = false;
+      dimLights(1.0);
+      trust.v = 0;
+      trust.triggered++;                 // ★ 记一次触发 → 下次每步增加量递减
+      try {
+        localStorage.setItem('dorm_doctor_revealed', DOCTOR.revealed ? '1' : '0');
+      } catch(e){}
+      setTimeout(()=>{
+        if (eggVariant === 'reveal'){
+          say('……刚才是不是有人来过？（按 N 可关掉这个事件）');
+        } else {
+          say('……他戳了你一下。');
+        }
+      }, 600);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════ 主循环
+let last = performance.now();
+let movingFlag = false;
+let movedDist = 0;                 // 本帧实际走过的距离（米）
+
+// ★ 动态分辨率：帧率低就降像素比，高了再升回来（高画质档关闭此功能）
+const perf = {
+  frames: 0, acc: 0, fps: 0, timer: 0,
+  lastAdjust: 0, adjustCount: 0, shown: false, autoEnabled: false,
+  jsMs: 0, jsAcc: 0,          // ★ 每帧自己的 JS 耗时（update + render 调用）
+  idleSkip: 0,                // ★ 因为画面没变而跳过的帧数
+};
+function autoQuality(dt){
+  perf.frames++;
+  perf.timer += dt;
+  if (perf.timer < 0.5) return;
+  perf.fps = perf.frames / perf.timer;
+  perf.frames = 0; perf.timer = 0;
+
+  if (!perf.autoEnabled){ if (perf.shown) updateFpsHud(); return; }
+
+  // 每 1.2 秒最多调一次（避免抖动）
+  perf.lastAdjust += 0.5;
+  if (perf.lastAdjust < 1.2){ if (perf.shown) updateFpsHud(); return; }
+  perf.lastAdjust = 0;
+
+  const FPS_LOW = 48, FPS_HIGH = 58;
+  if (perf.fps < FPS_LOW && pixelRatio > PR_MIN){
+    pixelRatio = Math.max(PR_MIN, pixelRatio - 0.15);
+    renderer.setPixelRatio(pixelRatio);
+    perf.adjustCount++;
+    console.log('%c↓ 帧率 ' + perf.fps.toFixed(0) + ' → 降分辨率到 ' + pixelRatio.toFixed(2),
+                'color:#f0c34a');
+  } else if (perf.fps > FPS_HIGH && pixelRatio < PR_MAX){
+    pixelRatio = Math.min(PR_MAX, pixelRatio + 0.10);
+    renderer.setPixelRatio(pixelRatio);
+    perf.adjustCount++;
+    console.log('%c↑ 帧率 ' + perf.fps.toFixed(0) + ' → 升分辨率到 ' + pixelRatio.toFixed(2),
+                'color:#5fd8e8');
+  }
+  if (perf.shown) updateFpsHud();
+}
+
+function updateFpsHud(){
+  let el = document.getElementById('fps');
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'fps';
+    el.style.cssText = 'position:fixed;left:20px;bottom:18px;z-index:24;' +
+      'font:600 12px/1.65 ui-monospace,Consolas,monospace;color:#5fd8e8;' +
+      'background:rgba(11,17,26,.92);border:1px solid rgba(120,200,220,.22);' +
+      'border-radius:3px;padding:8px 12px;pointer-events:none;max-width:78vw';
+    document.body.appendChild(el);
+  }
+  const info = renderer.info.render;
+  const q = QUALITY[qualityIdx];
+  const fps = perf.fps;
+  const frameMs = fps > 0 ? 1000 / fps : 0;
+  const jsMs = perf.jsMs;
+  const otherMs = Math.max(0, frameMs - jsMs);
+  const col = s => s < 6 ? '#5fd8e8' : (s < 12 ? '#f0c34a' : '#e0574a');
+
+  let warn = '';
+  if (GPU_INFO.software) warn = '<div style="color:#e0574a">⚠ 软件渲染！</div>';
+  else if (GPU_INFO.integrated) warn = '<div style="color:#f0c34a">⚠ 疑似核显</div>';
+
+  el.innerHTML =
+    '<b style="color:#f0c34a">' + q.label + '</b>' +
+    (perf.autoEnabled ? ' <span style="color:#8298ac">(自动)</span>' : '') + '<br>' +
+    '<b>' + fps.toFixed(0) + ' FPS</b>　帧 ' + frameMs.toFixed(1) + 'ms<br>' +
+    'JS ' + '<span style="color:' + col(jsMs) + '">' + jsMs.toFixed(1) + 'ms</span>' +
+    '　其他 ' + otherMs.toFixed(1) + 'ms<br>' +
+    '像素比 ' + pixelRatio.toFixed(2) + '　各向异性 ' + q.aniso + 'x　光源 ' + (q.fullLights ? 4 : 2) + '<br>' +
+    '绘制 ' + info.calls + ' · 三角 ' + info.triangles.toLocaleString() + '<br>' +
+    '<span style="color:#8298ac;font-size:11px">' +
+      'GPU: ' + GPU_INFO.renderer.slice(0, 46) +
+    '</span>' + warn;
+}
+
+function tick(now){
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  if (loaded && !eggActive){
+    // 输入
+    let f = 0, s = 0;
+    if (keys['KeyW'] || keys['ArrowUp'])    f += 1;
+    if (keys['KeyS'] || keys['ArrowDown'])  f -= 1;
+    if (keys['KeyA'] || keys['ArrowLeft'])  s -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) s += 1;
+    if (stick.id !== null){ f -= stick.y; s += stick.x; }
+    const run = keys['ShiftLeft'] || keys['ShiftRight'];
+    // ★ COS 杜林：切换式（按一下蹲下，再按一下站起），不再需要按住
+    const crouching = crouchOn;
+    const speed = crouching ? 0.95 : (run ? 3.1 : 1.75);
+
+    const len = Math.hypot(f, s);
+    if (len > 1){ f /= len; s /= len; }
+    movingFlag = len > 0.08;
+
+    // 方向（yaw=0 朝 -Z）
+    const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
+    const dx = (s * cos - f * sin) * speed * dt;
+    const dz = (-s * sin - f * cos) * speed * dt;
+
+    // 分轴移动 + 碰撞
+    const p = player.pos;
+    const bx = p.x, bz = p.z;
+    if (!hitsAny(p.x + dx, p.z)) p.x += dx;
+    if (!hitsAny(p.x, p.z + dz)) p.z += dz;
+    movedDist = Math.hypot(p.x - bx, p.z - bz);     // ★ 本帧实际走过的距离
+
+    // ★ 高度：蹲下 / 站立平滑过渡
+    HEIGHT.target = crouching ? EYE_CROUCH : HEIGHT.base;
+    HEIGHT.cur += (HEIGHT.target - HEIGHT.cur) * Math.min(1, dt * 11);
+    // 安全网：万一算出 NaN，立刻重置（避免整个画面变黑）
+    if (!Number.isFinite(HEIGHT.cur)) { HEIGHT.cur = HEIGHT.base; }
+    if (!Number.isFinite(HEIGHT.target)) { HEIGHT.target = HEIGHT.base; }
+
+    // 头部起伏（走路感）
+    let bob = (movingFlag && !crouching) ? Math.sin(now * 0.011) * 0.022 * (run ? 1.5 : 1) : 0;
+    if (!Number.isFinite(bob)) bob = 0;
+    camera.position.set(p.x, HEIGHT.cur + bob, p.z);
+  } else if (eggActive){
+    camera.position.set(player.pos.x, HEIGHT.cur, player.pos.z);
+  }
+  // 安全网：任何一步算出非有限值，都拉回出生点
+  if (!Number.isFinite(camera.position.x) || !Number.isFinite(camera.position.y) ||
+      !Number.isFinite(camera.position.z)){
+    console.warn('相机坐标异常，已重置', camera.position.toArray());
+    camera.position.set(player.home.x, HEIGHT.base, player.home.z);
+  }
+  if (!Number.isFinite(player.yaw))   player.yaw = 0;
+  if (!Number.isFinite(player.pitch)) player.pitch = 0;
+
+  updateEgg(dt);
+  updateDoctorFade(dt);
+  updateDoctorBillboard();
+  camera.rotation.y = player.yaw;
+  camera.rotation.x = player.pitch;
+
+  updateTrust(dt, movedDist);
+  movedDist = 0;
+
+  autoQuality(dt);
+
+  // ★ 计时：只量"我们自己的 JS + render 调用"花了多少
+  //   如果这个数很小但帧率低 → 瓶颈在浏览器合成/呈现，不在我们代码
+  const t0 = performance.now();
+  renderer.info.reset();
+  renderer.render(scene, camera);
+  const t1 = performance.now();
+  perf.jsSamples = (perf.jsSamples || 0) + 1;
+  perf.jsAcc += (t1 - t0);
+  if (perf.jsSamples >= 30){          // 滑动平均：保留最近 30 帧
+    perf.jsMs = perf.jsAcc / perf.jsSamples;
+    perf.jsAcc = perf.jsMs * 15;
+    perf.jsSamples = 15;
+  }
+  if (perf.shown && perf.jsSamples % 15 === 0) updateFpsHud();
+
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  updateCameraFov();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
+
