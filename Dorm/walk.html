@@ -781,8 +781,65 @@ function rgbToKelvin(hex){
   return best;
 }
 const TUNE_KEY = 'dorm_light_tune';
+
+/* ★★★ 2026-10-14 【用户调好的光照参数，固化在这里】
+   ─────────────────────────────────────────────────────────────────────────
+   为什么要固化：用户调好的值原来【只存在浏览器的 localStorage】(dorm_light_tune)。
+   换设备（手机）、换浏览器、清缓存 → 读不到 → 退回 ROOM_RIG 里的旧默认值，
+   于是出现"手机端各项数据都重置了"（用户 2026-10-14 反馈）。
+   ⇒ 把他调好的那套当【内置默认值】，localStorage 里的记录仍然优先（他以后还能在
+      L 面板继续调、本机生效），两边合并后手机和电脑的观感就一致了。
+
+   数据来源：用户 2026-10-14 贴的 `Y` 键导出（`tuneExportPayload()` 的 `rooms.*.cur`）。
+   形状 = LIGHT_TUNE[theme]，每通道 { K: 色温, i: 强度 }；特殊通道：
+     · pt    点光。K=0 表示"不动色温"（用光源原本的颜色），i 是强度倍率
+     · emi   自发光材质倍率
+     · bloom K=阈值、i=强度        · tm  K=0 表示色调映射"关"、i 是曝光
+     · base  整体亮度倍率
+   ⚠️ 以后要更新：让用户在调好的那台机器上再按一次 Y，把新的 `cur` 覆盖到这里。 */
+const TUNE_BUILTIN = {
+  clmsRoom: {
+    amb:{K:5800,i:0.40}, key:{K:6600,i:1.35}, fill:{K:5100,i:0.70}, rim:{K:6600,i:0.10},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:28,i:0.20}, tm:{K:0,i:1.05}, base:{K:6500,i:1.00},
+  },
+  closureRoom: {
+    amb:{K:7600,i:2.442}, key:{K:6600,i:0}, fill:{K:6600,i:1.15}, rim:{K:6500,i:1.00},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:0.60}, bloom:{K:80,i:0.42}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  rabbitCinema: {
+    amb:{K:5050,i:1.85}, key:{K:6550,i:2.15}, fill:{K:5900,i:0.68}, rim:{K:5800,i:0.22},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:0.15}, bloom:{K:80,i:0.32}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  classroom: {
+    amb:{K:6100,i:2.15}, key:{K:6600,i:1.90}, fill:{K:5700,i:0.72}, rim:{K:5600,i:0.24},
+    pt:{K:5000,i:0}, emi:{K:6500,i:0.30}, bloom:{K:80,i:0.42}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  messengerCottage: {
+    amb:{K:6000,i:1.30}, key:{K:6600,i:2.05}, fill:{K:5600,i:0.70}, rim:{K:5800,i:0.22},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:0.35}, bloom:{K:80,i:0.27}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  rhodesKitchen: {
+    amb:{K:6000,i:1.50}, key:{K:6600,i:2.00}, fill:{K:5600,i:0.70}, rim:{K:5800,i:0.22},
+    pt:{K:4700,i:0.955}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.42}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  YuKitchen: {
+    amb:{K:7000,i:2.00}, key:{K:7000,i:2.00}, fill:{K:5600,i:0.70}, rim:{K:5800,i:0.22},
+    pt:{K:0,i:0.25}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.27}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  basicRoom: {
+    amb:{K:6600,i:0.30}, key:{K:6600,i:0}, fill:{K:6600,i:0}, rim:{K:6600,i:0},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.20}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+};
+
 let LIGHT_TUNE = {};
 try { LIGHT_TUNE = JSON.parse(localStorage.getItem(TUNE_KEY) || '{}') || {}; } catch(e){ LIGHT_TUNE = {}; }
+/* ★ 合并：内置值当【底】，本机 localStorage 的记录逐通道覆盖它。
+   （逐通道 = Object.assign 一层足够，因为每个通道是 {K,i} 这样一个扁平对象；
+     用户本机只调过某几个通道时，其余通道仍然吃内置值。） */
+for (const _t in TUNE_BUILTIN){
+  LIGHT_TUNE[_t] = Object.assign({}, TUNE_BUILTIN[_t], LIGHT_TUNE[_t] || {});
+}
 const CH = [
   { id:'amb',  label:'环境光' },
   { id:'key',  label:'主光' },
@@ -4655,6 +4712,8 @@ window.__FK = {
       // ★ 2026-10-13 新加的两个开关（都是模块作用域，外部读不到，这里暴露出来给无头脚本断言）
       noclip: (typeof NOCLIP !== 'undefined') ? NOCLIP : null,
       eye: (typeof HEIGHT !== 'undefined') ? HEIGHT.base : null,   // 视线高度（默认应为 1.00）
+      /** 当前房间生效的光照调参（= 内置默认 + 本机 localStorage 合并后的结果） */
+      tune: (typeof LIGHT_TUNE !== 'undefined' && LIGHT_TUNE[THEME]) ? LIGHT_TUNE[THEME] : null,
       furniInfo: (typeof FURNI_INFO_ON !== 'undefined') ? FURNI_INFO_ON : null,
       furniMeshes: (typeof furniMeshes !== 'undefined') ? furniMeshes.length : null,
       setMenuOpen: (() => { const e = document.getElementById('setmenu'); return !!(e && e.classList.contains('on')); })(),
