@@ -1,0 +1,422 @@
+{
+  "camera": {
+    "res": [
+      2048,
+      1536
+    ],
+    "mask_res": [
+      1024,
+      768
+    ],
+    "aspect": 1.3333333333333333
+  },
+  "id_colors": {
+    "cabinet": [
+      255,
+      0,
+      0
+    ],
+    "carpet_01": [
+      0,
+      255,
+      0
+    ],
+    "carpet_02": [
+      255,
+      255,
+      0
+    ],
+    "ceilingLight": [
+      0,
+      0,
+      255
+    ],
+    "chair": [
+      255,
+      0,
+      255
+    ],
+    "collectioncabinet": [
+      0,
+      255,
+      255
+    ],
+    "computerdesk": [
+      70,
+      70,
+      70
+    ],
+    "equipmentdesk": [
+      255,
+      48,
+      48
+    ],
+    "ledchair": [
+      48,
+      255,
+      48
+    ],
+    "officedesk": [
+      255,
+      255,
+      48
+    ],
+    "poster_01": [
+      48,
+      48,
+      255
+    ],
+    "poster_02": [
+      255,
+      48,
+      255
+    ],
+    "poster_03": [
+      48,
+      255,
+      255
+    ],
+    "shelf": [
+      118,
+      118,
+      118
+    ],
+    "stool": [
+      255,
+      96,
+      96
+    ],
+    "table": [
+      96,
+      255,
+      96
+    ],
+    "workbench": [
+      255,
+      255,
+      96
+    ]
+  },
+  "zones": [
+    {
+      "id": "v1",
+      "name": "左区 · 控制台",
+      "desc": "第一控制台 · 电竞椅 · 海报墙",
+      "cam": "CAM_01_左区"
+    },
+    {
+      "id": "v2",
+      "name": "中区 · 办公位",
+      "desc": "办公桌 · 设备桌 · 电竞椅",
+      "cam": "CAM_02_中区"
+    },
+    {
+      "id": "v3",
+      "name": "右区 · 收藏娱乐",
+      "desc": "收藏柜 · 街机柜 · 工作台",
+      "cam": "CAM_03_右区"
+    }
+  ],
+  "views": {
+    "v1": {
+      "cam": [
+        0.3639927804470062,
+        -2.166703701019287,
+        0.9070150852203369
+      ],
+      "rects": {
+        "cabinet": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 100.0,
+          "height": 100.0,
+          "visible_ratio": 0.0
+        },
+        "carpet_01": {
+          "left": 6.54,
+          "top": 72.05,
+          "width": 83.4,
+          "height": 27.95,
+          "visible_ratio": 0.847
+        },
+        "carpet_02": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 100.0,
+          "height": 100.0,
+          "visible_ratio": 0.005
+        },
+        "ceilingLight": {
+          "left": 64.85,
+          "top": 0.0,
+          "width": 35.15,
+          "height": 23.06,
+          "visible_ratio": 0.425
+        },
+        "chair": {
+          "left": 32.54,
+          "top": 39.39,
+          "width": 49.12,
+          "height": 55.0,
+          "visible_ratio": 1.0
+        },
+        "computerdesk": {
+          "left": 10.73,
+          "top": 0.51,
+          "width": 40.89,
+          "height": 80.16,
+          "visible_ratio": 1.0
+        },
+        "equipmentdesk": {
+          "left": 99.13,
+          "top": 3.81,
+          "width": 0.87,
+          "height": 96.19,
+          "visible_ratio": 0.009
+        },
+        "ledchair": {
+          "left": 0.0,
+          "top": 63.11,
+          "width": 18.86,
+          "height": 18.04,
+          "visible_ratio": 0.802
+        },
+        "officedesk": {
+          "left": 47.87,
+          "top": 14.81,
+          "width": 52.13,
+          "height": 80.26,
+          "visible_ratio": 0.705
+        },
+        "poster_01": {
+          "left": 46.75,
+          "top": 34.15,
+          "width": 7.15,
+          "height": 13.88,
+          "visible_ratio": 1.0
+        },
+        "poster_02": {
+          "left": 53.49,
+          "top": 8.3,
+          "width": 12.87,
+          "height": 25.65,
+          "visible_ratio": 1.0
+        },
+        "poster_03": {
+          "left": 50.39,
+          "top": 4.24,
+          "width": 22.01,
+          "height": 22.12,
+          "visible_ratio": 1.0
+        },
+        "stool": {
+          "left": 70.91,
+          "top": 74.91,
+          "width": 28.64,
+          "height": 25.09,
+          "visible_ratio": 0.727
+        },
+        "table": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 100.0,
+          "height": 100.0,
+          "visible_ratio": 0.002
+        }
+      }
+    },
+    "v2": {
+      "cam": [
+        -2.8718552589416504,
+        -1.2346574068069458,
+        1.0907484292984009
+      ],
+      "rects": {
+        "cabinet": {
+          "left": 72.1,
+          "top": 0.0,
+          "width": 27.9,
+          "height": 49.47,
+          "visible_ratio": 0.718
+        },
+        "carpet_01": {
+          "left": 0.0,
+          "top": 58.08,
+          "width": 97.96,
+          "height": 41.92,
+          "visible_ratio": 0.515
+        },
+        "carpet_02": {
+          "left": 81.81,
+          "top": 44.11,
+          "width": 18.19,
+          "height": 7.01,
+          "visible_ratio": 0.491
+        },
+        "ceilingLight": {
+          "left": 24.62,
+          "top": 0.0,
+          "width": 28.71,
+          "height": 5.32,
+          "visible_ratio": 0.105
+        },
+        "chair": {
+          "left": 23.97,
+          "top": 25.22,
+          "width": 50.45,
+          "height": 66.55,
+          "visible_ratio": 1.0
+        },
+        "collectioncabinet": {
+          "left": 69.57,
+          "top": 0.47,
+          "width": 23.14,
+          "height": 51.43,
+          "visible_ratio": 1.0
+        },
+        "computerdesk": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 39.54,
+          "height": 100.0,
+          "visible_ratio": 0.193
+        },
+        "equipmentdesk": {
+          "left": 59.01,
+          "top": 12.98,
+          "width": 40.99,
+          "height": 56.07,
+          "visible_ratio": 0.958
+        },
+        "ledchair": {
+          "left": 0.0,
+          "top": 78.58,
+          "width": 43.34,
+          "height": 21.42,
+          "visible_ratio": 0.067
+        },
+        "officedesk": {
+          "left": 12.13,
+          "top": 2.97,
+          "width": 51.7,
+          "height": 69.04,
+          "visible_ratio": 1.0
+        },
+        "poster_01": {
+          "left": 0.0,
+          "top": 10.18,
+          "width": 7.31,
+          "height": 21.09,
+          "visible_ratio": 0.633
+        },
+        "poster_02": {
+          "left": 6.49,
+          "top": 0.0,
+          "width": 15.19,
+          "height": 12.1,
+          "visible_ratio": 0.351
+        },
+        "poster_03": {
+          "left": 1.59,
+          "top": 0.0,
+          "width": 25.62,
+          "height": 1.96,
+          "visible_ratio": 0.068
+        },
+        "stool": {
+          "left": 69.82,
+          "top": 52.07,
+          "width": 22.52,
+          "height": 22.81,
+          "visible_ratio": 1.0
+        },
+        "table": {
+          "left": 100.85,
+          "top": 35.88,
+          "width": -0.85,
+          "height": 18.94,
+          "visible_ratio": -0.046
+        },
+        "workbench": {
+          "left": 91.96,
+          "top": 10.94,
+          "width": 8.04,
+          "height": 38.86,
+          "visible_ratio": 0.261
+        }
+      }
+    },
+    "v3": {
+      "cam": [
+        0.5033720135688782,
+        -1.7026019096374512,
+        1.5811717510223389
+      ],
+      "rects": {
+        "cabinet": {
+          "left": 15.53,
+          "top": 0.0,
+          "width": 40.85,
+          "height": 84.7,
+          "visible_ratio": 0.845
+        },
+        "carpet_01": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 100.0,
+          "height": 100.0,
+          "visible_ratio": 0.001
+        },
+        "carpet_02": {
+          "left": 37.62,
+          "top": 66.07,
+          "width": 39.31,
+          "height": 18.92,
+          "visible_ratio": 1.0
+        },
+        "chair": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 100.0,
+          "height": 100.0,
+          "visible_ratio": 0.001
+        },
+        "collectioncabinet": {
+          "left": 0.0,
+          "top": 13.4,
+          "width": 31.44,
+          "height": 80.9,
+          "visible_ratio": 0.918
+        },
+        "computerdesk": {
+          "left": 0.0,
+          "top": 0.0,
+          "width": 100.0,
+          "height": 100.0,
+          "visible_ratio": 0.001
+        },
+        "shelf": {
+          "left": 75.27,
+          "top": 45.07,
+          "width": 24.73,
+          "height": 47.0,
+          "visible_ratio": 0.952
+        },
+        "table": {
+          "left": 42.61,
+          "top": 64.48,
+          "width": 23.43,
+          "height": 35.52,
+          "visible_ratio": 0.993
+        },
+        "workbench": {
+          "left": 50.1,
+          "top": 27.44,
+          "width": 29.42,
+          "height": 52.51,
+          "visible_ratio": 1.0
+        }
+      }
+    }
+  }
+}

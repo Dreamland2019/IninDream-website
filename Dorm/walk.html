@@ -1,0 +1,4601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05070b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- ★ 内联 favicon：避免浏览器请求 /favicon.ico 产生 404（控制台报错） -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b111a'/%3E%3Cpath d='M9 22V10l7 6 7-6v12' stroke='%235fd8e8' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<title>宿舍 · 第一人称漫游 | 可露希尔工作室</title>
+<style>
+:root{
+  --bg:#05070b; --panel:rgba(8,13,21,.80); --line:rgba(120,200,220,.22);
+  --txt:#e2ecf4; --dim:#8298ac; --accent:#5fd8e8; --accent2:#e0574a;
+  --trust:#f0c34a;
+  --shadow:0 16px 44px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--txt);
+  font-family:"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;user-select:none}
+canvas{display:block;outline:none}
+
+.hud{position:fixed;z-index:20;pointer-events:none}
+.hud > *{pointer-events:auto}
+
+/* ── 顶栏 ── */
+#topbar{top:0;left:0;right:0;display:flex;align-items:flex-start;gap:14px;padding:14px 20px;
+  pointer-events:none}
+#topbar > *{pointer-events:auto}
+.brand{display:flex;align-items:center;gap:9px;padding-top:4px}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);
+  box-shadow:0 0 10px var(--accent2)}
+.brand h1{font-size:13px;font-weight:600;letter-spacing:.2em}
+.brand h1 em{font-style:normal;color:var(--dim);font-weight:400;font-size:10px;
+  letter-spacing:.14em;margin-left:7px}
+
+/* ★ 右上角按键提示卡
+   ⚠ 这里【绝对不能用 backdrop-filter】！
+   backdrop-filter 要求浏览器每帧回读背后的合成结果再做高斯模糊，
+   而 canvas 每帧都在变 → 每帧一次全屏级别的回读+模糊 → CPU 直接爆炸
+   （实测：CPU 15%→70%，GPU 反而空闲，降画质完全无效）
+   改用不透明背景 + 细边框，视觉几乎一样但零成本 */
+#keyhelp{margin-left:auto;background:rgba(11,17,26,.92);border:1px solid var(--line);
+  border-radius:4px;padding:11px 14px;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;gap:7px;min-width:150px}
+#keyhelp .kh-title{font-size:9.5px;letter-spacing:.22em;color:var(--dim);
+  border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:1px}
+#keyhelp .row{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim)}
+#keyhelp .row .ks{display:flex;gap:3px;min-width:78px}
+#keyhelp kbd{font-family:inherit;font-size:10px;font-weight:600;color:var(--txt);
+  background:linear-gradient(180deg,rgba(120,200,220,.16),rgba(120,200,220,.07));
+  border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;
+  padding:2px 6px;min-width:19px;text-align:center;line-height:1.3}
+#keyhelp .row.new kbd{color:var(--accent);border-color:rgba(95,216,232,.55);
+  background:linear-gradient(180deg,rgba(95,216,232,.24),rgba(95,216,232,.1))}
+#keyhelp .row.new{color:var(--txt)}
+#keyhelp .row.off{opacity:.42;text-decoration:line-through}
+#keyhelp .row.off kbd{text-decoration:none}
+#keyhelp .note{font-size:9.5px;color:var(--accent2);letter-spacing:.06em;
+  border-top:1px solid var(--line);padding-top:6px;margin-top:1px;line-height:1.6}
+
+/* ── 底部：信赖条 ── */
+#bottom{bottom:0;left:0;right:0;padding:0 20px 18px;
+  display:flex;flex-direction:column;gap:10px;align-items:center}
+#trustwrap{width:min(520px,92vw)}
+#trustlabel{display:flex;justify-content:space-between;align-items:baseline;
+  font-size:10.5px;letter-spacing:.14em;color:var(--dim);margin-bottom:6px}
+#trustlabel b{color:var(--trust);font-weight:600;font-size:12px;letter-spacing:.06em}
+#trustbar{height:6px;border-radius:3px;background:rgba(130,152,172,.18);overflow:hidden;
+  border:1px solid rgba(240,195,74,.18);position:relative}
+/* ★ 去掉 width 过渡：JS 每帧写 width，带过渡会导致合成器一直在动画 + 每帧布局 */
+#trustfill{height:100%;width:0%;border-radius:2px;
+  background:linear-gradient(90deg,#8a6a1e,#f0c34a 60%,#ffe9a8);
+  box-shadow:0 0 12px rgba(240,195,74,.55)}
+#trusthint{font-size:10.5px;color:var(--dim);letter-spacing:.1em;margin-top:7px;text-align:center;
+  transition:color .3s}
+#trusthint.full{color:var(--trust);animation:blink 1.4s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.55}50%{opacity:1}}
+
+/* ── 十字准星 ── */
+#cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:15;
+  width:14px;height:14px;pointer-events:none;opacity:.5}
+#cross::before,#cross::after{content:'';position:absolute;background:var(--txt)}
+#cross::before{left:50%;top:0;width:1px;height:100%;transform:translateX(-50%)}
+#cross::after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%)}
+
+/* ── 开始遮罩 ── */
+#start{position:fixed;inset:0;z-index:60;background:radial-gradient(circle at 50% 45%,#101a26,#05070b 70%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  transition:opacity .5s;cursor:pointer}
+#start.done{opacity:0;pointer-events:none}
+#start h2{font-size:20px;font-weight:600;letter-spacing:.3em}
+#start .sub{font-size:11.5px;color:var(--dim);letter-spacing:.16em;line-height:2;text-align:center}
+#start .btn{margin-top:6px;border:1px solid rgba(95,216,232,.5);border-radius:3px;
+  padding:11px 26px;font-size:12.5px;letter-spacing:.18em;color:var(--accent);
+  background:rgba(95,216,232,.09);transition:background .2s,transform .2s}
+#start:hover .btn{background:rgba(95,216,232,.2);transform:scale(1.03)}
+#start .keys{display:flex;gap:20px;margin-top:10px;font-size:11px;color:var(--dim)}
+#start .keys span b{color:var(--txt);font-weight:500;border:1px solid var(--line);
+  border-radius:2px;padding:1px 6px;background:rgba(120,200,220,.08)}
+/* 按钮未就绪时不可点 */
+#start .btn.waiting{opacity:.45;pointer-events:none;
+  border-color:rgba(120,200,220,.25);color:var(--dim);background:transparent}
+
+/* ★ 性能提示 */
+#start #bootError{display:none;max-width:90vw;margin-bottom:14px;padding:10px 14px;
+  font:500 11.5px/1.7 ui-monospace,Consolas,monospace;color:#ffb3a8;
+  background:rgba(224,87,74,.14);border:1px solid rgba(224,87,74,.5);
+  border-radius:3px;word-break:break-all;text-align:left}
+#start .perfnote{margin-top:22px;max-width:420px;text-align:center;
+  border-top:1px solid rgba(120,200,220,.14);padding-top:16px}
+#start .pn-title{font-size:10.5px;letter-spacing:.2em;color:var(--dim);margin-bottom:9px}
+#start .pn-body{font-size:11px;line-height:2;color:var(--dim)}
+#start .pn-body b{color:var(--accent);font-weight:600}
+#start .pn-path{font-size:10px;color:#5c7086}
+#start .pn-path code{color:var(--dim);background:rgba(120,200,220,.08);
+  border-radius:2px;padding:1px 5px;font-size:10px}
+#start .pn-warn{margin-top:12px;font-size:11.5px;line-height:1.8;padding:9px 12px;
+  border-radius:3px;display:none}
+#start .pn-warn.bad{display:block;color:#ffb3a8;background:rgba(224,87,74,.16);
+  border:1px solid rgba(224,87,74,.5)}
+#start .pn-warn.warn{display:block;color:#ffe0a0;background:rgba(240,195,74,.13);
+  border:1px solid rgba(240,195,74,.42)}
+#start .pn-warn code{color:#fff;background:rgba(0,0,0,.3);border-radius:2px;padding:1px 5px}
+
+/* ── 家具信息条（2026-10-13 加 · 用户方案 1：准星对准家具就显示名字 + 官方描述）   ★ 为什么不并进 #prompt：prompt 是单行"E 进入 xxx"（white-space:nowrap），
+     这条是【可换行的多行文本】，样式需求不同；
+   ★ 位置故意错开：prompt 在 bottom:24%，这条更靠下，同时出现也不重叠；
+   ★ 左侧粗边 = 和 prompt 的居中描边框区分开，一眼能看出"这是家具说明"而不是"可交互" */
+#furniInfo{position:fixed;left:50%;bottom:9%;transform:translateX(-50%);
+  z-index:26;max-width:min(760px,90vw);
+  padding:9px 15px;border:1px solid rgba(120,200,220,.22);
+  border-left:3px solid rgba(120,200,220,.62);border-radius:4px;
+  background:rgba(10,15,22,.82);opacity:0;transition:opacity .18s ease;
+  pointer-events:none;text-align:left;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+#furniInfo.on{opacity:1}
+#furniInfo .n{display:block;font-size:13.5px;font-weight:600;letter-spacing:.08em;
+  color:#8fd8ff;margin-bottom:2px}
+#furniInfo .d{display:block;font-size:12.5px;line-height:1.72;color:#cfe0f2;
+  white-space:pre-line;max-height:6em;overflow:hidden}
+
+/* ── 手机端设置菜单（2026-10-13 用户需求）──────────────────────────────────
+   背景：手机端按钮越来越多（摇杆、蹲下、还要加"家具介绍""无视碰撞"开关），
+   用户提议："要不给手机端专门做个『设置』按钮，可以打开菜单调整各种东西，
+   把电脑端的功能都补上，比如调整视觉高度之类的，下蹲留在外面即可。"
+   ⇒ 这一块把电脑端的键盘功能全搬进一个菜单，齿轮按钮只在手机端显示
+     （桌面端有键盘快捷键，不需要多一个按钮占地方）。 */
+#setbtn{display:none}
+#setmenu{position:fixed;inset:0;z-index:47;display:none;
+  align-items:center;justify-content:center;background:rgba(4,8,12,.74)}
+#setmenu.on{display:flex}
+#setmenuCard{width:min(430px,92vw);max-height:86vh;overflow:auto;padding:16px 16px 12px;
+  border:1px solid #4b7fa8;border-radius:8px;background:rgba(9,13,19,.97);
+  font-family:inherit;box-shadow:0 16px 50px rgba(0,0,0,.7)}
+#setmenuHead{font-size:13px;font-weight:600;letter-spacing:.18em;color:#e8f4ff;
+  padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid #2c4a63;
+  display:flex;justify-content:space-between;align-items:baseline}
+#setmenuHead span{font-size:10.5px;letter-spacing:.1em;color:#7d97ae;font-weight:400}
+.setrow{display:flex;align-items:center;gap:8px;padding:9px 2px;
+  border-bottom:1px solid rgba(44,74,99,.5);font-size:12.5px;color:#cfe0f2}
+.setrow .sl{flex:1 1 auto;min-width:0}
+.setrow .sv{flex:0 0 auto;font:11.5px ui-monospace,Consolas,monospace;color:#8fd8ff;
+  min-width:72px;text-align:right}
+.setbtn2{flex:0 0 auto;min-width:44px;padding:7px 10px;cursor:pointer;
+  border:1px solid #33506a;border-radius:4px;background:rgba(20,32,44,.9);color:#cfe0f2;
+  font:12px inherit;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.setbtn2.on{border-color:#5fd8e8;background:rgba(95,216,232,.18);color:#9fe8ff}
+#setmenuFoot{margin-top:12px;display:flex}
+#setmenuClose{flex:1 1 auto;padding:11px;cursor:pointer;border:1px solid #33506a;
+  border-radius:4px;background:transparent;color:#8fa8bf;font:12.5px inherit;
+  touch-action:manipulation}
+
+/* ── 手机摇杆 ── */
+#stick{position:fixed;left:24px;bottom:96px;z-index:25;width:112px;height:112px;
+  border-radius:50%;border:1.5px solid rgba(120,200,220,.28);background:rgba(8,13,21,.42);
+  display:none;touch-action:none}
+#stick.on{display:block}
+#stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
+  border-radius:50%;background:rgba(95,216,232,.32);border:1.5px solid rgba(95,216,232,.7);
+  box-shadow:0 0 18px rgba(95,216,232,.35)}
+
+/* ── 彩蛋：跳脸 ── */
+#egg{position:fixed;inset:0;z-index:44;pointer-events:none;
+  display:none;overflow:hidden;background:#000;}
+#egg.pop{display:flex;align-items:center;justify-content:center}
+/* ★ 对比度/亮度已【烘焙进图片】—— 不用 CSS filter
+   （全屏 CSS filter 每帧都要重新光栅化，跳脸时正好卡） */
+#egg img{width:100%;height:100%;object-fit:cover;object-position:50% 45%}
+
+/* ── 博士的手：暂时移除（等游戏素材）──
+   要恢复的话：
+   ① 把 assets/doctor_hand.webp 放回去
+   ② HTML 里加 <div id="hand"><img src="assets/doctor_hand.webp"></div>
+   ③ 恢复下面的 CSS
+   ④ JS 里恢复 handStep 那段
+#hand{position:fixed;inset:0;z-index:45;pointer-events:none;opacity:0;
+  display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+#hand img{width:min(78vh,62vw);height:auto;display:block;
+  transform:translateY(72%) scale(.62);transform-origin:50% 100%;
+  transition:transform 1.15s cubic-bezier(.25,.75,.35,1)}
+#hand.in{opacity:1}
+#hand.in img{transform:translateY(6%) scale(1.06)}
+#hand.poke img{transform:translateY(-16%) scale(1.62);
+  transition:transform .22s cubic-bezier(.15,.9,.3,1)}
+#hand.cover img{transform:translateY(-6%) scale(3.4);
+  transition:transform .40s cubic-bezier(.5,.05,.75,.4)}
+#hand.out{opacity:0;transition:opacity .22s}
+*/
+
+/* 屏幕抖动（整个页面一起抖） */
+@keyframes shake{
+  0%  {transform:translate(0,0) rotate(0deg)}
+  20% {transform:translate(-9px,7px) rotate(-.45deg)}
+  40% {transform:translate(8px,-6px) rotate(.4deg)}
+  60% {transform:translate(-7px,-8px) rotate(-.35deg)}
+  80% {transform:translate(9px,6px) rotate(.45deg)}
+  100%{transform:translate(0,0) rotate(0deg)}
+}
+body.shake > *{animation:shake .075s infinite !important}
+
+/* 黑幕
+   ★ 注意：3D 模式（巨人）下【不能用这个】—— 它在 canvas 之上，会把 3D 的博士盖住
+   巨人模式改用 dimLights() 把房间的灯调暗：
+     博士的头是 MeshBasicMaterial（不受光照），所以房间暗下去、他不变
+   → 房间自然沉入黑暗，而他从黑暗里"显"出来，比盖黑幕真实得多 */
+#dark{position:fixed;inset:0;z-index:38;background:#000;opacity:0;
+  pointer-events:none;transition:opacity .25s}
+#dark.on{opacity:1}
+/* 轻微的暗角：只压边缘，中间留亮（巨人模式用这个） */
+#dark.vignette{background:radial-gradient(ellipse at 50% 42%,
+  rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 45%, rgba(0,0,0,.88) 100%)}
+#dark.vignette.on{opacity:1}
+
+/* 噪点（★ 用 display 切换，不用 opacity
+   —— feTurbulence 是 SVG 滤镜，留在页面上即使透明也可能被光栅化） */
+#noise{position:fixed;inset:0;z-index:42;pointer-events:none;display:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='120' height='120' filter='url(%23n)' opacity='.5'/></svg>");
+  mix-blend-mode:screen}
+#noise.on{display:block;opacity:.26;animation:noisemove .06s steps(3) infinite}
+@keyframes noisemove{0%{background-position:0 0}50%{background-position:40px 25px}100%{background-position:-30px 18px}}
+
+#say{position:fixed;left:50%;top:76px;transform:translate(-50%,-6px);z-index:50;
+  background:rgba(11,17,26,.94);border:1px solid var(--line);border-radius:3px;
+  padding:7px 14px;font-size:12px;opacity:0;pointer-events:none;
+  transition:opacity .22s,transform .22s}
+#say.on{opacity:1;transform:translate(-50%,0)}
+
+/* ★ 屏幕方向提示（手机端） */
+#rotatehint{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);
+  z-index:55;opacity:0;pointer-events:none;transition:opacity .35s,transform .35s;
+  background:rgba(11,17,26,.95);border:1px solid rgba(95,216,232,.4);
+  border-radius:5px;padding:20px 28px;text-align:center;
+  box-shadow:0 20px 50px rgba(0,0,0,.75)}
+#rotatehint.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#rotatehint .rh-icon{font-size:34px;line-height:1;margin-bottom:12px;
+  display:inline-block}
+#rotatehint.turn .rh-icon{animation:rot 1.6s ease-in-out infinite}
+@keyframes rot{0%,45%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
+#rotatehint .rh-text{font-size:14px;letter-spacing:.2em;color:var(--accent);margin-bottom:7px}
+#rotatehint .rh-sub{font-size:10.5px;letter-spacing:.1em;color:var(--dim);line-height:1.7}
+
+/* ★ 静音按钮（all:unset 必须放最前面，否则会重置后面的 position:fixed）
+   ⚠ 同样不能用 backdrop-filter */
+#mutebtn{all:unset;position:fixed;right:20px;bottom:18px;z-index:24;
+  cursor:pointer;width:32px;height:32px;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  color:var(--dim);background:rgba(11,17,26,.92);border:1px solid var(--line);
+  transition:color .2s,border-color .2s,background .2s}
+#mutebtn:hover{color:var(--txt);border-color:rgba(95,216,232,.5);background:rgba(95,216,232,.1)}
+#mutebtn.on{color:var(--accent);border-color:rgba(95,216,232,.55)}
+#mutebtn.err{color:#5a6a78;opacity:.4}
+
+@media (max-width:760px){
+  #topbar{padding:10px 12px}
+  .brand h1{font-size:11px}.brand h1 em{display:none}
+  #tips{font-size:9.5px}
+  #tips .pc{display:none}
+  #bottom{padding:0 12px 14px}
+  #trustlabel{font-size:9.5px}
+  #cross{opacity:.35}
+}
+
+/* ═══════════════════════════════════════════════════
+   ★ 手机端布局（竖屏为主）
+   要点：
+     ① 键盘提示在手机上【完全没意义】→ 整块隐藏，换成触摸提示
+     ② 所有 UI 缩小，别挡住 3D 画面
+     ③ 加【蹲下按钮】（手机上没键盘）
+     ④ 加【隐藏手势】触发彩蛋（连点标题 5 次）
+   ═══════════════════════════════════════════════════ */
+#touchhelp{display:none}
+#crouchbtn{display:none}
+#hintbar{display:none}
+
+@media (pointer: coarse), (max-width:820px){
+  /* 隐藏键盘提示 */
+  #keyhelp{display:none}
+
+  /* 手机版品牌标识（更小） */
+  #topbar{padding:9px 12px}
+  .brand{gap:6px;padding-top:2px}
+  .brand .dot{width:5px;height:5px}
+  .brand h1{font-size:10px;letter-spacing:.14em}
+  .brand h1 em{display:none}
+
+  /* 触摸操作提示（几秒后淡出） */
+  #touchhelp{display:flex;position:fixed;left:50%;top:52px;transform:translateX(-50%);
+    z-index:23;gap:14px;font-size:10.5px;color:var(--dim);letter-spacing:.08em;
+    background:rgba(11,17,26,.85);border:1px solid var(--line);border-radius:3px;
+    padding:6px 12px;white-space:nowrap;transition:opacity .6s;pointer-events:none}
+  #touchhelp.fade{opacity:0}
+  #touchhelp b{color:var(--accent);font-weight:600}
+
+  /* 摇杆缩小一点，别太占地方 */
+  #stick{width:92px;height:92px;left:18px;bottom:78px}
+  #stick i{width:38px;height:38px;margin:-19px 0 0 -19px}
+
+  /* ★ 家具信息条（手机）：底部两侧被摇杆(左, bottom:78 高 92)和蹲下按钮(右, 高 66)占着，
+     所以抬到它们【上方】；窄屏文字会折成更多行，字号也收一点。
+     ★ 手机上"准星"就是屏幕正中 —— 拖拽转头时它天然指向你正在看的地方，
+       所以方案 1 在手机上是成立的，不用另做一套交互。
+     ★ max-height 用 em（按 font-size 算）而不是"行数"：1 行 = line-height 1.6em。
+       手机竖屏实测调了三轮：4.8em（3 行）截一行、8em（5 行）还差一行……
+       最后是【把信息条放宽】解决的（94vw 而不是 92vw → 每行多几个字 → 少一行就放完）：
+       现在 = 宽 94vw、字号 11px、上限 10em（≈6 行，够放 190 字，实测最长 98 字）。 */
+  #furniInfo{bottom:184px;max-width:94vw;padding:7px 11px}
+  #furniInfo .n{font-size:12px}
+  #furniInfo .d{font-size:11px;line-height:1.6;max-height:10em}
+
+  /* ★ 设置齿轮按钮：放在蹲下按钮【上方】……
+     ⚠️ 2026-10-14：按钮上的图标【不用 emoji】—— 第一版用了 🚪 / ⚙，
+        在无头 Edge 里 🚪 渲染成了一个橙色方块（字体缺失）。
+        真机大概率没事，但不值得赌（用户的机器、别的浏览器都可能缺），
+        所以三个按钮统一改成【纯文字】：蹲下「COS杜林」· 房间「房间」· 设置「设置」。 */
+  #setbtn{display:flex;position:fixed;right:18px;bottom:218px;z-index:27;
+    width:52px;height:52px;border-radius:50%;border:1.5px solid rgba(120,200,220,.35);
+    background:rgba(11,17,26,.72);color:#cfe0f2;font-size:12.5px;line-height:1.2;
+    letter-spacing:.06em;
+    align-items:center;justify-content:center;padding:0;cursor:pointer;
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;font-family:inherit}
+  #setbtn:active{background:rgba(95,216,232,.25);border-color:rgba(95,216,232,.85)}
+
+  /* ★ 房间列表按钮（2026-10-14 用户："切换房间按键也应该搬出来放在边上，
+     这个应该是需要快速访问的"）—— 所以它【不进设置菜单】，跟下蹲一样常驻外面，
+     摆在蹲下和设置之间。 */
+  #roombtn{display:flex;position:fixed;right:18px;bottom:152px;z-index:27;
+    width:56px;height:56px;border-radius:50%;border:1.5px solid rgba(120,200,220,.45);
+    background:rgba(11,17,26,.78);color:#9fe8ff;font-size:13px;line-height:1.2;
+    letter-spacing:.06em;
+    align-items:center;justify-content:center;padding:0;cursor:pointer;font-family:inherit;
+    touch-action:manipulation;-webkit-user-select:none;user-select:none}
+  #roombtn:active{background:rgba(95,216,232,.3);border-color:rgba(95,216,232,.9)}
+
+  /* ⚠️ 静音按钮在手机上【隐藏】—— 它原来在 right:18 bottom:152，
+     正好和上面新加的「房间列表」按钮重叠（用户 2026-10-14 反馈"设置和静音按键重叠"）。
+     静音已经收进设置菜单，不必再占一个位置。 */
+  #mutebtn{display:none}
+
+  /* ★ 蹲下按钮（右下角，摇杆对称位置） */
+  #crouchbtn{display:flex;position:fixed;right:18px;bottom:78px;z-index:26;
+    width:66px;height:66px;border-radius:50%;border:1.5px solid rgba(120,200,220,.35);
+    background:rgba(11,17,26,.6);color:var(--dim);font-size:10.5px;
+    letter-spacing:.04em;line-height:1.25;text-align:center;
+    align-items:center;justify-content:center;flex-direction:column;
+    touch-action:none;user-select:none;-webkit-user-select:none;
+    font-family:inherit;padding:0;cursor:pointer;
+    transition:background .18s,border-color .18s,color .18s,transform .12s}
+  #crouchbtn .cb-ico{font-size:17px;line-height:1;margin-bottom:2px}
+  #crouchbtn.on{background:rgba(95,216,232,.22);border-color:rgba(95,216,232,.8);
+    color:var(--accent);transform:scale(.94)}
+
+  /* 信赖条更紧凑 */
+  #bottom{padding:0 14px 12px;gap:7px}
+  #trustwrap{width:100%}
+  #trustlabel{font-size:9.5px;letter-spacing:.1em;margin-bottom:4px}
+  #trustlabel b{font-size:11px}
+  #trustbar{height:5px}
+  #trusthint{font-size:9.5px;letter-spacing:.06em;margin-top:5px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* 静音按钮挪到蹲下按钮上方，别和它挤 */
+  #mutebtn{right:18px;bottom:152px;width:30px;height:30px;font-size:13px}
+
+  /* 准星淡一点 */
+  #cross{opacity:.28;width:11px;height:11px}
+
+  /* 性能面板在手机上小一点 */
+  #fps{font-size:10px !important;padding:6px 9px !important;left:12px !important;bottom:62px !important}
+}
+</style>
+</head>
+<body>
+
+<div id="cross"></div>
+
+<div class="hud" id="topbar">
+  <div class="brand"><span class="dot"></span><h1 id="brandTitle">CLOSURE ROOM<em>FIRST PERSON</em></h1></div>
+
+  <!-- ★ 右上角按键提示 -->
+  <div id="keyhelp">
+    <div class="kh-title">操作 / CONTROLS</div>
+    <div class="row"><span class="ks"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>移动</span></div>
+    <div class="row new"><span class="ks"><kbd>C</kbd></span><span>COS杜林</span></div>
+    <div class="row"><span class="ks"><kbd>Shift</kbd></span><span>快走</span></div>
+    <div class="row"><span class="ks"><kbd>鼠标</kbd></span><span>转头</span></div>
+    <div class="row new"><span class="ks"><kbd>[</kbd><kbd>]</kbd></span><span>视线高度（可调人物身高）</span></div>
+    <div class="row new"><span class="ks"><kbd>Tab</kbd></span><span>房间列表（任何房间都能按）</span></div>
+    <div class="row"><span class="ks"><kbd>Q</kbd></span><span>画质 高/中/低</span></div>
+    <div class="row new"><span class="ks"><kbd>Shift</kbd>+<kbd>Q</kbd></span><span>帧率上限 1/2屏刷 · 不限 · 1/3屏刷</span></div>
+    <div class="row new"><span class="ks">👁</span><span>准星对准家具 → 看名字和描述</span></div>
+    <div class="row"><span class="ks"><kbd>M</kbd></span><span>静音 / 取消静音</span></div>
+    <div class="row"><span class="ks"><kbd>Esc</kbd></span><span>松开鼠标</span></div>
+    <div class="row"><span class="ks"><kbd>F</kbd></span><span>性能面板</span></div>
+<div class="row"><span class="ks"><kbd>B</kbd></span><span>泛光(开/关)</span></div>
+  </div>
+</div>
+
+<div class="hud" id="bottom">
+  <div id="trustwrap">
+    <div id="trustlabel"><span>信赖</span><b id="trustpct">0%</b></div>
+    <div id="trustbar"><div id="trustfill"></div></div>
+    <div id="trusthint">在宿舍里走动可以慢慢积累信赖…</div>
+  </div>
+</div>
+
+<div id="stick"><i></i></div>
+<!-- ★ 家具信息条（2026-10-13）：准星对准家具时显示名字 + 官方描述，见 updateFurniInfo() -->
+<div id="furniInfo"><b class="n"></b><span class="d"></span></div>
+
+<!-- ★ 手机端：蹲下按钮 + 触摸提示 -->
+<button id="crouchbtn" title="切换蹲下"><span class="cb-ico">🧎</span>COS杜林</button>
+<!-- ★ 手机端常驻按钮（都在右下角竖排，见 media query）：
+       #crouchbtn 蹲下（用户要求留在外面）
+       #roombtn   房间列表（用户 2026-10-14："搬出来放在边上，需要快速访问"）
+       #setbtn    设置（其余功能都收在菜单里）
+     ⚠️ 按钮文字不用 emoji —— 🚪 在无头 Edge 里渲染成了橙色方块，见 CSS 里的注释。 -->
+<button id="roombtn" title="房间列表（Tab）" aria-label="房间列表">房间</button>
+<button id="setbtn" title="设置" aria-label="设置">设置</button>
+<div id="setmenu">
+  <div id="setmenuCard">
+    <div id="setmenuHead">设 置<span>手机端 · 电脑端用键盘快捷键</span></div>
+    <div id="setmenuList"></div>
+    <div id="setmenuFoot"><button id="setmenuClose">关 闭</button></div>
+  </div>
+</div>
+<div id="touchhelp"><span>左下 <b>摇杆</b> 移动</span><span>拖动屏幕 <b>转头</b></span></div>
+
+<div id="dark"></div>
+<div id="noise"></div>
+<div id="egg"><img id="eggimg" src="assets/doctor_face.webp" alt=""></div>
+<div id="say"></div>
+
+<!-- ★ 手机端屏幕方向提示 -->
+<div id="rotatehint">
+  <div class="rh-icon">📱</div>
+  <div class="rh-text">建议竖屏游玩</div>
+  <div class="rh-sub" id="rhsub">单手操作更方便<br>左下角摇杆移动 · 拖动屏幕转头</div>
+</div>
+
+<!-- ★ 背景音乐：生命流 - 塞壬唱片-MSR,BaoUner（原 FLAC 19MB → MP3 5.2MB）
+     preload=metadata：只下载文件头，点「进入」后才开始拉流（避免首屏就下载 5MB） -->
+<audio id="bgm" src="assets/bgm.mp3" loop preload="metadata"></audio>
+<button class="hud" id="mutebtn" title="静音 / 取消静音（M）">♪</button>
+
+<div id="start">
+  <h2>宿舍</h2>
+  <div class="sub">用第一人称走进这间工作室<br>四处看看</div>
+  <div class="btn" id="startbtn">载入中…</div>
+  <div class="keys pc">
+    <span><b>W</b><b>A</b><b>S</b><b>D</b> 移动</span>
+    <span><b>C</b> COS杜林</span>
+    <span><b>Shift</b> 快走</span>
+    <span><b>鼠标</b> 转头</span>
+    <span><b>Esc</b> 退出</span>
+  </div>
+  <!-- ★ 启动错误显示（出错时才会出现） -->
+  <div id="bootError"></div>
+  <!-- ★ 性能提示 -->
+  <div class="perfnote">
+    <div class="pn-title">画面很卡？</div>
+    <div class="pn-body">
+      请检查浏览器是否开启了<b>硬件加速</b><br>
+      <span class="pn-path">Chrome / Edge：设置 → 系统 → 「使用硬件加速(如可用)」</span><br>
+      <span class="pn-path">改完需要重启浏览器 · 可在 <code>chrome://gpu</code> 里确认</span>
+    </div>
+    <div class="pn-warn" id="hwWarn" style="display:none"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+    "three": "./lib/three.module.js",
+    "three/addons/": "./lib/"
+} }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from './lib/GLTFLoader.js';
+// ★ 后处理（Bloom 泛光）：让自发光的面往外洇，逼近游戏里"金碧辉煌"的观感
+import { EffectComposer } from './lib/postprocessing/EffectComposer.js';
+import { RenderPass } from './lib/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from './lib/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from './lib/postprocessing/OutputPass.js';
+// ★★★ 2026-10-13：房间清单改成【单一数据源】—— 加房间只改 rooms/manifest.js
+import { ROOMS } from './rooms/manifest.js';
+// ★★★ 2026-10-13：房间选择面板抽成【共享模块】—— 走廊 hub.html 用的是同一份
+//   （用户需求 2："无论在何地都可以唤起终端页面"）
+//   ★ 起别名是因为本文件里保留了两个同名薄包装函数（openRoomPanel 要做本页特有的
+//     副作用、closeRoomPanel 被 switchRoom / roomKey 到处调用）。
+import { openRoomPanel as showRoomPanel, closeRoomPanel as hideRoomPanel,
+         isRoomPanelOpen, panelKey as sharedPanelKey } from './rooms/panel.js';
+
+// ═══════════════════════════════════════════════════ 全局错误捕获
+// ★ 任何 JS 错误都直接显示在开始页上 —— 否则只会看到"载入中…"卡住，无从排查
+function showFatal(msg, detail){
+  const btn = document.getElementById('startbtn');
+  if (btn){
+    btn.textContent = msg;
+    btn.classList.add('waiting');
+  }
+  const el = document.getElementById('bootError');
+  if (el){
+    el.style.display = 'block';
+    el.textContent = detail || msg;
+  }
+  console.error('[启动错误]', msg, detail || '');
+}
+addEventListener('error', e => {
+  showFatal('启动出错：' + (e.message || '未知'), (e.filename || '') + ':' + (e.lineno || ''));
+});
+addEventListener('unhandledrejection', e => {
+  showFatal('异步出错：' + ((e.reason && e.reason.message) || e.reason || '未知'));
+});
+
+// ═══════════════════════════════════════════════════ 基础
+// ★ 探测 WebGL 到底跑在哪块 GPU 上
+//   —— "GPU 占用 3% 却只有 50 帧" 这种数据，第一嫌疑就是跑核显或软件渲染
+let GPU_INFO = { vendor:'?', renderer:'?', software:false, integrated:false };
+function probeGPU(){
+  try {
+    const gl = renderer.getContext();
+    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+    if (dbg){
+      GPU_INFO.vendor   = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '?';
+      GPU_INFO.renderer = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '?';
+    } else {
+      GPU_INFO.renderer = gl.getParameter(gl.RENDERER) || '?';
+    }
+    const low = String(GPU_INFO.renderer).toLowerCase();
+    GPU_INFO.software = /swiftshader|software|llvmpipe|basic render/.test(low);
+    GPU_INFO.integrated = /intel|uhd|iris|vega|radeon\(tm\) graphics/.test(low) && !GPU_INFO.software;
+    console.log('%c★ WebGL 渲染器：' + GPU_INFO.renderer, 'color:#5fd8e8;font-weight:bold');
+    console.log('  厂商：' + GPU_INFO.vendor);
+    if (GPU_INFO.software)   console.error('%c⚠⚠ 正在用【软件渲染】(SwiftShader)！性能会差 10~50 倍', 'color:#e0574a;font-weight:bold');
+    else if (GPU_INFO.integrated) console.warn('%c⚠ 看起来在用【核显】，独显没被调用', 'color:#f0c34a;font-weight:bold');
+    else console.log('%c✓ 硬件加速正常', 'color:#5fd8e8');
+  } catch(e){ console.warn('GPU 探测失败', e); }
+}
+
+const QUALITY = [
+  { name:'高', label:'高画质', short:'HIGH',
+    pr: () => Math.min(devicePixelRatio || 1, 2.0), aniso: 16, fullLights: true,  auto: false,
+    desc:'像素比 2.0 · 各向异性 16x · 4 光源 · 不自动降质' },
+  { name:'中', label:'中画质', short:'MID',
+    pr: () => Math.min(devicePixelRatio || 1, 1.5), aniso: 4,  fullLights: false, auto: true,
+    desc:'像素比 1.5 · 各向异性 4x · 2 光源 · 自动降质' },
+  { name:'低', label:'低画质', short:'LOW',
+    pr: () => 1.0,                                  aniso: 1,  fullLights: false, auto: true,
+    desc:'像素比 1.0 · 关闭各向异性 · 2 光源 · 自动降质' },
+];
+let qualityIdx = 0;                 // ★ 默认高画质
+let PR_MAX = QUALITY[0].pr();
+let pixelRatio = PR_MAX;
+const PR_MIN = 0.65;
+
+// ★ MSAA 开着（高画质要锐利），主要成本由像素比控制
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance',
+  stencil: false,
+});
+renderer.setPixelRatio(pixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+renderer.shadowMap.enabled = false;
+renderer.info.autoReset = false;
+document.body.insertBefore(renderer.domElement, document.body.firstChild);
+
+// ★ renderer 建好了 → 这时候才能探测 GPU（之前放在前面会 TDZ 报错）
+probeGPU();
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000000);    // 外面是黑的（彩蛋要用）
+scene.fog = new THREE.FogExp2(0x000000, 0.045);
+
+const camera = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, 0.03, 220);
+camera.rotation.order = 'YXZ';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ★★★ 灯光：每个主题一套 rig（2026-10-09 二次重做 —— 修【色温】）
+//
+// 为什么以前"网页总是灰蒙蒙、不如 Blender 鲜艳"—— 是【灯光】，不是材质：
+//
+//   three.js r160 的 renderer._useLegacyLights = false（scaleFactor = 1），
+//   而 Lambert 的 BRDF 是 albedo/π（BRDF_Lambert = RECIPROCAL_PI * diffuseColor），
+//   环境光的 irradiance 就是 ambientLightColor 本身（getAmbientLightIrradiance 不做补偿）。
+//     → AmbientLight 强度 I 的最终贡献 = albedo × I / π
+//   平行光：irradiance = dotNL × color × intensity → 贡献 = albedo × E × cosθ / π
+//
+//   Blender 里：World 环境（radiance L）对朗伯面的贡献 = albedo × L（因为 E = π·L）
+//               Sun 的 energy 就是辐照度 E → 贡献 = albedo × E × cosθ / π
+//   ⇒ 平行光 intensity 直接 = Blender 的 Sun energy；环境光 intensity 必须 = π × L
+//
+// ★★ 但【环境光的颜色】不能三个房间共用！
+//    万能空间的 World 是冷蓝 (0.62,0.70,0.82)，那是给"冷色科技房"配的。
+//    影音室 / 教室是暖色调的，套冷蓝环境光 → 实测 R−B 从游戏参考的 +24.7 掉到 −5.0。
+//    （影音室 .blend 里本来是靠几个【暖色 POINT 灯】撑暖调的，而导出 glTF 时
+//      灯光被 export_lights=False 丢掉了 —— 现在改成导出来，见 export_theme_web_glb.py）
+//
+//    实测靶子（官方预览图）：亮度 161 / 饱和 53 / R−B +25
+// ═══════════════════════════════════════════════════════════════════════════
+const ROOM_RIG = {
+  // 港都会客室：金白装饰艺术 + 海底蓝落地窗 → 暖白环境光 + 白主光（可用 L 面板现场调）
+  clmsRoom: {
+    amb:  [0xfff6e8, 2.00],
+    key:  [0xffffff, 2.10, [ 1.80,  3.20,  2.60]],
+    fill: [0xffe9cf, 0.70, [-2.40,  1.60, -3.20]],
+    rim:  [0xffffff, 0.20, [ 0.00,  1.50, -5.00]],
+    hemi: [0xfff2e0, 0x6a6258, 2.00],
+  },
+  // 可露希尔的万能空间：.blend 色彩管理 = Standard，可以 1:1 抄（已实测与 Blender 重合）
+  closureRoom: {
+    amb:  [0xe4f0ff, Math.PI],                       // π × World L
+    key:  [0xffffff, 1.90, [-3.38,  2.35, -2.84]],   // KeyLight  Sun 1.90  rot(62°,0,-130°)
+    fill: [0xffffff, 1.15, [ 2.35,  1.71, -4.07]],   // FillLight Sun 1.15  rot(70°,0, 150°)
+    rim:  [0xffffff, 0.25, [ 0,     1.50, -5.00]],
+    hemi: [0xe4f0ff, 0x50565e, Math.PI],
+  },
+  // 影音室 / 教室：.blend 色彩管理 = AgX（会去饱和压高光），暖调靠暖色 POINT 灯撑
+  // → 网页没有 AgX，所以环境光直接给暖白，再靠导出的暖点光加分
+  //   实测靶子：影音室 亮度161/饱和53/R-B+25（官方预览）→ 用这两套值打平
+  rabbitCinema: {
+    amb:  [0xfffaf3, 1.75],      // 去黄：暖白 → 近中性白
+    key:  [0xffffff, 2.15, [ 1.80,  3.20,  2.60]],
+    fill: [0xfff6ea, 0.68, [-2.40,  1.60, -3.20]],
+    rim:  [0xfff6e8, 0.22, [ 0,     1.80, -5.00]],
+    hemi: [0xfff5ea, 0x6f6659, 1.80],
+  },
+  //   教室靶子（classroom_2022 官方预览）：亮度 90 / 饱和 145 / R-B +60
+  classroom: {
+    amb:  [0xfff8ee, 2.00],
+    key:  [0xffffff, 1.90, [ 1.60,  3.30,  2.40]],
+    fill: [0xfff2e2, 0.72, [-2.60,  1.70, -3.00]],
+    rim:  [0xfff4e0, 0.24, [ 0,     1.80, -5.00]],
+    hemi: [0xfff4e4, 0x6a6258, 2.08],
+  },
+  // 安洁莉娜的信笺小屋：.blend 色彩管理 = Standard（与 closureRoom 同）
+  //   ★ 待定：用户决定「光影留到 6 个房间全做完再统一调」→ 这里先给一套中性值
+  //   （暖白环境 + 中性主光），正式调色时按 L 面板现场调、按 P 打印参数后固化
+  messengerCottage: {
+    amb:  [0xfff6ec, 2.00],
+    key:  [0xffffff, 2.05, [ 1.80,  3.20,  2.60]],
+    fill: [0xfff0e0, 0.70, [-2.40,  1.60, -3.20]],
+    rim:  [0xfff4e6, 0.22, [ 0.00,  1.60, -5.00]],
+    hemi: [0xfff4e6, 0x6a6258, 2.05],
+  },
+  // 干员才艺展示餐厅：★ 2026-10-11 首次接入
+  //   这个房间的 GLB 里【带 4 盏 POINT 点光】（KHR_lights_punctual，吊灯暖色光晕）
+  //   → 网页调参面板按 5 选「点光」即可调它的强度/色温（参数存 localStorage）
+  //   环境光/主光给中性值（用户决定：6 个房间全做完再统一调光影）
+  rhodesKitchen: {
+    amb:  [0xfff6ec, 2.00],
+    key:  [0xffffff, 2.00, [ 1.80,  3.20,  2.60]],
+    fill: [0xfff0e0, 0.70, [-2.40,  1.60, -3.20]],
+    rim:  [0xfff4e6, 0.22, [ 0.00,  1.60, -5.00]],
+    hemi: [0xfff4e6, 0x6a6258, 2.00],
+  },
+  // 余味居后厨：★ 2026-10-11 首次接入（第 6 个房间，走廊最后一个门位）
+  //   这个房间的 GLB 里【目前没有点光源】—— 它的 2 个发光件
+  //   （ceilingLamp_light_01 / teaCabinet_light_01）在导入时被 USE_REAL_LIGHT=False 跳过了，
+  //   要不要像港都会客室那样补真实光源，等看过效果再定。
+  //   这里先给一套中性值：暖白环境光 + 中性主光（和餐厅同一套，属"先能看"级别）
+  YuKitchen: {
+    amb:  [0xfff6ec, 2.00],
+    key:  [0xffffff, 2.00, [ 1.80,  3.20,  2.60]],
+    fill: [0xfff0e0, 0.70, [-2.40,  1.60, -3.20]],
+    rim:  [0xfff4e6, 0.22, [ 0.00,  1.60, -5.00]],
+    hemi: [0xfff4e6, 0x6a6258, 2.00],
+  },
+  // ★★ 会客室（第 7 间 · 基建功能房）★ 2026-10-11 接入
+  //   ★ 这个房间是 **unlit**：游戏实测房间壳与家具都【不受光】（Torappu/Unlit/*），
+  //     明暗全画在 albedo 贴图里 → GLB 打了 KHR_materials_unlit，网页走 MeshBasicMaterial。
+  //   ⇒ **rig 里的 amb/key/fill/rim 对它【没有任何作用】**（Basic 材质不吃光照），
+  //     留着只是给"万一有非 unlit 材质"兜底 + 别让 L 面板读到 undefined。
+  //   ⇒ 真正管观感的两处：
+  //        ① 灯槽的加色混合（GLB 自带 AdditiveBlending，颜色/透明度来自游戏 _TintColor）
+  //        ② ★ 后处理泛光：按 `B` 开关，`L` 面板按 `7` 调【强度 / 阈值】← 你要调的就是这个
+  basicRoom: {
+    amb:  [0xffffff, 0.30],
+    key:  [0xffffff, 0.00, [ 1.80,  3.20,  2.60]],
+    fill: [0xffffff, 0.00, [-2.40,  1.60, -3.20]],
+    rim:  [0xffffff, 0.00, [ 0.00,  1.60, -5.00]],
+    hemi: [0xffffff, 0x000000, 0.00],
+  },
+  // ★★ 2026-10-12 加：余味居后厨的 **unlit 对照版**
+  //   同一个房间、同一个出生点，只换渲染方式 —— 专门给用户做
+  //   "旧方法（Lambert + rig 打光） vs 游戏真实做法（贴图直出）"的 A/B 对比。
+  //   GLB 由 `export_theme_web_glb.py` 加 `unlit` 参数另存为 YuKitchen_unlit.glb。
+  //   ★ 不动已上线的 YuKitchen.glb（那份是用户调好的），这是**另一份文件**。
+  YuKitchen_unlit: {
+    amb:  [0xffffff, 0.30],
+    key:  [0xffffff, 0.00, [ 1.80,  3.20,  2.60]],
+    fill: [0xffffff, 0.00, [-2.40,  1.60, -3.20]],
+    rim:  [0xffffff, 0.00, [ 0.00,  1.60, -5.00]],
+    hemi: [0xffffff, 0x000000, 0.00],
+  },
+};
+let RIG = ROOM_RIG.closureRoom;        // 默认；知道 ?theme= 之后会覆盖
+
+/* ★★★ 2026-10-11 加：ROOM_RIG 的【原始副本】
+   ─────────────────────────────────────────────────────────────────────────
+   为什么需要：applyRig() 里的这行
+       RIG = ROOM_RIG[name];            // ← 引用，不是拷贝
+       RIG[c.id] = [kelvinToRgb(...), _t[c.id].i, RIG[c.id][2]];
+   会把用户调好的值【原地写进 ROOM_RIG 本身】——
+   也就是说只要你在 L 面板里动过一次，ROOM_RIG[该房间] 就已经不是代码里那个默认值了。
+   → 导出/对照"默认 vs 现在"时必须有一份没被覆盖过的原始值，所以这里先存一份。
+   ★ 注意：这份副本必须在【第一次 applyRig() 调用之前】创建（否则存下来就是被污染的）。 */
+const ROOM_RIG_ORIG = JSON.parse(JSON.stringify(ROOM_RIG));
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★ 现场调色温（2026-10-09 加）
+   用户对照游戏自己调最准 —— 所以给一个页内面板：
+      L              开关面板
+      1 2 3 4        选 环境光 / 主光 / 补光 / 轮廓光
+      Shift+↑ ↓      强度 ±0.05
+      Shift+← →      色温 ∓50K
+      0              复位
+      P              打印当前参数（屏幕 + 控制台，复制那行发回来即可固化）
+    参数存 localStorage，刷新不丢。
+    ★ 2026-10-10 改：原来方向键不带 Shift —— 但方向键曾是第一人称移动键，
+      移动那边读 keys[e.code]，preventDefault 挡不住 → 一边走一边调灯，很别扭。
+    ★ 2026-10-10 再改（用户要求）：**移动只用 WASD，方向键专供灯光**。
+      所以现在不会"按方向键调灯时人也在走"了。
+   ═══════════════════════════════════════════════════════════════════════════ */
+function kelvinToRgb(k){
+  // 色温 → sRGB（Tanner Helland 近似），k 单位 K，2500~12000 有意义
+  const t = Math.max(1000, Math.min(40000, k)) / 100;
+  let r, g, b;
+  if (t <= 66){ r = 255; g = 99.47 * Math.log(t) - 161.12; }
+  else { r = 329.7 * Math.pow(t - 60, -0.1332); g = 288.12 * Math.pow(t - 60, -0.0755); }
+  if (t >= 66) b = 255;
+  else if (t <= 19) b = 0;
+  else b = 138.52 * Math.log(t - 10) - 305.04;
+  const c = x => Math.max(0, Math.min(255, Math.round(x)));
+  return (c(r) << 16) | (c(g) << 8) | c(b);
+}
+const K_TABLE = [];                       // [K, hex] 表，用来反推当前颜色大概是多少 K
+for (let k = 2500; k <= 12000; k += 100) K_TABLE.push([k, kelvinToRgb(k)]);
+function rgbToKelvin(hex){
+  let best = 6500, bd = 1e9;
+  const r0 = (hex >> 16) & 255, g0 = (hex >> 8) & 255, b0 = hex & 255;
+  for (const [k, h] of K_TABLE){
+    const d = Math.abs(((h >> 16) & 255) - r0) + Math.abs(((h >> 8) & 255) - g0) + Math.abs((h & 255) - b0);
+    if (d < bd){ bd = d; best = k; }
+  }
+  return best;
+}
+const TUNE_KEY = 'dorm_light_tune';
+let LIGHT_TUNE = {};
+try { LIGHT_TUNE = JSON.parse(localStorage.getItem(TUNE_KEY) || '{}') || {}; } catch(e){ LIGHT_TUNE = {}; }
+const CH = [
+  { id:'amb',  label:'环境光' },
+  { id:'key',  label:'主光' },
+  { id:'fill', label:'补光' },
+  { id:'rim',  label:'轮廓光' },
+  // ★ 2026-10-11 新增：GLB 里的【点光】（KHR_lights_punctual，餐厅的吊灯光晕）
+  //    key '5' 选中；强度/色温均可调，参数按主题存 localStorage
+  { id:'pt',   label:'点光', isPoint:true },
+  // ★ 2026-10-11 新增：自发光材质强度（发光面本身）
+  //    key '6' 选中。★ 为什么需要它：泛光是【全局后处理】，没法按来源分别设参数；
+  //    但泛光强度由【亮度】驱动，所以把两个亮度源分开调，就等于分开调泛光：
+  //      · 自发光材质（emissiveIntensity）→ 面自己亮 → 泛光
+  //      · 点光源（intensity）→ 它只是照亮周围，本身不产生泛光
+  //    这样"港都会客室想要更多自发光泛光"这类需求就能单独满足。
+  { id:'emi',  label:'自发光', isEmissive:true },
+  // ★★ 2026-10-11 新增：泛光（Bloom）通道 —— 按 7 选中
+  //    为什么需要（用户实测反馈）：加了点光源后房间大面积超过阈值(0.80)，
+  //    泛光变成"全有或全无"：调低一点全掉到阈值下（泛光整体消失），
+  //    调高一点全在阈值之上且已饱和（都纯白了，看着没变化）—— 没有"淡一点"的中间态。
+  //    → 必须能现场提 threshold（只让真正亮的洇）+ 降 strength。
+  //    存法：K = 阈值×100（0~100 的整数，显示时 ÷100），i = 强度（0~2）
+  { id:'bloom', label:'泛光', isBloom:true },
+  // ★★ 2026-10-11 新增：色调映射（Tone Mapping）通道 —— 按 8 选中
+  //    为什么需要：现在 renderer.toneMapping = NoToneMapping，亮度 >1.0 被【直接截断成纯白】，
+  //    这正是"泛光一旦过阈值就饱和、怎么调都没有中间态"的根本原因。
+  //    换成 ACES 之类的曲线后，高光是【被压缩】而不是砍断 → 泛光自然有渐变、画面有层次。
+  //    存法：K = 模式下标（0 = 关，默认），i = 曝光（renderer.toneMappingExposure）
+  { id:'tm', label:'色调映射', isTM:true },
+  // ★★ 2026-10-12 新增：**整体亮度**（unlit 房间专用）—— 按 9 选中
+  //    为什么需要（用户实测）：unlit 是【贴图直出】，而 rig 版是【贴图 × 光照 ≈ 1.5~2.5】。
+  //    实测两版的数据（UV / 贴图 / 图集 / 材质）**完全相同**，唯一差别就是"打不打光"，
+  //    所以 unlit 看着"灰暗"、rig 看着"正常" —— 差的就是这个整体亮度。
+  //    这是一个【无方向】的纯提亮（不像 rig 有明暗方向），保持 unlit 的干净，又能补回亮度。
+  //    ★ 只作用于 unlit 房间的材质；rig 房间用 1~4 通道调。
+  { id:'base', label:'整体亮度', isUnlitBase:true },
+];
+
+/* ★ 色调映射模式表（three r160 内置的几种）
+   注：后处理管线的 OutputPass 会读 renderer.toneMapping 自动重建 shader defines，
+   所以只要改 renderer.toneMapping / toneMappingExposure 就够了，不用手动动管线。 */
+const TM_MODES = [
+  ['关（直出）',   THREE.NoToneMapping],
+  ['ACES 近似',    THREE.ACESFilmicToneMapping],   // 电影感，高光压得最自然
+  ['Reinhard',     THREE.ReinhardToneMapping],     // 更平，暗部抬得多
+  ['AgX',          THREE.AgXToneMapping],          // 最"胶片"，会去一点饱和
+  ['Cineon',       THREE.CineonToneMapping],
+  ['Linear',       THREE.LinearToneMapping],       // 只做线性压缩，最接近原观感
+];
+/* GLB 里导出的点光（每次加载房间时重建） */
+let POINT_LIGHTS = [];
+/* 找出场景里所有点光（GLTFLoader 会把 KHR_lights_punctual 建成 PointLight） */
+function collectPointLights(){
+  POINT_LIGHTS = [];
+  scene.traverse(o => { if (o.isPointLight) POINT_LIGHTS.push(o); });
+  if (POINT_LIGHTS.length){
+    console.log('%c★ 点光：场景里有 ' + POINT_LIGHTS.length + ' 个（键 5 选中，Shift+↑↓ 强度 / Shift+←→ 色温）',
+      'color:#ffd28a');
+  }
+  return POINT_LIGHTS;
+}
+/* 点光的默认值（用于首次创建调参记录 / 复位）
+   ★★ 2026-10-11 语义变更：pt 从【强度绝对值】改成【强度倍率】
+   —— 旧语义是"把每盏灯的 color/intensity 直接设成这个数"，
+      在 GLB 里还没有点光的年代没问题；但一旦 GLB 带上了点光，
+      它就会把每盏灯辛苦调好的颜色和强度【统一覆盖】掉（8 盏全变成同一个值）。
+   新语义：
+     i = 强度倍率（1.00 = 完全按 GLB 原样；2.00 = 全部亮一倍）
+     K = 统一色温（0 = 不统一，各盏保留 GLB 自己的颜色 —— 比如水池那盏是冷蓝） */
+function pointLightDefaults(){ return { K: 0, i: 1.0 }; }
+/* ★ 场景里的自发光材质（每次加载房间时收集）
+   —— 这是"泛光"的另一半来源：发光面自己亮 → 超过 Bloom 阈值 → 洇光 */
+let EMISSIVE_MATS = [];
+function collectEmissiveMats(){
+  EMISSIVE_MATS = [];
+  scene.traverse(o => {
+    if (!o.isMesh) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms){
+      if (!m || !m.emissive) continue;
+      // 无色 + 无 emissiveMap = 实际上不发光，跳过
+      const tint = m.emissive.r + m.emissive.g + m.emissive.b;
+      if (tint <= 0.001 && !m.emissiveMap) continue;
+      if (EMISSIVE_MATS.indexOf(m) < 0) EMISSIVE_MATS.push(m);
+      // 第一次遇到就记下原始强度（倍率以它为基准，重复 apply 不会叠加）
+      if (m.userData.__emiBase == null){
+        m.userData.__emiBase = (m.emissiveIntensity != null ? m.emissiveIntensity : 1);
+      }
+    }
+  });
+  if (EMISSIVE_MATS.length){
+    console.log('%c★ 自发光材质：场景里有 ' + EMISSIVE_MATS.length +
+      ' 个（键 6 选中，Shift+↑↓ 改强度倍率）', 'color:#ffd28a');
+  }
+  return EMISSIVE_MATS;
+}
+/* 自发光通道默认值（只调强度倍率，不动色温；K 仅占位） */
+function emissiveDefaults(){ return { K: 6500, i: 1.0 }; }
+
+/* ★★ 2026-10-12：泛光默认值 —— unlit 房间与旧 rig 房间【不是同一套】。
+   IS_UNLIT 在文件后部才初始化（TDZ），而这个函数可能在那之前被 tuneOf() 调到
+   → 必须 try/catch 兜住（本项目已踩过两次 TDZ 的坑）。 */
+function bloomDefaults(){
+  let unlit = false;
+  try { unlit = IS_UNLIT; } catch (e) {}
+  return unlit ? { strength: UNLIT_BLOOM.strength, threshold: UNLIT_BLOOM.threshold }
+               : { strength: 0.42, threshold: 0.80 };
+}
+
+/* ★★ 2026-10-12：unlit 房间的"自发光" —— Basic 材质【没有 emissive】。
+   导出器写在 glTF `emissive` 上的"发光"到 MeshBasicMaterial 就丢了（贴图还在，灯还看得见，
+   只是不再额外发亮）。所以通道 6「自发光」对 unlit 房间改成调【发光件的 color 倍率】：
+      倍率 1.0 = 贴图原样； 1.5~3.0 = 只有发光件越过 Bloom 阈值 → 灯往外洇光、壁纸不洇。
+   材质在 toLambert() 里识别（名字含 _emit / glow / furni3）并 push 进来。 */
+let UNLIT_MATS = [];                 // 所有 unlit 材质（发光件 + 普通件）
+function collectUnlitMats(){
+  if (UNLIT_MATS.length){
+    const kinds = {};
+    for (const m of UNLIT_MATS){
+      const k = (m.name || '').replace(/^UNLIT_WEB_/, '').replace(/_\d+(_\d+)*$/, '');
+      kinds[k] = (kinds[k] || 0) + 1;
+    }
+    console.log('%c★ unlit 材质：%d 个 · 整体亮度 ×%s ｜ 发光件另加提亮曲线 pow(rgb, %s)（键 9 调整体 / 键 6 调发光件）',
+      'color:#ffd28a', UNLIT_MATS.length, UNLIT_BASE_GAIN.toFixed(2), UNLIT_GLOW_GAMMA.toFixed(2));
+    console.log('   材质构成:', JSON.stringify(kinds));
+  }
+  return UNLIT_MATS;
+}
+function collectUnlitGlow(){ return collectUnlitMats(); }   // 兼容旧调用名
+/* ★ 统一出口：最终颜色 = 原始色 × (发光件自身增益) × (整体亮度)
+   —— 普通件自身增益 = 1.0，所以只吃整体亮度；发光件两者都吃。 */
+function applyUnlitGain(baseMult, glowMult){
+  const bm = (baseMult != null ? baseMult : 1);
+  const gm = (glowMult != null ? glowMult : 1);
+  for (const m of UNLIT_MATS){
+    const base = m.userData.__baseColor;
+    if (!base) continue;
+    const own = (m.userData.__gain0 != null ? m.userData.__gain0 : 1);
+    const g = own * bm * (m.userData.fk_glow ? gm : 1);
+    m.color.copy(base).multiplyScalar(g);
+    m.needsUpdate = true;
+  }
+}
+/* 兼容旧名（发光件单独调用的入口） */
+function applyGlowGain(mult){ applyUnlitGain(1, mult); }
+
+/* 把倍率应用到所有自发光材质 */
+function applyEmissive(mult){
+  for (const m of EMISSIVE_MATS){
+    const base = (m.userData.__emiBase != null ? m.userData.__emiBase : 1);
+    m.emissiveIntensity = base * mult;
+    m.needsUpdate = true;
+  }
+}
+let tuneTheme = '', tuneCh = 0, tuneShown = false;
+
+function tuneOf(theme){
+  const base = ROOM_RIG[theme] || ROOM_RIG.closureRoom;
+  if (!LIGHT_TUNE[theme]){
+    const t = {};
+    for (const c of CH){
+      if (c.isTM){
+        t[c.id] = { K: 0, i: 1.00 };         // 0 = 关（保持现在的直出观感），曝光 1.00
+      } else if (c.isBloom){
+        // ★ 2026-10-12：unlit 房间用新默认（0.22 / 0.80），旧 rig 房间仍是 0.42 / 0.80
+        const _bd = bloomDefaults();
+        t[c.id] = { K: Math.round(_bd.threshold * 100), i: _bd.strength };
+      } else if (c.isUnlitBase){
+        // ★ unlit 房间的整体亮度（2026-10-12 加）：默认 UNLIT_BASE_GAIN
+        t[c.id] = { K: 6500, i: UNLIT_BASE_GAIN };
+      } else if (c.isPoint){
+        const d = pointLightDefaults();
+        t[c.id] = { K: d.K, i: d.i };
+      } else if (c.isEmissive){
+        const d = emissiveDefaults();
+        t[c.id] = { K: d.K, i: d.i };
+      } else {
+        t[c.id] = { K: rgbToKelvin(base[c.id][0]), i: base[c.id][1] };
+      }
+    }
+    LIGHT_TUNE[theme] = t;
+  }
+  // ★ 兼容旧存档：旧格式没有 pt / emi 这两项 → 补上
+  // ★★ 2026-10-11：pt 语义从【强度绝对值】改成【强度倍率】(v:2)。迁移规则要精准：
+  //    · i 原样保留当倍率 —— GLB 里点光的原值通常就在 1.0 附近，
+  //      所以"绝对值 0.95"当倍率用几乎等价（实测餐厅 GLB 原值 0.9549）
+  //    · K：{3000K, 1.00} 正是【当初房间还没导出点光时 pointLightDefaults() 的兜底值】，
+  //      那种房间用户根本无从调起 → 重置为 0（保持各盏原色，比如水池那盏冷蓝）。
+  //      其它 K 说明用户真调过（如餐厅 4700K、教室 5000K）→ 原样保留。
+  const _pt = LIGHT_TUNE[theme].pt;
+  if (!_pt || _pt.v !== 2){
+    const isFallback = !!_pt && (Math.round(_pt.K) === 3000) && (Math.abs(_pt.i - 1.0) < 1e-6);
+    LIGHT_TUNE[theme].pt = {
+      K: (!_pt || isFallback) ? 0 : _pt.K,
+      i: _pt ? _pt.i : 1.0,
+      v: 2,
+    };
+    if (typeof saveTune === 'function') saveTune();   // 写回，免得走廊导出的还是旧格式
+  }
+  if (!LIGHT_TUNE[theme].emi){
+    const d = emissiveDefaults();
+    LIGHT_TUNE[theme].emi = { K: d.K, i: d.i };
+  }
+  // ★ 泛光参数（旧存档没有 → 补默认）
+  // ★ 2026-10-12：默认值改成按房间类型取 —— unlit 房间 0.22/0.80，旧 rig 房间 0.42/0.80
+  if (!LIGHT_TUNE[theme].bloom){
+    const _bd = bloomDefaults();
+    LIGHT_TUNE[theme].bloom = { K: Math.round(_bd.threshold * 100), i: _bd.strength };
+  }
+  // ★ 色调映射（旧存档没有 → 默认"关"，保持原有观感不变）
+  if (!LIGHT_TUNE[theme].tm){
+    LIGHT_TUNE[theme].tm = { K: 0, i: 1.00 };
+  }
+  // ★★ 整体亮度（2026-10-12 加）：旧存档没有 → 补成默认值（unlit 房间会立刻变亮）
+  if (!LIGHT_TUNE[theme].base){
+    LIGHT_TUNE[theme].base = { K: 6500, i: UNLIT_BASE_GAIN };
+  }
+  return LIGHT_TUNE[theme];
+}
+function saveTune(){ try { localStorage.setItem(TUNE_KEY, JSON.stringify(LIGHT_TUNE)); } catch(e){} }
+function tuneLine(theme){
+  const t = tuneOf(theme);
+  return CH.map(c => {
+    const v = t[c.id];
+    if (c.isTM)       return c.id + ' ' +
+        (TM_MODES[Math.max(0, Math.min(TM_MODES.length - 1, Math.round(v.K)))][0]) +
+        ' 曝光' + v.i.toFixed(2);
+    if (c.isBloom)    return c.id + ' 强度' + v.i.toFixed(2) + ' 阈值' + (v.K / 100).toFixed(2);
+    if (c.isEmissive) return c.id + ' 倍率' + v.i.toFixed(2);
+    if (c.isUnlitBase) return c.id + ' ×' + v.i.toFixed(2);
+    if (c.isPoint)    return c.id + ' ' + (v.K > 0 ? (Math.round(v.K) + 'K') : '原色') + ' 倍率' + v.i.toFixed(2);
+    return c.id + ' ' + Math.round(v.K) + 'K ' + v.i.toFixed(2);
+  }).join(' | ');
+}
+function showTunePanel(){
+  let el = document.getElementById('tunePanel');
+  if (!el){
+    el = document.createElement('div'); el.id = 'tunePanel';
+    el.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:45;min-width:340px;' +
+      'padding:10px 14px;border:1px solid #46617e;border-radius:4px;background:rgba(12,17,24,.92);' +
+      'color:#c6d8ea;font:12px/1.7 ui-monospace,Consolas,monospace;white-space:pre;pointer-events:none';
+    document.body.appendChild(el);
+  }
+  el.style.display = tuneShown ? 'block' : 'none';
+  if (!tuneShown) return;
+  const t = tuneOf(tuneTheme);
+  let out = '★ 灯光调试（L 关 / P 打印）\n';
+  for (let i = 0; i < CH.length; i++){
+    const c = CH[i], v = t[c.id];
+    const n = c.isPoint ? (' ×' + POINT_LIGHTS.length)
+            : (c.isEmissive ? (' ×' + (EMISSIVE_MATS.length ||
+                (UNLIT_MATS.filter(m => m.userData && m.userData.fk_glow).length))) : '');
+    const n2 = c.isUnlitBase ? (' ×' + UNLIT_MATS.length) : '';
+    if (c.isUnlitBase){
+      // ★ unlit 房间的"整体亮度"（无方向提亮）：1.0 = 完全按贴图
+      out += (i === tuneCh ? '▶ ' : '  ') + c.label + n2 +
+             '  ×' + v.i.toFixed(2) +
+             (Math.abs(v.i - 1.0) < 1e-6 ? '  ← 完全按贴图' : '') + '\n';
+    } else if (c.isEmissive){
+      // 自发光只调强度倍率，色温对它没意义
+      out += (i === tuneCh ? '▶ ' : '  ') + c.label + n + '  强度倍率 ' + v.i.toFixed(2) + '×\n';
+    } else if (c.isPoint){
+      // ★ 点光（2026-10-11 改语义）：K = 统一色温（0 = 保持各盏原色），i = 强度倍率
+      out += (i === tuneCh ? '▶ ' : '  ') + c.label + n + '  ' +
+             (v.K > 0 ? (Math.round(v.K) + 'K') : '原色') +
+             '  强度倍率 ' + v.i.toFixed(2) + '×\n';
+    } else if (c.isBloom){
+      // ★ 泛光（2026-10-11 加）：强度 + 阈值。阈值越高 → 只有越亮的像素才洇光
+      out += (i === tuneCh ? '▶ ' : '  ') + c.label + '  强度 ' + v.i.toFixed(2) +
+             '  阈值 ' + (v.K / 100).toFixed(2) +
+             (v.K >= 98 ? '  ← 只让最亮的洇' : '') + '\n';
+    } else if (c.isTM){
+      // ★ 色调映射（2026-10-11 加）：Shift+←→ 换模式，Shift+↑↓ 调曝光
+      const mi = Math.max(0, Math.min(TM_MODES.length - 1, Math.round(v.K)));
+      out += (i === tuneCh ? '▶ ' : '  ') + c.label + '  ' + TM_MODES[mi][0] +
+             (mi === 0 ? '' : ('  曝光 ' + v.i.toFixed(2))) + '\n';
+    } else {
+      out += (i === tuneCh ? '▶ ' : '  ') + c.label + n + '  ' + Math.round(v.K) + 'K  强度 ' +
+             v.i.toFixed(2) + '\n';
+    }
+  }
+  out += '\n1-9 选通道   Shift+↑↓ 强度/曝光   Shift+←→ 色温/阈值/模式   0 复位';
+  out += '\n★ Y 导出全部房间参数（复制给 AI 固化）';
+  if (CH[tuneCh] && CH[tuneCh].isPoint && !POINT_LIGHTS.length){
+    out += '\n⚠ 本房间 GLB 里没有点光（目前只有餐厅导了）';
+  }
+  if (CH[tuneCh] && CH[tuneCh].isEmissive && !EMISSIVE_MATS.length){
+    out += '\n⚠ 本房间没有自发光材质';
+  }
+  el.textContent = out;
+}
+function tuneApply(){
+  applyRig(tuneTheme);
+  showTunePanel();
+}
+function tuneKey(e){
+  const k = e.key, kl = (k || '').length === 1 ? k.toLowerCase() : k;
+  if (kl === 'l'){
+    tuneShown = !tuneShown; showTunePanel(); return true;
+  }
+  // ★ 一键导出【所有房间】的参数（面板开不开都能按；再按一次 Y 收起浮层）
+  //    ⚠️ 不能用 E —— E 已经是"回走廊"（见下面 keydown 里的 e.code === 'KeyE'）
+  if (kl === 'y'){
+    const b = document.getElementById('tuneExport');
+    if (b && b.style.display !== 'none'){ b.style.display = 'none'; return true; }
+    exportAllTune(); return true;
+  }
+  // ★ 8 = 快速开关色调映射（面板【关着】也能按，和 B 开关泛光一样方便）
+  //   面板打开时 8 的含义是"选中色调映射通道"，两者不冲突。
+  if (kl === '8' && !tuneShown){
+    const tt = tuneOf(tuneTheme).tm;
+    tt.K = (Math.round(tt.K) === 0) ? 1 : 0;          // 关 ⇄ ACES 近似
+    saveTune(); applyRig(tuneTheme);
+    const mi = Math.max(0, Math.min(TM_MODES.length - 1, Math.round(tt.K)));
+    say('色调映射：' + TM_MODES[mi][0] + (mi === 0 ? '' : '（按 L→8 可换其它曲线/调曝光）'));
+    return true;
+  }
+  if (!tuneShown) return false;
+  const t = tuneOf(tuneTheme);
+  const ch = CH[tuneCh], c = ch.id;
+  const isEmi = !!ch.isEmissive, isBloom = !!ch.isBloom, isPt = !!ch.isPoint, isTM = !!ch.isTM;
+  // ★ 2026-10-10：方向键必须带 Shift —— 否则和第一人称移动（WASD/方向键）打架。
+  //   原来 ↑↓←→ 直接调灯光，但移动那边读的是 keys[e.code]，preventDefault 挡不住 → 边走边调，很别扭。
+  if (kl >= '1' && kl <= '9'){ tuneCh = parseInt(kl, 10) - 1; }   // 7=泛光 8=色调映射 9=整体亮度（unlit）
+  else if (e.shiftKey && k === 'ArrowUp'){
+    // ★ 各通道的强度上限不同：自发光/整体亮度 3× / 色调映射曝光 3 / 泛光 2.0 / 点光(倍率) 8× / 其它 6
+    const cap = (isEmi || ch.isUnlitBase) ? 3.0 : (isTM ? 3.0 : (isBloom ? 2.0 : (isPt ? 8.0 : 6)));
+    t[c].i = Math.min(cap, t[c].i + 0.05);
+  }
+  else if (e.shiftKey && k === 'ArrowDown'){ t[c].i = Math.max(isTM ? 0.10 : 0, t[c].i - 0.05); }
+  // 色温只对"有颜色"的通道有意义（自发光跳过；泛光的 K 是阈值、色调映射的 K 是模式下标）
+  else if (e.shiftKey && k === 'ArrowLeft'){
+    if (isEmi) return true;
+    if (isTM)         t[c].K = Math.max(0, t[c].K - 1);                    // 上一个模式
+    else if (isBloom) t[c].K = Math.max(0, t[c].K - 2);                    // 阈值 0.02 一档
+    else              t[c].K = Math.max(isPt ? 0 : 2000, t[c].K - 50);     // 点光可降到 0 = 保持各盏原色
+  }
+  else if (e.shiftKey && k === 'ArrowRight'){
+    if (isEmi) return true;
+    if (isTM)         t[c].K = Math.min(TM_MODES.length - 1, t[c].K + 1);  // 下一个模式
+    else if (isBloom) t[c].K = Math.min(100, t[c].K + 2);
+    else              t[c].K = Math.min(12000, t[c].K + 50);
+  }
+  else if (k === '0'){
+    delete LIGHT_TUNE[tuneTheme]; saveTune(); tuneApply();
+    say('灯光已复位'); return true;
+  }
+  else if (kl === 'p'){
+    const line = tuneTheme + ' | ' + tuneLine(tuneTheme);
+    console.log('%c★ 灯光参数：' + line, 'color:#ffd28a;font-weight:bold;font-size:14px');
+    const el = document.getElementById('tunePanel');
+    if (el) el.textContent = '★ 复制这行发回去：\n\n' + line + '\n\n（再按 P 恢复面板）';
+    tuneShown = true;
+    setTimeout(() => { if (document.getElementById('tunePanel')) showTunePanel(); }, 6000);
+    return true;
+  } else return false;
+  saveTune(); tuneApply(); return true;
+}
+window.__tuneKey = tuneKey;                // 交给模块里的 keydown 统一分发
+
+window.__dbg2 = () => {
+  let addObj = null;
+  scene.traverse(o => {
+    if (!o.isMesh) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    if (ms.some(m => m && m.blending === THREE.AdditiveBlending)) addObj = o;
+  });
+  const rt = composer && composer.renderTarget1;
+  return {
+    composerRT: rt ? { w: rt.width, h: rt.height, type: rt.texture.type, colorSpace: rt.texture.colorSpace } : null,
+    rendererSize: [renderer.domElement.width, renderer.domElement.height],
+    pixelRatio: renderer.getPixelRatio(),
+    innerSize: [innerWidth, innerHeight],
+    addObj: addObj ? { name: addObj.name, visible: addObj.visible, mat: addObj.material.name,
+                       color: addObj.material.color.getHexString(), opacity: addObj.material.opacity,
+                       blending: addObj.material.blending, depthWrite: addObj.material.depthWrite } : null,
+  };
+};
+// 临时诊断：把加色发光片藏起来（用于定位"泛光一开就黑屏"）
+window.__glowTest = (mode) => {
+  const out = [];
+  scene.traverse(o => {
+    if (!o.isMesh) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms){
+      if (!m || (m.blending !== THREE.AdditiveBlending && m.name !== 'UNLIT_WEB_glowadd')) continue;
+      if (mode === 'hide') o.visible = false;
+      else if (mode === 'op0') m.opacity = 0;
+      else if (mode === 'normal') m.blending = THREE.NormalBlending;
+      else if (mode === 'custom') { m.blending = THREE.CustomBlending;
+        m.blendSrc = THREE.SrcAlphaFactor; m.blendDst = THREE.OneFactor; m.blendEquation = THREE.AddEquation; }
+      else if (mode === 'restore') { o.visible = true; m.opacity = 0.197; m.blending = THREE.AdditiveBlending; }
+      m.needsUpdate = true;
+      out.push(o.name + ':' + m.name + ':' + m.blending);
+    }
+  });
+  return out.join(' | ');
+};
+window.__hideAdditive = () => {
+  let n = 0;
+  scene.traverse(o => {
+    if (!o.isMesh) return;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    if (ms.some(m => m && m.blending === THREE.AdditiveBlending)) { o.visible = false; n++; }
+  });
+  return n;
+};
+
+/* ★ 2026-10-11 加：只读调试出口（诊断用，不参与逻辑）
+   用法：控制台 __dbg() 或 CDP evaluate('__dbg()') */
+window.__dbg = () => {
+  let meshes = 0, basic = 0, lambert = 0, add = 0, visible = 0;
+  scene.traverse(o => {
+    if (!o.isMesh) return;
+    meshes++;
+    if (o.visible) visible++;
+    const ms = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of ms){
+      if (!m) continue;
+      if (m.isMeshBasicMaterial) basic++;
+      if (m.isMeshLambertMaterial) lambert++;
+      if (m.blending === THREE.AdditiveBlending) add++;
+    }
+  });
+  return {
+    theme: THEME, url: GLB_URL,
+    cam: [+camera.position.x.toFixed(3), +camera.position.y.toFixed(3), +camera.position.z.toFixed(3)],
+    yaw: +camera.rotation.y.toFixed(3), pitch: +camera.rotation.x.toFixed(3),
+    fov: camera.fov, near: camera.near,
+    meshes, visible, basic, lambert, additive: add,
+    bg: scene.background ? scene.background.getHexString() : null,
+    fog: scene.fog ? scene.fog.density : null,
+    bloomOn: (typeof bloomPass !== 'undefined' && !!bloomPass),
+    tone: renderer.toneMapping, exposure: renderer.toneMappingExposure,
+    eye: (typeof EYE !== 'undefined') ? EYE : null,
+    room: { x0: ROOM.x0, x1: ROOM.x1, z0: ROOM.z0, z1: ROOM.z1, y1: ROOM.y1 },
+  };
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★ 一键导出【所有房间】的光照参数（按 Y）—— 2026-10-11 加
+   ───────────────────────────────────────────────────────────────────────────
+   为什么需要：
+     你在 L 面板里逐个房间调好的值【只存在 localStorage】(dorm_light_tune)，
+     而把它"固化进 walk.html 的 ROOM_RIG"这一步，靠人工抄写要抄
+     6 个房间 × 6 个通道 = 36 个数 —— 容易漏房间、抄错一位数就白调。
+   → 按 Y：把【全部房间】一次性打包，同时做三件事（三重兜底，哪个都能用）：
+       ① 复制到剪贴板（直接粘给 AI 即可）
+       ② 弹出浮层（可 Ctrl+A / Ctrl+C 手动复制，剪贴板被禁时用）
+       ③ 打印到控制台 F12 → Console（还不行就用这条）
+   浮层按 Esc 或再按一次 Y 关闭。
+   ★ 键位为什么是 Y：E 已被"回走廊"占用（KeyE）；Y 在编辑器里就是 yank（拉取/导出）。
+   ═══════════════════════════════════════════════════════════════════════════ */
+function hex6(n){ return '#' + (n >>> 0).toString(16).padStart(6, '0'); }
+
+/* 组装导出数据：每个房间都带【你调过的值 cur】+【walk.html 里的默认值 rig】 */
+function tuneExportPayload(){
+  const rooms = {};
+  for (const th of Object.keys(ROOM_RIG)){
+    // ★ 用【原始副本】而不是 ROOM_RIG —— 后者已被 applyRig() 原地覆盖过（见 ROOM_RIG_ORIG 注释）
+    const rig = (ROOM_RIG_ORIG[th] || ROOM_RIG[th]);
+    // ★ 走 tuneOf() 而不是直接读 —— 保证旧存档（比如 pt 的旧语义）已经迁移过
+    const t = LIGHT_TUNE[th] ? tuneOf(th) : null;
+    // tuned:true = 这个房间你在面板里调过（localStorage 里有记录）
+    const rec = { tuned: !!t };
+    rec.rig = {                                  // 写死在 walk.html 里的默认值（对照用）
+      amb:  [hex6(rig.amb[0]),  rig.amb[1]],
+      key:  [hex6(rig.key[0]),  rig.key[1],  rig.key[2]],
+      fill: [hex6(rig.fill[0]), rig.fill[1], rig.fill[2]],
+      rim:  [hex6(rig.rim[0]),  rig.rim[1],  rig.rim[2]],
+      hemi: [hex6(rig.hemi[0]), hex6(rig.hemi[1]), rig.hemi[2]],
+    };
+    if (t){                                      // ★ 你实际调好的值
+      rec.cur = {};
+      for (const c of CH) rec.cur[c.id] = { K: Math.round(t[c.id].K), i: +t[c.id].i.toFixed(3) };
+      rec.line = th + ' | ' + tuneLine(th);      // 和按 P 打印的一模一样的可读行
+    }
+    rooms[th] = rec;
+  }
+  return {
+    _what:  'DSH 宿舍光照参数导出（粘给 AI 即可固化进 ROOM_RIG）',
+    _time:  new Date().toLocaleString(),
+    _page:  location.href,
+    _legend:'rooms.<主题>.cur = 你在 L 面板调好的值（只有 tuned:true 才是真调过的）；' +
+            '.rig = walk.html 里的默认值；通道 amb/key/fill/rim/pt/emi，K=色温，i=强度。',
+    _scene: { 当前房间: tuneTheme, 点光盏数: POINT_LIGHTS.length, 自发光材质数: EMISSIVE_MATS.length },
+    rooms: rooms,
+  };
+}
+
+/* ── 导出功能的小工具 ─────────────────────────────────────────────────────── */
+/* ★ 同步复制：必须在【用户手势的同步调用栈】里调用 ——
+   一旦挪进 promise 的 .then/.catch 回调，浏览器就认为"不是用户触发的"，一律拒绝。 */
+function copyTextSync(s){
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = s;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    ta.setSelectionRange(0, s.length);
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return !!ok;
+  } catch(e){ return false; }
+}
+function selectEl(el){
+  try {
+    const r = document.createRange(); r.selectNodeContents(el);
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  } catch(e){}
+}
+function setExportMsg(t){
+  const e = document.getElementById('tuneExportMsg');
+  if (e) e.textContent = t;
+}
+
+function exportAllTune(){
+  const json = JSON.stringify(tuneExportPayload(), null, 1);
+  console.log('%c★★★ 全部房间光照参数（这整段发给 AI 即可固化）\n' + json,
+              'color:#9fe8ff;font-size:13px');
+
+  // ★★★ 2026-10-11 修（用户反馈"按 Y 没复制到任何内容"），三个病根：
+  //   ① 原来把 execCommand 兜底放在 clipboard.writeText() 的【reject 回调】里 ——
+  //      那时已经脱离用户手势，浏览器一律拒绝 → 复制必然失败。
+  //      现在【先同步 execCommand】（还在手势里），再异步补 clipboard API。
+  //   ② 第一人称下鼠标被 pointer lock 锁着 → 浮层里的按钮/文字根本点不到。
+  //      导出是"非游戏"操作，先解锁，用户才能用鼠标。
+  //   ③ 干脆再加一条不依赖浏览器的路：POST 给本地服务器直接落盘。
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch(e){}
+
+  // ①【同步】复制（在手势里，最可能成功）
+  const copied = copyTextSync(json);
+
+  // ② 浮层：显示 + 【自动全选】—— 用户直接 Ctrl+C 也行（鼠标锁着/按钮点不到都不怕）
+  let box = document.getElementById('tuneExport');
+  if (!box){
+    box = document.createElement('div');
+    box.id = 'tuneExport';
+    box.style.cssText =
+      'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;' +
+      'width:min(780px,92vw);max-height:82vh;display:flex;flex-direction:column;' +
+      'padding:12px 14px;border:1px solid #4b7fa8;border-radius:6px;background:rgba(9,13,19,.97);' +
+      'color:#cfe6f7;font:12px/1.55 ui-monospace,Consolas,monospace;' +
+      'box-shadow:0 12px 40px rgba(0,0,0,.6)';
+
+    const bar = document.createElement('div');
+    bar.style.cssText = 'display:flex;align-items:center;gap:10px;flex:0 0 auto;' +
+      'padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid #2c4a63';
+    const msg = document.createElement('span');
+    msg.id = 'tuneExportMsg';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '📋 复制';
+    btn.style.cssText = 'margin-left:auto;flex:0 0 auto;padding:5px 14px;cursor:pointer;' +
+      'border:1px solid #4b7fa8;border-radius:4px;background:#16324a;color:#cfe6f7;' +
+      'font:12px ui-monospace,Consolas,monospace';
+    btn.addEventListener('click', () => {     // ← 真·用户手势，这里复制必定可用
+      const b = document.getElementById('tuneExportBody');
+      const okc = copyTextSync(b ? b.textContent : '');
+      setExportMsg(okc ? '★ 已复制 ✓  去聊天框 Ctrl+V 就行'
+                       : '复制被浏览器拒绝了 → 请手动 Ctrl+A / Ctrl+C');
+    });
+    bar.appendChild(msg); bar.appendChild(btn);
+
+    const body = document.createElement('div');
+    body.id = 'tuneExportBody';
+    body.style.cssText = 'flex:1 1 auto;overflow:auto;white-space:pre;' +
+      'user-select:text;cursor:text';
+    body.addEventListener('click', () => selectEl(body));   // 点一下 = 重新全选
+
+    box.appendChild(bar); box.appendChild(body);
+    document.body.appendChild(box);
+  }
+  const ebody = document.getElementById('tuneExportBody');
+  ebody.textContent = json;      // 只放 JSON —— 全选时不会带上提示语
+  box.style.display = 'flex';
+  selectEl(ebody);               // ★ 自动全选：直接 Ctrl+C 就行
+  setExportMsg('已导出全部房间参数 · 按 Y 或 Esc 关闭');
+
+  // ③★ 最可靠的一条：把 JSON POST 给本地服务器落盘
+  //    （同源，不受剪贴板权限 / 文档焦点 / pointer lock 影响）
+  fetch('/__save_tune', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: json,
+  }).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+    .then(j => setExportMsg('★ 已存到服务器 ' + (j.file || '') +
+              (copied ? ' ｜ 也已复制到剪贴板 ✓' : '') + ' · 按 Y/Esc 关闭'))
+    .catch(() => {
+      // 服务器还是旧版（没这个端点）→ 靠剪贴板 / 手动复制
+      setExportMsg(copied ? '★ 已复制到剪贴板 ✓  去聊天框 Ctrl+V · 按 Y/Esc 关闭'
+                          : '自动复制被拒 → 内容已【全选】，按 Ctrl+C 即可 · 按 Y/Esc 关闭');
+    });
+
+  // ④ 异步补一手 clipboard API（规范做法；被拒也无所谓，上面已经兜住）
+  if (!copied && navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(json).then(
+      () => setExportMsg('★ 已复制到剪贴板 ✓  去聊天框 Ctrl+V · 按 Y/Esc 关闭'),
+      () => {});
+  }
+
+  try { say('已导出全部房间参数 · 按 Y / Esc 关闭'); } catch(e){}
+  return box;
+}
+// 也可以在控制台直接敲 __exportTune() —— 不想记键位时用这个
+window.__exportTune = exportAllTune;
+
+document.addEventListener('keydown', e => {
+  if (e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === 'b' || e.key === 'B'){ window.__toggleBloom && window.__toggleBloom(); return; }
+  // ★ 导出浮层：Esc 关闭（只藏浮层，不 return —— 指针锁定照常释放）
+  if (e.key === 'Escape'){
+    const bx = document.getElementById('tuneExport');
+    if (bx) bx.style.display = 'none';
+  }
+  if (window.__tuneKey && window.__tuneKey(e)) e.preventDefault();
+  /* ★ 2026-10-13：会客室终端面板（任务 B）—— 沿用 __tuneKey 那一套"委派"约定。
+     document 级监听【先于】window 级那个游戏键监听（冒泡顺序），
+     所以在这里拦下来的键，不会再被下面 2176 行的 keys[e.code]=true 收到。
+     ★ 只 preventDefault，不 stopPropagation —— keyup 必须照常传下去，
+       否则松开按键后 keys 里的状态会卡住。 */
+  if (window.__roomKey && window.__roomKey(e)) e.preventDefault();
+  // ★ 2026-10-10：方向键一律 preventDefault —— 防页面滚动，
+  //   也避免它被当成"移动"（移动已改成只用 WASD）。
+  //   调灯走 Shift+方向键（上面 __tuneKey 已处理并 preventDefault）。
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight'){
+    e.preventDefault();
+  }
+});
+
+
+const amb  = new THREE.AmbientLight(RIG.amb[0], RIG.amb[1]);
+const key  = new THREE.DirectionalLight(RIG.key[0], RIG.key[1]);
+const fill = new THREE.DirectionalLight(RIG.fill[0], RIG.fill[1]);
+const rim  = new THREE.DirectionalLight(RIG.rim[0], RIG.rim[1]);
+scene.add(amb, key, fill, rim);
+//    中/低画质 = 半球光 + 1 平行光（省一半光照计算），总亮度对齐高画质
+const hemi = new THREE.HemisphereLight(RIG.hemi[0], RIG.hemi[1], RIG.hemi[2]);
+hemi.visible = false;
+scene.add(hemi);
+
+// ★★★ 多房间支持：?theme=xxx 时载入 rooms/xxx.glb，默认还是 dorm.glb
+//   ⚠️⚠️ 这四行【必须】留在模块靠前的位置 —— 下面那个"只弹第一次进入界面"的 IIFE
+//       会在模块执行早期【立即】读 FROM_HUB。若这四行被放到更靠后（原位置在 GLB 加载段，
+//       约 1100 行），就是 TDZ：
+//         Uncaught ReferenceError: Cannot access 'FROM_HUB' before initialization
+//       → ★【整个模块中断】：房间不加载、L 灯光面板失效、say() 也不可用
+//         （实测症状：按 Y 导出会报 "Cannot access 'sayT' before initialization"，
+//           因为模块没执行到 sayT 的声明处）。2026-10-11 定位并修正。
+const QS = new URLSearchParams(location.search);
+const THEME = QS.get('theme') || '';
+/* ★★★ 2026-10-12：光照模式开关
+   `?mode=rig` = 【旧光照模式】（Lambert + ROOM_RIG 打光），加载 `rooms\_rig\<主题>.glb`
+   —— 那批是改造前的旧 GLB，一份没删，专门留着回退 / A-B 对比。
+   不传       = 【新光照模式】（unlit GLB：贴图直出 + 发光件 + 泛光），现在是默认。 */
+const MODE = QS.get('mode') || '';
+/* ★★ 2026-10-12 加：`?fix=0` = 用【从游戏解包重新导入之前】的那份 GLB
+   ───────────────────────────────────────────────────────────────────────────
+   背景：旧 GLB 的材质判定有三处系统性错误（都已从源头修好并重导）：
+     ① **alphaMode 判据错**：靠"材质名里有没有 `_alpha_`"猜 MASK，而游戏是按
+        【材质挂的 shader】定 pass 状态（`FurniOutline`=不透明 / `…Cutout`=MASK 0.9 /
+        `AlphaBlend(2Face)`=BLEND+双面）→ 第三图集件被裁掉 44.5% 的像素；
+     ② **`is_lamp` 是整件家具级**：家具里只要有一个灯件，**所有分件**都被塞 0.40 自发光
+        → 材质名变 `M_01_EMI_*` → 网页端再额外提亮（×1.35 + pow(rgb,0.62)，最多 ×2.1）。
+        受害者 = 用户逐件点名的 `shelf_03` / `shelf_04$0` / 6 个 `ceilinglamp_*`；
+     ③ **导出器 emissive 判定含 `CEILING`**：`M_01_plain_ceilinglamp_01` 含 "CEILING"
+        → 连普通件也被当发光件。
+    重导后的 GLB **已无 `WEB_furni1_emit` 材质**（一个误标发光件都没有），
+    与游戏一致（游戏 7 个材质的 `_EmissionColor` 全是 (0,0,0,1)）。
+   旧文件留在 `rooms\rabbitCinema_pre_reimport.glb` → 这个参数就是回退到它。
+   证据：`3D渲染\兔兔家具灰暗-第二轮排查报告.md` */
+/* ⚠️ `?fix=0` 只在【默认 unlit 模式】下有效 —— `rooms\_rig\` 里没有 `_pre_reimport`，
+   两个参数一起传会 404；这里显式忽略（rig 版本来就是另一套旧观感）。 */
+/* ★★ 2026-10-12：`?fix=0` 的可用房间表 —— 只有做了"修正前后两份"的房间才认这个参数。
+   ★ 别对所有房间开放：没有 `_pre_*` 备份时会把 URL 拼成 404。 */
+const PRE_FIX_BACKUP = {
+  rabbitCinema: 'rabbitCinema_pre_reimport',   // 从游戏解包重导之前
+  YuKitchen:    'YuKitchen_pre_emit',          // 去掉 is_lamp 误标发光之前
+};
+const FIX_ALPHA = QS.get('fix') !== '0' || MODE === 'rig';
+const GLB_URL = THEME
+  ? ('./rooms/' + (MODE === 'rig' ? '_rig/' : '')
+     + ((!FIX_ALPHA && PRE_FIX_BACKUP[THEME]) ? PRE_FIX_BACKUP[THEME] : THEME) + '.glb')
+  : './dorm.glb';
+const FROM_HUB = !!THEME;              // 从走廊进来的 → 有"回走廊"的门
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-12：unlit 房间清单（新光照模式）
+   ───────────────────────────────────────────────────────────────────────────
+   为什么改：游戏里的基建房间【根本不打光】—— 实测（`3D渲染\会客室-调查与开工记录.md` §九）：
+     房间壳 = `Torappu/Unlit/Texture`、家具 = `Torappu/Unlit/TextureOutline*`，
+     主 pass `lighting:false`、零光源、零 lightmap、AmbientProbe 27 个系数全 0、
+     mesh 无顶点色。墙面明暗 / AO / 发光边框 / logo 灯箱光晕**全都画在 albedo 贴图里**。
+   ⇒ 以前那套「环境光 + 主光 + 补光 rig」是在【给一张已经画好光影的贴图再打一次光】，
+     怎么调都对不上游戏。所以这 6 间 + 会客室改成 unlit GLB
+     （导出命令加一个 `unlit` 参数，见 `已验证逻辑-复用清单.md` §6）。
+
+   ★ 旧光照系统【完整保留】，一样没删：
+       · `ROOM_RIG` 下面那几套参数原封不动（只是对 unlit 房间不再产生画面效果）
+       · 面板 1~8 通道、localStorage 调参、Y 导出 全部照旧
+       · 旧 GLB 另存 `rooms\_rig\<主题>.glb` → URL 加 `?mode=rig` 即可整套回退
+       · 网页文件本身的改造前备份：`_backup\20261012_unlit改造前\walk.html`
+   ★ 以后加新的 unlit 房间：这里加一行 + GLB 用 `unlit` 参数导出即可。 */
+const UNLIT_THEMES = new Set([
+  'rabbitCinema', 'clmsRoom', 'messengerCottage', 'YuKitchen',
+  'basicRoom',              // 会客室（第 7 间 · unlit 试点，2026-10-11 已上线）
+  // ★★ 2026-10-12 用户实测后【撤出】的两间（已换回 `rooms\_rig\` 的旧 GLB + rig 打光）：
+  //    · closureRoom —— 它是【最早一批】产物，家具是整体网格（分件信息不在文件里）；
+  //      重导版本虽有分件但贴图分配更暗，用户判定不合适 → 先还原，等专门处理
+  //    · classroom   —— 同上，用户判定"不如自己调的还原" → 先还原
+  //    想再试 unlit：把主题名加回这个集合 + GLB 换成 unlit 版即可（旧版都留着）。
+]);
+const IS_UNLIT = UNLIT_THEMES.has(THEME) && MODE !== 'rig';
+
+/* unlit 房间的泛光默认值 —— 用户在会客室手调后定稿：强度 0.22 / 阈值 0.80。
+   ★ 不再沿用旧的 (强度 0.42 / 半径 0.55 / 阈值 0.80)：贴图直出后画面本来就亮，
+     0.42 会把整面墙一起洇糊（旧 rig 房间才是那个值）。 */
+const UNLIT_BLOOM = { strength: 0.22, threshold: 0.80 };
+/* ★★ 2026-10-12（第三轮·定量分析后修）：发光件的【提亮曲线】
+   ───────────────────────────────────────────────────────────────────────────
+   为什么不用"乘倍率"救：实测这几件在贴图里本来就是中灰到暗 ——
+       ceilinglamp_01  平均亮度 0.312（整件最亮才 0.371）
+       shelf_03$0      0.447 ｜ ceilinglamp_03 0.479 ｜ shelf_04$0 0.500
+   纯乘倍率是"乘法"，暗的件乘多少都追不上亮的件、亮的件又先过曝。
+   提亮曲线（幂函数）才是对的：**暗部抬得多、亮部几乎不动**：
+       pow(0.31, 0.62) = 0.47   ← 暗件大幅提亮
+       pow(0.50, 0.62) = 0.64
+       pow(0.95, 0.62) = 0.97   ← 亮件基本不动
+   再叠一个温和倍率 → 发光件整体"亮起来"，但不糊成一片白。
+   ★ 只作用于发光件（fk_glow）；普通件仍是严格的贴图直出。 */
+const UNLIT_GLOW_GAMMA = 0.62;
+
+/* ★★ 2026-10-12：unlit 房间的【整体亮度】默认值
+   ───────────────────────────────────────────────────────────────────────────
+   用户实测对比：同一间房，`?mode=rig`（Lambert + 打光）看着正常，unlit 版"灰了一层"。
+   我把两版的 GLB 逐件比过：UV / 贴图 / 图集 / 材质 **完全相同**，唯一差别是渲染方式 ——
+       rig 版 ≈ 贴图 × (受光 ≈ 1.5~2.5)   ｜   unlit 版 = 贴图 × 1.0
+   所以差的不是"哪件错了"，而是**整体亮度**。
+   这里给一个【无方向】的纯提亮（不像 rig 有明暗方向），既补回亮度、又保持 unlit 的干净。
+   ★ 面板按 9 选中，Shift+↑↓ 现场调（存 localStorage）；1.0 = 完全按贴图。
+   ★ 默认给 1.00：先把"图集配错"这类真 bug 修干净，再谈提亮；需要提亮时按 9 自己加。 */
+const UNLIT_BASE_GAIN = 1.00;
+
+function unlitGlowGain(name){
+  const n = name || '';
+  /* ★★ 2026-10-12 加：emit 标记错误的对照开关
+     游戏侧实测（_fk_render\tt_matfull_rabbit.txt）：兔兔 7 个材质的
+     `_EmissionColor` **全是 (0,0,0,1)**、`m_ShaderKeywords` 全空
+     → **游戏里一个自发光件都没有**。而旧导入器按材质名把 10 件标成了 `_EMI_`，
+     网页就给它们乘 1.35 再叠 pow(rgb,0.62) 的提亮曲线 → 与游戏不符（最多 ×2.1）。
+     `?emit=0` = 把发光增益还原成 1.0（提亮曲线也跳过），用于 A/B 对照。 */
+  if (UNLIT_EMIT_OFF) return 1.00;
+  if (/glowadd/i.test(n)) return 1.00;   // 加色灯槽：tint 就是游戏值，别动
+  if (/glow/i.test(n))    return 1.80;   // 亮度烘 alpha 的灯带
+  if (/_emit/i.test(n))   return 1.35;   // 发光件（曲线之后再乘这个）
+  if (/furni3/i.test(n))  return 1.35;   // 第三图集 = 全息/海报/屏幕
+  return 1.00;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-12：A/B 原型开关（只改运行时的材质参数，**不动 GLB 文件**）
+   ───────────────────────────────────────────────────────────────────────────
+   背景（本轮查到的两个真凶，证据见 3D渲染\兔兔家具灰暗-第二轮排查报告.md）：
+     ① alphaMode 判错 —— 导出器按【材质名里有没有 _alpha_】猜 MASK，
+        而游戏是按【材质挂的 shader】定 pass 状态：
+          Torappu/Unlit/FurniOutline       → QUEUE Geometry   → OPAQUE
+          Torappu/Unlit/FurniOutlineCutout → QUEUE AlphaTest  → MASK(0.9)
+          Torappu/Furni/AlphaBlend(2Face)  → QUEUE Transparent→ BLEND + 双面
+        兔兔的 `M_03_alpha_*`（第三图集，desk_04 / shelf_05$0）实际是 AlphaBlend，
+        却被导成 MASK → 图集里 44.5% 的像素（alpha∈[0.4,0.5)）**整片被裁掉**；
+        `M_02_alpha_*`（plant_02 / shelf_05 等）游戏里其实是 FurniOutline（不透明）。
+     ② emit 标记错 —— 见上面 unlitGlowGain 的注释。
+
+   用法（URL 参数，同一页面即可对照）：
+     ?alpha=1   把 WEB_furni3 从 MASK 改成 BLEND（+双面）—— 只改一半，用于分离变量
+     ?alpha=2   alpha=1 + 把 WEB_furni2_mask 从 MASK 改成 BLEND
+     ?alpha=3   ★ 按游戏 shader 全量修正：furni3 → BLEND 双面，furni2_mask → 分离
+                  · 游戏是 cutout（FurniOutlineCutout）的件 → 保持 MASK，cutoff 提到 0.9
+                  · 游戏是 FurniOutline 的件 → OPAQUE
+     ?emit=0    发光件增益还原成 1.0（游戏里 _EmissionColor 全黑，没有自发光件）
+
+   ★ 这是【原型对照】，不是最终修复。最终修复要在导出器里按 shader 判 alphaMode，
+     然后重导 GLB（见报告 §四）。这些参数一旦确认合适，就可以直接固化成 GLB 里的值。
+   ═══════════════════════════════════════════════════════════════════════════ */
+const _Q = new URLSearchParams(location.search);
+const UNLIT_EMIT_OFF = _Q.get('emit') === '0';
+const UNLIT_FIX_ALPHA = parseInt(_Q.get('alpha') || '0', 10) || 0;
+console.log('%c★ A/B 参数已解析（模块顶层）：alpha=%s emit=%s',
+  'color:#ff9de2', String(UNLIT_FIX_ALPHA), String(UNLIT_EMIT_OFF));
+
+/* 游戏里用 MASK 的件（FurniOutlineCutout，_Cutoff=0.9）—— 按 prefab 层级实测
+   来源：_fk_render\game_mat_shader_map.txt 第②段
+   ★ 必须按【完整件名】比，不能用 includes —— `shelf_04$0` 会误命中 `shelf_04`，
+     而它是另一件家具（furni_04，AlphaBlend）。这类"同名不同家具"是本项目的老坑。 */
+const GAME_MASK_PARTS = new Set([
+  'carpet_01', 'coffeeTable_03', 'desk_03', 'plant_02',
+  'shelf_04', 'shelf_05', 'sofa_05', 'shelf_04$1',
+]);
+
+/* 从 three.js 对象名取出 Unity prefab 里的件名（去掉主题前缀）
+   furni_rabbitCinema_shelf_04$0  →  shelf_04$0
+   furni_rabbitCinema_carpet_01   →  carpet_01
+   ★ 优先按已知主题名剥前缀（长短不一，如 rabbitCinema / closureroom），
+     兜底才按第一个下划线切 —— 保证 `shelf_04$0` 不会被切成 `04$0`。 */
+function partNameOf(objName){
+  const n = objName || '';
+  try { for (const t of UNLIT_THEMES){ const p = 'furni_' + t + '_'; if (n.startsWith(p)) return n.slice(p.length); } } catch (e) {}
+  const i = n.indexOf('_');
+  return i >= 0 ? n.slice(i + 1) : n;
+}
+
+function applyUnlitFixVariants(){
+  console.log('%c★ A/B 原型函数被调用：alpha=%s emit=%s（%s）',
+    'color:#ff9de2', String(UNLIT_FIX_ALPHA), String(UNLIT_EMIT_OFF), location.search);
+  if (!UNLIT_FIX_ALPHA && !UNLIT_EMIT_OFF) return;
+  let n3 = 0, n2blend = 0, n2opaque = 0, n2mask = 0, nEmit = 0;
+  scene.traverse(o => {
+    if (!o.isMesh) return;
+    for (const m of (Array.isArray(o.material) ? o.material : [o.material])){
+      if (!m || !m.isMeshBasicMaterial) continue;
+      const nm = m.name || '';
+      if (UNLIT_FIX_ALPHA && /furni3/i.test(nm)){
+        // 游戏 = Torappu/Furni/AlphaBlend(2Face)：半透明 + 双面
+        m.transparent = true; m.alphaTest = 0; m.opacity = 1;
+        m.side = THREE.DoubleSide; m.depthWrite = true; m.needsUpdate = true;
+        n3++;
+        continue;
+      }
+      if (UNLIT_FIX_ALPHA >= 2 && /furni2/i.test(nm)){
+        const isCut = GAME_MASK_PARTS.has(partNameOf(o.name));
+        if (UNLIT_FIX_ALPHA >= 3 && !isCut){
+          m.transparent = false; m.alphaTest = 0; m.needsUpdate = true; n2opaque++;
+        } else {
+          m.alphaTest = 0.9; m.transparent = false; m.needsUpdate = true; n2mask++;
+        }
+      }
+    }
+  });
+  if (UNLIT_EMIT_OFF){
+    for (const m of UNLIT_MATS){
+      if (m.userData && m.userData.fk_glow && !m.userData.fk_additive && m.userData.__gain0 !== 1.0){
+        m.userData.__gain0 = 1.0; m.needsUpdate = true; nEmit++;
+      }
+    }
+  }
+  if (UNLIT_MATS.length) applyUnlitGain(UNLIT_BASE_GAIN, 1.0);
+  console.log('%c★ A/B 原型：alpha=%d emit=%s ｜ furni3→BLEND %d ｜ furni2→MASK0.9 %d ｜ furni2→OPAQUE %d ｜ 发光增益还原 %d',
+    'color:#ff9de2;font-weight:bold', UNLIT_FIX_ALPHA, UNLIT_EMIT_OFF ? '0(关)' : '默认',
+    n3, n2mask, n2opaque, nEmit);
+}
+
+/* ★★★ 2026-10-11 加：要不要跳过"进入提示页(#start)"
+   ─────────────────────────────────────────────────────────────────────────
+   原来 walk.html 里存在【两套互相打架的逻辑】，结果谁也没做对：
+     · 下面那个 IIFE：宣称"第一次显示提示页、之后不显示"
+     · GLB 加载回调里的 `if (FROM_HUB)`：【无条件】跳过开始页
+   → 实测净效果是【提示页永远不弹】（IIFE 想显示，1~3 秒后被加载回调删掉）。
+   现在统一由这一个标志决定：
+     第一次从走廊进来 = false → 正常弹提示页，等用户点「进入」
+     之后再来        = true  → 直接进游戏
+   ⚠️ 这个声明必须在 IIFE 【之前】—— 否则又是 TDZ（今天刚踩过 FROM_HUB 那个坑）。 */
+let SKIP_START_PAGE = false;
+
+// ★★★ 2026-10-10 用户要求：从走廊进来的，【只有第一次】才弹进入界面。
+//   原来每次点门进宿舍都弹一次 #start（"用第一人称走进这间工作室…"），很烦；
+//   而"进入宿舍的提示"又因为自动跳过而形同虚设。
+//   → 现在：访客先逛走廊，第一次进宿舍看到完整提示并点「进入」；
+//           之后再进任何宿舍直接开走（不再弹）。
+(function(){
+  if (!FROM_HUB) return;                       // 直连 walk.html（本地调试）保持原样
+  const SEEN_KEY = 'dorm_hub_entered';
+  let seen = false;
+  try { seen = localStorage.getItem(SEEN_KEY) === '1'; } catch(e){}
+  if (!seen){
+    // 第一次：正常显示 #start，等用户点按钮；点完（enterGame）再记标记
+    try { localStorage.setItem(SEEN_KEY, '1'); } catch(e){}
+    console.log('%c★ 首次从走廊进入：显示进入界面（之后不再弹）', 'color:#5fd8e8');
+    return;
+  }
+  // 已经进过一次 → 自动跳过 #start
+  SKIP_START_PAGE = true;         // ★ 告诉下面 GLB 加载回调：这次可以跳过开始页
+  console.log('%c★ 已访问过：自动进入（不再弹界面）', 'color:#5fd8e8');
+  const tryEnter = (n) => {
+    // ⚠️⚠️ 修正 2026-10-11：`typeof x !== 'undefined'` 对【处于 TDZ 的 let/const】
+    //     是【无效】的 —— typeof 本身就会抛 ReferenceError。
+    //     loaded 是 let（声明在 GLB 加载段），所以必须用 try/catch 兜住。
+    let okLoad = false, okFn = false;
+    try { okLoad = (loaded === true); } catch(e){}
+    try { okFn = (typeof enterGame === 'function'); } catch(e){}
+    if (okFn && okLoad){ enterGame(); return; }
+    if (n > 200){
+      console.warn('自动进入超时，退回显示 #start');
+      const el = document.getElementById('start');
+      if (el) el.style.display = '';
+      return;
+    }
+    setTimeout(() => tryEnter(n + 1), 50);
+  };
+  // 先把 #start 藏起来（避免自动进入前闪一下界面）；超时会还原
+  const _s = document.getElementById('start');
+  if (_s) _s.style.display = 'none';
+  setTimeout(() => tryEnter(0), 60);
+})();
+
+/* ★★ 2026-10-11：把泛光参数（面板按 7 调的那个）应用到 UnrealBloomPass
+   ⚠️ bloomPass 声明在本文件【后面】(let)，所以本函数可能在它之前被调用（TDZ）——
+      这正是今天踩过两次的坑，必须 try/catch 兜住。 */
+function applyBloomTune(theme){
+  let bp = null;
+  try { bp = bloomPass; } catch (e) { return; }   // TDZ：还没创建，创建后还会再调一次
+  if (!bp) return;
+  const t = LIGHT_TUNE[theme];
+  if (!t || !t.bloom) return;
+  bp.strength  = t.bloom.i;                                  // 0 ~ 2
+  bp.threshold = Math.max(0, Math.min(1, t.bloom.K / 100));  // 0 ~ 1
+  console.log('%c★ 泛光：强度 ' + bp.strength.toFixed(2) + '  阈值 ' + bp.threshold.toFixed(2) +
+              '（阈值越高 → 只有越亮的像素才洇光）', 'color:#ffd28a');
+}
+
+/* ★★ 2026-10-11：应用色调映射（面板按 8 选的那个）
+   它为什么能治"泛光没有中间态"：
+     NoToneMapping 会把 >1.0 的亮度【直接砍成纯白】，于是所有过阈值的像素都饱和在同一个亮度，
+     泛光自然"要么全有要么全无"；换成 ACES 之类的曲线后，高光是【被压缩】而不是砍断，
+     泛光强度重新有了渐变，画面也回到有层次的状态。
+   ⚠️ 真正把曲线作用到画面的是后处理管线末尾的 OutputPass —— 它会读 renderer.toneMapping
+      自动重建 shader defines，所以这里只要改 renderer 上这两个属性就够了。 */
+function applyToneMapping(theme){
+  const t = LIGHT_TUNE[theme];
+  if (!t || !t.tm) return;
+  const idx = Math.max(0, Math.min(TM_MODES.length - 1, Math.round(t.tm.K)));
+  const mode = TM_MODES[idx] || TM_MODES[0];
+  const exp = Math.max(0.05, Math.min(4, t.tm.i));
+  const changed = (renderer.toneMapping !== mode[1]);
+  renderer.toneMapping = mode[1];
+  renderer.toneMappingExposure = exp;
+  if (changed || !applyToneMapping._logged){
+    applyToneMapping._logged = true;
+    console.log('%c★ 色调映射：' + mode[0] + '   曝光 ' + exp.toFixed(2), 'color:#ffd28a');
+  }
+}
+
+/* ★ 切换主题的灯光 rig（THEME 在下面才解析出来，用函数延迟应用） */
+function applyRig(name){
+  RIG = ROOM_RIG[name] || ROOM_RIG.closureRoom;
+  tuneTheme = name;
+  // ★ 叠加"现场调色温"的值（有就用，没有就用 ROOM_RIG 原值）
+  // ★★ 2026-10-11 修：这里原来直接读 LIGHT_TUNE[name]，绕过了 tuneOf() 里的
+  //    【旧存档迁移】—— 结果面板显示的是迁移后的值（"原色 强度倍率 1.00×"），
+  //    实际应用的却是旧值（把 8 盏点光全统一染成 3000K）。两边必须用同一份数据。
+  //    只在【已有记录】时补跑一次迁移，不改变"从没调过"时的原行为。
+  if (LIGHT_TUNE[name]) tuneOf(name);
+  const _t = LIGHT_TUNE[name];
+  if (_t){
+    for (const c of CH){
+      if (!_t[c.id] || !RIG[c.id]) continue;
+      RIG[c.id] = [kelvinToRgb(_t[c.id].K), _t[c.id].i, RIG[c.id][2]];
+    }
+    RIG.hemi = [kelvinToRgb(_t.amb.K), RIG.hemi[1], _t.amb.i];
+  }
+  amb.color.setHex(RIG.amb[0]);
+  key.color.setHex(RIG.key[0]);   key.position.set(...RIG.key[2]);
+  fill.color.setHex(RIG.fill[0]); fill.position.set(...RIG.fill[2]);
+  rim.color.setHex(RIG.rim[0]);   rim.position.set(...RIG.rim[2]);
+  hemi.color.setHex(RIG.hemi[0]); hemi.groundColor.setHex(RIG.hemi[1]);
+  // ★ 点光（GLB 里带来的 KHR_lights_punctual）：色温 + 强度
+  //   没有记录时不动它 —— 保持从 GLB 读到的原值
+  if (_t && _t.pt && POINT_LIGHTS.length){
+    // ★★ 2026-10-11 修：改成【倍率】，不再用绝对值统一覆盖
+    const mult = _t.pt.i;
+    const unifyK = (_t.pt.K > 0) ? _t.pt.K : 0;
+    for (const l of POINT_LIGHTS){
+      // 第一次遇到就记下 GLB 里的原值（倍率以它为基准，重复 apply 不会叠加）
+      if (l.userData.__ptBase == null) l.userData.__ptBase = (l.intensity != null ? l.intensity : 1);
+      if (l.userData.__ptColor == null) l.userData.__ptColor = l.color.getHex();
+      l.intensity = l.userData.__ptBase * mult;
+      // ★ K ≤ 0 = 不统一色温 → 各盏保留 GLB 自己的颜色（水池那盏是冷蓝，别被染成暖黄）
+      l.color.setHex(unifyK > 0 ? kelvinToRgb(unifyK) : l.userData.__ptColor);
+    }
+    // ★ 打一行日志方便排查（点光是"最容易被统一覆盖"的通道，出问题很难肉眼定位）
+    const _l0 = POINT_LIGHTS[0];
+    console.log('%c★ 点光应用：' + POINT_LIGHTS.length + ' 盏  倍率 ×' + mult.toFixed(2) +
+      (unifyK > 0 ? ('  统一色温 ' + unifyK + 'K') : '  保持各盏原色') +
+      (Math.abs(mult - 1) < 1e-6 ? '（不动 GLB 原值）' : '') +
+      '   第1盏 intensity=' + (_l0 ? _l0.intensity.toFixed(3) : '-') +
+      ' color=#' + (_l0 ? _l0.color.getHex().toString(16).padStart(6, '0') : '-'),
+      'color:#ffd28a');
+  }
+  // ★ 自发光材质强度（发光面本身 —— 泛光的另一半来源）
+  // ★★ 2026-10-12：unlit 房间统一走 applyUnlitGain（整体亮度 base + 发光件增益 emi）
+  if (_t && _t.emi && EMISSIVE_MATS.length){
+    applyEmissive(_t.emi.i);
+  }
+  if (UNLIT_MATS.length){
+    applyUnlitGain(_t && _t.base ? _t.base.i : UNLIT_BASE_GAIN,
+                   _t && _t.emi ? _t.emi.i : 1.0);
+  }
+  applyLightIntensities(1);
+  // ★ 泛光参数（按 7 可调）：bloomPass 在文件【后面】才创建，这里可能处于 TDZ，
+  //   所以 applyBloomTune 内部用 try/catch 兜住；创建完成后还会再应用一次。
+  try { applyBloomTune(name); } catch (e) {}
+  // ★ 色调映射（按 8 可调）：同上，renderer 已定义无 TDZ 风险，但还是兜一手
+  try { applyToneMapping(name); } catch (e) {}
+  console.log('%c★ 灯光 rig：' + name + '  环境光 #' +
+    RIG.amb[0].toString(16) + ' ×' + RIG.amb[1].toFixed(2), 'color:#ffd28a');
+}
+
+/* ★ 灯光强度统一出口：f=1 正常，f<1 变暗（博士彩蛋用） */
+function applyLightIntensities(f = 1){
+  if (QUALITY[qualityIdx].fullLights){
+    amb.intensity  = RIG.amb[1]  * f;
+    key.intensity  = RIG.key[1]  * f;
+    fill.intensity = RIG.fill[1] * f;
+    rim.intensity  = RIG.rim[1]  * f;
+  } else {
+    hemi.intensity = RIG.hemi[2] * f;
+    key.intensity  = RIG.key[1]  * f;
+  }
+}
+
+// ═══════════════════════════════════════════════════ 房间参数
+// three.js 坐标：X -3.61~3.87   Y 0.22~2.42（高）   Z -1.12~1.08
+// 后墙 Z=-1.12（家具靠那边）；开着的一面 Z=+1.08
+const ROOM = { x0:-3.61, x1:3.87, z0:-1.12, z1:1.08, y0:0.22, y1:2.42 };
+const WALL = 0.30;                                    // 离墙距离
+const BOUND = { x0:ROOM.x0+WALL, x1:ROOM.x1-WALL, z0:ROOM.z0+WALL, z1:ROOM.z1-0.06 };
+let   EYE = 1.40;                                     // 站立视线高度（默认值，用户可调）
+const CROUCH_DROP = 0.34;                            // ★ 蹲下 = 当前视线高度 − 34cm
+let   EYE_CROUCH = 0.92;                              // ★ 派生值（由 HEIGHT.base 算出），保留给旧引用
+// ★ 2026-10-10 修：原来蹲下是【绝对高度 0.92m】写死。
+//   但视线高度现在是用户可调的（[ ] 键），绝对高度会导致：调到 1.9m 一蹲直接砸到 0.92m。
+//   正确语义 = 在【当前站立高度】上削减 34cm（和提示文案「身高 -34cm」一致）。
+function eyeTarget(crouching){
+  const base = Number.isFinite(HEIGHT.base) ? HEIGHT.base : EYE;
+  const v = crouching ? (base - CROUCH_DROP) : base;
+  return Math.max(EYE_MIN, Math.min(EYE_MAX, v));
+}
+let   CHAR_SCALE = 1.0;                               // ★ 人物比例（相对 1.40 的基准，用来缩放移速）
+const EYE_MIN = 0.45, EYE_MAX = 2.20;                 // 可调范围
+const AUTO_HEIGHT = false;                            // ★ 是否按门高自动定人物（先关掉，用户自己调）
+
+// ★ 视线高度：调 + 记住 + 提示
+function setEye(v, isReset){
+  v = Math.max(EYE_MIN, Math.min(EYE_MAX, Math.round(v * 100) / 100));
+  HEIGHT.base = v;
+  EYE_CROUCH = eyeTarget(true);              // ★ 蹲下高度跟着站立高度走
+  if (isReset){ HEIGHT.cur = v; HEIGHT.target = v; }
+  else if (crouchOn) HEIGHT.target = EYE_CROUCH;   // 蹲着调高度 → 立刻见效
+  try { localStorage.setItem('dorm_eye', String(v)); } catch(e){}
+  say('视线高度 ' + v.toFixed(2) + ' 米　（[ / ] 调整，\\ 恢复默认）');
+}
+function loadEye(){
+  try {
+    const v = parseFloat(localStorage.getItem('dorm_eye'));
+    if (Number.isFinite(v) && v >= EYE_MIN && v <= EYE_MAX){
+      HEIGHT.base = v; HEIGHT.cur = v; HEIGHT.target = v;
+      EYE_CROUCH = eyeTarget(true);          // ★ 同步蹲下高度
+      console.log('%c★ 视线高度已恢复：' + v.toFixed(2) + ' 米', 'color:#5fd8e8');
+      return true;
+    }
+  } catch(e){}
+  return false;
+}
+// ★ base 必须初始化！否则 HEIGHT.target = undefined → cur 变 NaN → 相机坐标 NaN → 黑屏
+const HEIGHT = { base: EYE, cur: EYE, target: EYE };  // 平滑过渡用
+EYE_CROUCH = eyeTarget(true);                         // ★ 初始化就同步蹲下高度（= EYE − 0.34）
+const RADIUS = 0.20;                                  // 玩家碰撞半径
+const INSET  = 0.06;                                  // 障碍盒内缩（避免过于"粘人"）
+
+// ═══════════════════════════════════════════════════ 载入模型
+const boxes = [];          // 碰撞盒 {min:{x,z}, max:{x,z}, name}
+let loaded = false;
+const matCache = new Map();     // ★ 材质复用（同参数的只建一个）
+
+/* ★★★ 性能关键：把 glTF 的 PBR 材质换成 Lambert
+   glTF 默认给 MeshStandardMaterial（PBR：Cook-Torrance BRDF + 能量守恒 + IBL）
+   这套素材是【平涂风格】，完全不需要 PBR
+   Lambert 只算漫反射 → 每个像素省掉一大半计算量
+   仍然保留：贴图、自发光贴图、透明、双面 */
+function toLambert(src){
+  // ★★★ 2026-10-11 加：unlit 房间（会客室）直通
+  //   游戏里这些房间【根本不打光】（实测：墙/地板 = Torappu/Unlit/Texture、
+  //   家具 = Torappu/Unlit/TextureOutline*，主 pass lighting:false）——
+  //   "光照"全画在贴图里。导出器给这些材质打了 glTF 的 `KHR_materials_unlit`，
+  //   GLTFLoader 会直接建成 MeshBasicMaterial（不受光）→ 这里【原样放行】，别再转 Lambert。
+  //   ⚠️ 必须放在【缓存 key 计算之前】—— Basic 材质没有 .emissive，key 那行会炸。
+  //   现有 6 个房间的 GLB 没有这个扩展，走的还是下面的 Lambert 分支，观感一点不变。
+  if (src.isMeshBasicMaterial){
+    const u = new THREE.MeshBasicMaterial({
+      map: src.map || null,
+      color: src.color ? src.color.clone() : new THREE.Color(0xffffff),
+      transparent: !!src.transparent,
+      opacity: src.opacity != null ? src.opacity : 1,
+      alphaTest: src.alphaTest || 0,
+      side: src.side,
+      depthWrite: src.depthWrite !== false,
+      fog: true,
+    });
+    u.name = 'UNLIT_' + (src.name || 'mat');
+    u.userData.fk_additive = !!(src.userData && src.userData.fk_additive);
+    u.userData.fk_tint = (src.userData && src.userData.fk_tint) || null;
+    u.userData.fk_alpha = (src.userData && src.userData.fk_alpha) || null;
+    /* ★★★ 2026-10-12：发光件（unlit 房间的"灯"）
+       glTF 的 KHR_materials_unlit → MeshBasicMaterial，而 Basic 材质【没有 emissive】：
+       导出器写在 emissive 上的"发光"到这里就没了（贴图还在 → 灯还看得见，只是不额外发亮）。
+       → 记下来，交给 L 面板通道 6「自发光」调【亮度倍率】（HDR 超白）。
+       判据用导出器的材质命名：WEB_furni1_emit / WEB_furni3（图集 03 = 发光装饰件）
+       / WEB_glow_*（亮度烘 alpha 的灯带）/ WEB_glowadd_*（加色灯槽）。 */
+    u.userData.fk_glow = /_emit|glow|furni3/i.test(src.name || '');
+    // ★ 每件都登记（普通件 __gain0 = 1.0，只吃"整体亮度"；发光件另加自身增益 + 提亮曲线）
+    u.userData.__gain0 = u.userData.fk_glow ? unlitGlowGain(src.name) : 1.0;
+    u.userData.__baseColor = u.color.clone();
+    /* ★★ 提亮曲线（幂函数）—— 直接改片元里的贴图采样结果：暗部抬得多、亮部几乎不动。
+       ★ 加色灯槽（fk_additive）跳过：它的 tint 是游戏实测值，不能动。
+       ★ 用 onBeforeCompile 注入，找不到锚点会静默不替换 → 材质照常显示，不会崩。 */
+    if (u.userData.fk_glow && UNLIT_GLOW_GAMMA !== 1.0 && !u.userData.fk_additive){
+      u.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <map_fragment>',
+          '#include <map_fragment>\n\tdiffuseColor.rgb = pow(diffuseColor.rgb, vec3(' +
+          UNLIT_GLOW_GAMMA.toFixed(3) + '));'
+        );
+      };
+      u.customProgramCacheKey = () => 'fkglow' + UNLIT_GLOW_GAMMA.toFixed(3);
+    }
+    if (UNLIT_MATS.indexOf(u) < 0) UNLIT_MATS.push(u);
+    if (u.userData.fk_additive){
+      // ★ 游戏里是 `Blend SrcAlpha One`（加色混合）。
+      // ★★ 2026-10-11 实测：**不能用 THREE.AdditiveBlending** ——
+      //   本项目的 WebGLRenderer 用默认的 premultipliedAlpha:true，three 在这种配置下把
+      //   AdditiveBlending 实现成 blendFunc(ONE, ONE)（**忽略 alpha**），
+      //   在"加色片 + Bloom 合成器"这条路上实测直接把整屏打成纯黑。
+      //   → 改用【显式 CustomBlending】，因子与游戏逐位一致：贡献 = rgb × alpha
+      //     = (_TintColor.rgb × 贴图) × 0.197。ZWrite Off / Cull Off 同理。
+      u.blending = THREE.CustomBlending;
+      u.blendSrc = THREE.SrcAlphaFactor;
+      u.blendDst = THREE.OneFactor;
+      u.blendEquation = THREE.AddEquation;
+      u.depthWrite = false;
+      u.side = THREE.DoubleSide;
+      u.transparent = true;
+      console.log('%c★ 加色发光片：%s（#%s × a=%s，CustomBlending SrcAlpha+One / ZWriteOff / DoubleSide）',
+        'color:#5fd8e8', u.name, u.color.getHexString(), u.opacity);
+    }
+    return u;
+  }
+
+  const key = [
+    src.name, src.map ? src.map.uuid : '-', src.emissive.getHexString(),
+    src.emissiveMap ? src.emissiveMap.uuid : '-', src.transparent,
+    src.alphaTest, src.side,
+  ].join('|');
+  if (matCache.has(key)) return matCache.get(key);
+
+  const m = new THREE.MeshLambertMaterial({
+    map: src.map || null,
+    color: src.color ? src.color.clone() : new THREE.Color(0xffffff),
+    emissive: src.emissive ? src.emissive.clone() : new THREE.Color(0x000000),
+    emissiveMap: src.emissiveMap || null,
+    emissiveIntensity: src.emissiveIntensity != null ? src.emissiveIntensity : 1,
+    transparent: !!src.transparent,
+    opacity: src.opacity != null ? src.opacity : 1,
+    alphaTest: src.alphaTest || 0,
+    side: src.side,
+    depthWrite: src.depthWrite !== false,
+    fog: true,
+  });
+  m.name = 'LMB_' + (src.name || 'mat');
+  matCache.set(key, m);
+  return m;
+}
+
+let matSwapped = 0;
+const allTextures = [];        // ★ 收集所有贴图，切换画质时改各向异性用
+
+// ★ 多房间支持的四行声明（QS / THEME / GLB_URL / FROM_HUB）
+//   【已上移到模块前面】—— 见"只弹第一次进入界面"那个 IIFE 的上方注释。
+//   原因：那个 IIFE 会在模块执行早期立即读 FROM_HUB，声明留在这里就是 TDZ，
+//         会抛 ReferenceError 并让【整个模块中断】。
+applyRig(THEME || 'closureRoom');      // ★ 换主题的灯光 rig（色温/强度，见上面的 ROOM_RIG）
+/* ★ 2026-10-12：把"这次用的是哪套光照"打在控制台第一行 —— 排查时一眼看出模式 */
+try {
+  console.log('%c★ 光照模式：' + (IS_UNLIT
+      ? 'unlit 直出（贴图原样 + 发光件 + 泛光）＝ 游戏真实做法'
+      : (MODE === 'rig' ? '旧 rig 打光（?mode=rig 回退版，GLB 来自 rooms\\_rig\\）'
+                        : '旧 rig 打光（这个主题还没转 unlit）')),
+    'color:#5fd8e8;font-weight:bold');
+} catch (e) {}
+
+/* ★ 左上角标题跟着主题走（原来写死 CLOSURE ROOM，进影音室/教室也是错的） */
+const ROOM_TITLE = {
+  clmsRoom: "PORT LOUNGE",
+  messengerCottage: ['MESSENGER COTTAGE', 'FIRST PERSON'],
+  closureRoom:  ['CLOSURE ROOM',        'FIRST PERSON'],
+  rabbitCinema: ['RABBIT CINEMA',       'FIRST PERSON'],
+  classroom:    ['ST. MARCEAU CLASS',   'FIRST PERSON'],
+  rhodesKitchen:['RHODES KITCHEN',      'FIRST PERSON'],
+  YuKitchen:    ['YU KITCHEN',          'FIRST PERSON'],
+  basicRoom:    ['RECEPTION ROOM',      'FIRST PERSON'],
+  YuKitchen_unlit: ['YU KITCHEN · UNLIT', 'A/B 对照版'],
+};
+(function setBrandTitle(){
+  const el = document.getElementById('brandTitle');
+  if (!el) return;
+  const t = ROOM_TITLE[THEME] || ['DORMITORY', 'FIRST PERSON'];
+  el.innerHTML = t[0] + '<em>' + t[1] + '</em>';
+})();
+console.log('%c★ 载入场景：' + GLB_URL, 'color:#5fd8e8;font-weight:bold');
+
+new GLTFLoader().load(GLB_URL, gltf => {
+  const root = gltf.scene;
+  const skipped = [];
+  root.traverse(o => {
+    if (!o.isMesh) return;
+
+    // ★ 换成 Lambert
+    if (Array.isArray(o.material)){
+      o.material = o.material.map(src => { matSwapped++; return toLambert(src); });
+    } else if (o.material){
+      o.material = toLambert(o.material);
+      matSwapped++;
+    }
+
+    // 贴图设置
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of mats){
+      if (m && m.map){
+        m.map.magFilter = THREE.NearestFilter;                 // 像素风 → 放大用最近邻（保持锐利）
+        m.map.minFilter = THREE.LinearMipmapLinearFilter;      // 缩小用 mipmap
+        m.map.generateMipmaps = true;
+        m.map.anisotropy = QUALITY[qualityIdx].aniso;          // ★ 按画质档
+        m.map.needsUpdate = true;
+        allTextures.push(m.map);
+      }
+    }
+    o.frustumCulled = true;
+
+    const n = o.name.toLowerCase();
+    // 房间件不参与碰撞。改用"按段匹配"的正则，别用 startsWith：
+    //  教室/万能空间的房间件叫 ROOM_*（前缀匹配够用），但港都会客室的导入器叫 CC_ROOM_*，
+    //  startsWith('room') 会漏掉 -> 房间外壳变成碰撞盒，人会被卡住。
+    //  同时必须避免误伤 furni_clmsRoom_floorlamp_01 这类名字（含 "clmsroom"/"floorlamp"）。
+    if (/^(cc_)?room(_|$)/.test(n) || /_room(_|$)/.test(n) || /_floor(_|$)/.test(n)
+        || /_frame(_|$)/.test(n) || /_door(_|$)/.test(n)) return;
+
+    // ── 收集碰撞盒
+    const b = new THREE.Box3().setFromObject(o);
+    const w = b.max.x - b.min.x, d = b.max.z - b.min.z, h = b.max.y - b.min.y;
+    if (w < 0.10 || d < 0.10) { skipped.push(o.name + '(太薄)'); return; }
+    if (h < 0.30)            { skipped.push(o.name + '(太矮)'); return; }
+    if (b.min.y > 1.35)      { skipped.push(o.name + '(太高)'); return; }
+    if (b.max.y < 0.45)      { skipped.push(o.name + '(太贴地)'); return; }
+
+    const minX = b.min.x + INSET, maxX = b.max.x - INSET;
+    const minZ = b.min.z + INSET, maxZ = b.max.z - INSET;
+    if (maxX - minX < 0.02 || maxZ - minZ < 0.02) { skipped.push(o.name + '(内缩后太小)'); return; }
+
+    boxes.push({ min:{ x:minX, z:minZ }, max:{ x:maxX, z:maxZ },
+                 y:[b.min.y, b.max.y], name:o.name });
+  });
+  scene.add(root);
+  loaded = true;
+
+  // ★ 2026-10-13：给家具 mesh 打上家具 ID（准星对准显示描述用）。
+  //   表可能还没到（fetch 和 GLB 是并行的）→ 函数内部会自己判断，表到了之后再补算一次。
+  if (typeof tagFurniMeshes === 'function') tagFurniMeshes();
+
+  // ★ 2026-10-10：GLB 里的点光（KHR_lights_punctual）已随 root 进场景 →
+  //   现在收集；自发光材质同理。然后把调参记录（色温/强度）重新应用一次。
+  //   （applyRig 原来在 L885 就跑过一次，那时点光/自发光还没加载）
+  collectEmissiveMats();
+  collectUnlitMats();          // ★ 2026-10-12：unlit 材质（含整体亮度）—— 材质在 toLambert 里就收好了
+  /* ★★ 2026-10-12：A/B 原型开关（?alpha= / ?emit=）—— 材质都进 UNLIT_MATS 之后再应用。
+     默认（不带参数）时这个函数直接 return，观感与之前**完全一致**。 */
+  applyUnlitFixVariants();
+  if (collectPointLights().length || EMISSIVE_MATS.length || UNLIT_MATS.length){
+    applyRig(tuneTheme || THEME || 'closureRoom');
+    if (tuneShown) showTunePanel();
+  }
+
+  // ★★★ 从走廊进来的房间：用 floor 的包围盒【自动识别房间边界】
+  //     （每个主题的房间尺寸略不同，写死不行）
+  if (FROM_HUB){
+    let fb = null;
+    root.traverse(o => {
+      if (!o.isMesh) return;
+      if (!/floor/i.test(o.name)) return;
+      const b = new THREE.Box3().setFromObject(o);
+      if (!fb) fb = b.clone(); else fb.union(b);
+    });
+    if (fb && fb.max.x - fb.min.x > 2 && fb.max.z - fb.min.z > 1){
+      ROOM.x0 = fb.min.x; ROOM.x1 = fb.max.x;
+      ROOM.z0 = fb.min.z; ROOM.z1 = fb.max.z;
+      ROOM.y0 = fb.min.y; ROOM.y1 = fb.max.y;
+      BOUND.x0 = ROOM.x0 + WALL;  BOUND.x1 = ROOM.x1 - WALL;
+      BOUND.z0 = ROOM.z0 + WALL;  BOUND.z1 = ROOM.z1 - 0.06;
+      console.log('%c★ 房间边界自动识别：X %s~%s  Z %s~%s', 'color:#5fd8e8;font-weight:bold',
+        ROOM.x0.toFixed(2), ROOM.x1.toFixed(2), ROOM.z0.toFixed(2), ROOM.z1.toFixed(2));
+    } else {
+      console.warn('★ 没找到 floor 网格，沿用默认边界');
+    }
+
+    // ★ 门已经在 GLB 里了（游戏自带的左右门洞 + 门板）
+    //   这里只需要读出门的位置，用来做"按 E 出门"的判定
+    locateDoors(root);
+  }
+
+  console.log('%c★ 材质已换成 Lambert：' + matSwapped + ' 个槽位，共用 ' + matCache.size + ' 个材质',
+              'color:#5fd8e8;font-weight:bold');
+  console.log('碰撞盒 ' + boxes.length + ' 个：' + boxes.map(b=>b.name).join(', '));
+  if (skipped.length) console.log('已忽略：', skipped.join(', '));
+
+  findSpawn();
+
+  // ★★ 从走廊进来的【且不是第一次】：不弹开始页，直接进游戏
+  //    ★ 2026-10-11 修正两处（原来这里是"每次都跳过"，把提示页彻底干掉了）：
+  //      ① 条件加上 SKIP_START_PAGE —— 第一次进宿舍仍然要弹提示页（用户要求"只触发一次"，
+  //         而不是"一次都不触发"）。跳过与否由上面的 IIFE 统一决定。
+  //      ② 原来手动 entered=true + 移除 #start，却【没调 lock()】→ 自动进入后鼠标没锁定，
+  //         还得再点一下画面才能转头。现在统一走 enterGame()（它负责 lock + 音频 + 移除 #start）。
+  if (FROM_HUB && SKIP_START_PAGE){
+    setTimeout(() => {
+      console.log('%c★ 从走廊进来 —— 跳过开始页', 'color:#5fd8e8;font-weight:bold');
+      try { enterGame(); } catch(e){}
+      // 浏览器可能不接受"非用户手势"的自动锁定 → 给一条提示引导点一下（锁定后自动淡出）
+      if (!document.pointerLockElement){
+        const h = document.createElement('div');
+        h.textContent = '点击画面开始操作';
+        h.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);' +
+          'padding:11px 26px;border:1px solid #46617e;border-radius:3px;' +
+          'background:rgba(12,17,24,.85);color:#c6d8ea;font-size:14px;letter-spacing:.12em;' +
+          'z-index:40;pointer-events:none;transition:opacity .3s ease';
+        document.body.appendChild(h);
+        const clear = () => {
+          if (document.pointerLockElement){
+            h.style.opacity = '0';
+            setTimeout(() => h.remove(), 320);
+            document.removeEventListener('pointerlockchange', clear);
+          }
+        };
+        document.addEventListener('pointerlockchange', clear);
+        // 兜底：万一一直没锁定，10 秒后也淡掉，别一直挡着画面
+        setTimeout(() => { h.style.opacity = '0'; setTimeout(() => h.remove(), 320); }, 10000);
+      }
+    }, 120);
+  }
+  applyQuality(qualityIdx, true);
+  console.log('出生点', player.pos.x.toFixed(2), player.pos.z.toFixed(2),
+              '卡住?', hitsAny(player.pos.x, player.pos.z));
+
+  // ★ 恢复上次的博士状态（他记得你）
+  //   注意：?reset 参数会在这之前清掉 localStorage，所以这里读到的就是重置后的状态
+  try {
+    if (localStorage.getItem('dorm_doctor_revealed') === '1') DOCTOR.revealed = true;
+    if (localStorage.getItem('dorm_doctor_on') === '0'){ DOCTOR.enabled = false; trust.frozen = true; }
+    if (DOCTOR.revealed && DOCTOR.enabled){
+      DOCTOR.headOp = 1; DOCTOR.headTarget = 1; DOCTOR.head.visible = true;
+      console.log('%c……他在外面等着（上次已经现身过）', 'color:#8298ac');
+      console.log('%c   想重置成"第一次"？按 Shift+R，或访问 walk.html?reset', 'color:#5c7086');
+    }
+  } catch(e){}
+
+  // ★ 模型载好了 —— 但不自动进！等访客点「点击进入」
+  const btn = document.getElementById('startbtn');
+  if (btn){
+    btn.textContent = '点击进入';
+    btn.classList.remove('waiting');
+  }
+  checkHardwareAccel();          // ★ 顺手检查硬件加速，有问题就在开始页警告
+}, undefined, err => {
+  console.error(err);
+  const btn = document.getElementById('startbtn');
+  if (btn){ btn.textContent = '模型载入失败'; btn.classList.add('waiting'); }
+});
+
+/* ★ 硬件加速检测 → 在开始页给出警告 */
+function checkHardwareAccel(){
+  const el = document.getElementById('hwWarn');
+  if (!el) return;
+  if (GPU_INFO.software){
+    el.className = 'pn-warn bad';
+    el.innerHTML = '⚠ 检测到浏览器正在用<b>软件渲染</b>（' +
+      String(GPU_INFO.renderer).slice(0,40) + '…）<br>' +
+      '请务必开启硬件加速，否则帧率会低 10~50 倍。';
+    console.error('⚠ 软件渲染中');
+  } else if (GPU_INFO.integrated){
+    el.className = 'pn-warn warn';
+    el.innerHTML = '⚠ 检测到使用的是<b>集成显卡</b>（' +
+      String(GPU_INFO.renderer).slice(0,40) + '…）<br>' +
+      '如果感觉卡，可在显卡驱动里指定浏览器用独立显卡。';
+    console.warn('⚠ 疑似核显');
+  } else {
+    el.style.display = 'none';
+    console.log('%c✓ 硬件加速正常：' + GPU_INFO.renderer, 'color:#5fd8e8');
+  }
+}
+
+/* ★ 应用画质档位 */
+function applyQuality(idx, silent){
+  qualityIdx = idx;
+  const q = QUALITY[idx];
+
+  // ① 像素比
+  PR_MAX = q.pr();
+  pixelRatio = PR_MAX;
+  renderer.setPixelRatio(pixelRatio);
+
+  // ② 灯光：高画质用 4 盏，中/低用 2 盏
+  amb.visible  = q.fullLights;
+  fill.visible = q.fullLights;
+  rim.visible  = q.fullLights;
+  hemi.visible = !q.fullLights;
+  applyLightIntensities(1);          // ★ 强度统一由 LIGHT_BASE 管（对齐 Blender）
+
+  // ③ 各向异性过滤（决定斜看地面/墙壁清不清晰）
+  for (const t of allTextures){
+    t.anisotropy = q.aniso;
+    t.needsUpdate = true;
+  }
+
+  // ④ 性能面板
+  perf.autoEnabled = q.auto;         // 高画质不自动降质
+  perf.adjustCount = 0;
+
+  if (!silent) say('画质：' + q.label + '　' + q.desc);
+  console.log('%c★ 画质切到【' + q.label + '】' + q.desc,
+              'color:#5fd8e8;font-weight:bold');
+  if (perf.shown) updateFpsHud();
+}
+
+/* Q 键循环切换画质 */
+function cycleQuality(){
+  applyQuality((qualityIdx + 1) % QUALITY.length);
+}
+
+/* 从房间前部中央开始，向四周找一个不卡住的位置 */
+function findSpawn(){
+  const cands = [];
+  for (let z = 0.86; z >= 0.30; z -= 0.08){
+    for (let dx = 0; dx <= 3.4; dx += 0.24){
+      for (const sx of (dx === 0 ? [0] : [dx, -dx])){
+        cands.push([0.13 + sx, z]);
+      }
+    }
+  }
+  for (const [x, z] of cands){
+    if (!hitsAny(x, z)){
+      player.pos.set(x, EYE, z);
+      player.home.copy(player.pos);
+      console.log('找到空地', x.toFixed(2), z.toFixed(2));
+      if (applyCamOverride()) return;          // ★ 定点相机优先
+      return;
+    }
+  }
+  player.pos.set(0.13, EYE, 0.90);
+  player.home.copy(player.pos);
+  console.warn('没找到空地，用兜底位置');
+  applyCamOverride();                          // ★ 定点相机（即使没空地也生效）
+}
+
+/* ★★★ 2026-10-12 加：定点相机（URL 参数）
+   ───────────────────────────────────────────────────────────────────────────
+   为什么加：排查"某件家具灰暗 / 被裁 / 贴图错"时，出生点视角**看不到置物架那一侧**，
+     以前的"单件渲染图"因此什么都没拍到（用户反馈"图里没有家具"）。
+   用法（本地调试 / 给用户圈差异都用它）：
+     walk.html?theme=rabbitCinema&cam=-2.2,1.35,1.30&look=-2.2,0.85,-0.76
+       cam  = 相机世界坐标 x,y,z（y 是**高度**，站立视线约 1.40）
+       look = 看向的世界坐标点（给了它就用 atan2 反算 yaw/pitch，别自己算角度）
+     · 只给 cam 不给 look → 只挪位置，朝向保持默认（朝 -Z 后墙）
+     · R 键复位回到这个定点（不是出生点），方便反复对比
+   坐标怎么查：3D渲染\_fk_game_mat_shader_map.py 会打印 GLB 里每件的世界坐标中心。 */
+const CAM_OVERRIDE = (() => {
+  const q = new URLSearchParams(location.search);
+  const num = (s) => {
+    const a = (s || '').split(',').map(v => parseFloat(v));
+    return (a.length === 3 && a.every(Number.isFinite)) ? a : null;
+  };
+  const cam = num(q.get('cam'));
+  if (!cam) return null;
+  const look = num(q.get('look'));
+  const dx = look ? look[0] - cam[0] : null;
+  const dy = look ? look[1] - cam[1] : null;
+  const dz = look ? look[2] - cam[2] : null;
+  const yaw   = look ? Math.atan2(-dx, -dz) : null;
+  const pitch = look ? Math.atan2(dy, Math.hypot(dx, dz)) : null;
+  /* ★ 定点相机模式 = 调试/圈差异用 → 自动跳过「点击进入」提示页，
+     让 URL 直接就是干净视角（也方便嵌进对比页的 iframe）。
+     ⚠️ 只【隐藏】不【移除】：下面 2159 行 `const startEl = getElementById('start')`
+        和 2354 行 `startEl.addEventListener(...)` 还需要这个引用，
+        真删掉会 null 崩（2026-10-12 踩到）。 */
+  try {
+    const el = document.getElementById('start');
+    if (el) { el.style.display = 'none'; el.style.pointerEvents = 'none'; }
+    console.log('%c★ 定点相机模式：已自动隐藏进入提示页（?cam= 生效时）',
+                'color:#ffd28a;font-weight:bold');
+  } catch (e) {}
+  return { pos: cam, yaw, pitch, look };
+})();
+
+function applyCamOverride(){
+  if (!CAM_OVERRIDE) return false;
+  player.pos.set(CAM_OVERRIDE.pos[0], CAM_OVERRIDE.pos[1], CAM_OVERRIDE.pos[2]);
+  player.home.copy(player.pos);                 // ★ R 键回位 = 回到这个定点
+  HEIGHT.base = HEIGHT.cur = HEIGHT.target = CAM_OVERRIDE.pos[1];   // 视线高度跟着相机走
+  EYE = CAM_OVERRIDE.pos[1];
+  if (CAM_OVERRIDE.yaw   !== null) player.yaw   = CAM_OVERRIDE.yaw;
+  if (CAM_OVERRIDE.pitch !== null) player.pitch = CAM_OVERRIDE.pitch;
+  console.log('%c★ 定点相机：pos=(%s) look=(%s) → yaw=%s pitch=%s',
+    'color:#ffd28a;font-weight:bold',
+    CAM_OVERRIDE.pos.map(v => v.toFixed(2)).join(', '),
+    CAM_OVERRIDE.look ? CAM_OVERRIDE.look.map(v => v.toFixed(2)).join(', ') : '未指定',
+    (player.yaw * 180 / Math.PI).toFixed(1) + '°',
+    (player.pitch * 180 / Math.PI).toFixed(1) + '°');
+  return true;
+}
+
+// ═══════════════════════════════════════════════════ 玩家
+const player = {
+  pos: new THREE.Vector3(0.13, EYE, 0.86),   // 占位，载入模型后由 findSpawn() 自动找空地
+  home: new THREE.Vector3(0.13, EYE, 0.86),  // 记住出生点（R 键回位）
+  yaw: 0,        // yaw=0 → 朝 -Z → 看向后墙的家具
+  pitch: -0.06,
+};
+const keys = Object.create(null);
+addEventListener('keydown', e => {
+  // ★ 从走廊进来的：按 E 回走廊
+  if (typeof FROM_HUB !== 'undefined' && FROM_HUB && (e.code === 'KeyE' || e.code === 'KeyQ' && false)){
+    if (typeof nearExit !== 'undefined' && nearExit) goHub();
+  }
+  keys[e.code] = true;
+  if (e.code === 'KeyT') fillTrust(100);        // 调试：直接填满信赖
+  if (e.code === 'KeyR'){
+    // ★ R = 回到出生点   Shift+R = 重置博士记忆（调试用）
+    if (e.shiftKey) resetDoctorMemory();
+    else resetPlayer();
+  }
+  if (e.code === 'KeyN') toggleFreeze();        // 关闭/开启博士事件（= 冻结信赖 + 让他消失）
+  /* ★ 2026-10-13 新加两个开关（都不冲突：g / i 在 walk.html 里本来就没人用）
+       G = 无视碰撞（穿家具 + 出房间）
+       I = 家具介绍（准星对准家具显示名字+描述）的显示开关 */
+  if (e.code === 'KeyG' && !e.repeat) toggleNoclip();
+  if (e.code === 'KeyI' && !e.repeat) toggleFurniInfo();
+  if (e.code === 'KeyM') toggleMute();          // 静音 / 取消静音
+  if (e.code === 'KeyQ' && !e.repeat){
+    // ★ 2026-10-13：Shift+Q = 帧率上限（和 Q 画质相邻，都属于"性能"这一类）
+    if (e.shiftKey) setFpsCap(fpsDivIdx + 1);
+    else cycleQuality();                                // 切换画质（高→中→低）
+  }
+  /* ★★★ 2026-10-13 用户需求 4：博士演出【不再自动发生】（触发器已删，见 updateTrust 注释）。
+     这里改成【手动】入口，两个作用：
+       K        手动放一次演出（想看效果时按，平时完全不会打扰观赏）
+       Shift+K  切换演出方式（3D 巨人 / 老的全屏贴脸）
+     ★ 为什么保留而不是删干净：演出代码（triggerEgg / updateEgg 约 170 行 + 音效 140 行）
+       一行没动，随时能找回效果；删了以后再想要就得翻备份了。
+     ★ 帮助文案里明确写着"手动"，所以访客不会误触。 */
+  if (e.code === 'KeyK' && !e.repeat){
+    if (e.shiftKey){
+      eggMode = eggMode === 'giant' ? 'screen' : 'giant';
+      say(eggMode === 'giant'
+          ? '演出方式：巨人从外面看进来（3D）· 再按 K 手动放一次'
+          : '演出方式：全屏贴脸（旧的 2D 跳脸）· 再按 K 手动放一次');
+    } else {
+      triggerEgg();
+      say('（手动）放了一次博士演出 · 平时不会有任何自动演出');
+    }
+  }
+  // ★ F 显示/隐藏性能面板
+  if (e.code === 'KeyF' && !e.repeat) togglePerfPanel();
+  // ★ C 改成【切换】而不是按住（e.repeat 防止长按连发）
+  if (e.code === 'KeyC' && !e.repeat) toggleCrouch();
+  // ★ 视线高度自由调（不同主题门高不一样，自动定不可靠 → 交给用户，并且记住）
+  if (e.code === 'BracketLeft' || e.code === 'Minus')  setEye(HEIGHT.base - 0.05);
+  if (e.code === 'BracketRight' || e.code === 'Equal') setEye(HEIGHT.base + 0.05);
+  if (e.code === 'Backslash') setEye(1.40, true);      // \ 键恢复默认
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ★ COS 杜林（切换式蹲下）
+let crouchOn = false;
+function toggleCrouch(){
+  crouchOn = !crouchOn;
+  say(crouchOn ? 'COS 杜林 · 身高 -34cm' : '站起来了');
+}
+
+// ★ N 键：关闭 / 开启整个博士事件
+//   关闭 = 他消失 + 信赖冻结（不会再触发）
+//   开启 = 若已现过身，他回到黑暗里继续看着你
+function toggleFreeze(){
+  setDoctorEvent(!DOCTOR.enabled);
+}
+
+/* ★ 重置博士记忆（调试用）
+   Shift+R 键，或 URL 加 ?reset
+   作用：他"忘掉"你 —— 下次信赖满是【第一次现身】而不是【伸手点你】 */
+function resetDoctorMemory(quiet){
+  try {
+    localStorage.removeItem('dorm_doctor_revealed');
+    localStorage.removeItem('dorm_doctor_on');
+    // ★ 2026-10-13：信赖值现在也是持久化的（dorm_trust）→ 重置时要一起清，
+    //   否则"重置博士"之后信赖条还停在 100%，下次进房间头立刻又出现。
+    localStorage.removeItem('dorm_trust');
+  } catch(e){}
+  DOCTOR.revealed = false;
+  DOCTOR.enabled = true;
+  DOCTOR.headTarget = 0;
+  DOCTOR.headOp = 0;
+  DOCTOR.handTarget = 0;
+  DOCTOR.handOp = 0;
+  DOCTOR.handZ = DOCTOR.handStartZ;
+  DOCTOR.handZTarget = DOCTOR.handStartZ;
+  trust.frozen = false;
+  trust.triggered = 0;
+  trust.v = 0;
+  trust.stepDist = 0;
+  // ★ 2026-10-13：把"已经落过盘"的标记也清掉 —— 否则重置后再满信赖时
+  //   那句 localStorage.setItem 会被守卫跳过，刷新后头不出现（状态不一致）。
+  DOCTOR._savedReveal = false;
+  console.log('%c↺ 博士记忆已重置：下次信赖满是「第一次现身」', 'color:#f0c34a;font-weight:bold');
+  if (!quiet) say('已重置 · 博士忘掉你了（再按 T 就是第一次现身）');
+}
+
+/* ★ URL 参数 ?reset —— 方便分享给别人体验"第一次"
+   例：walk.html?reset */
+if (/[?&]reset\b/.test(location.search)){
+  setTimeout(()=>resetDoctorMemory(true), 0);
+  setTimeout(()=>say('已通过 ?reset 重置 · 博士忘掉你了'), 2000);
+}
+
+/* ★ 启动时在控制台列出调试键（不占用界面，需要时按 F12 看） */
+setTimeout(()=>{
+  console.log('%c─── 调试键 ───────────────────────', 'color:#8298ac');
+  console.log('  T        填满信赖（★ 现在只会让博士出现在黑暗里，不再有强制视角演出）');
+  console.log('  Shift+R  重置博士记忆（回到"第一次"）');
+  console.log('  R        回到出生点');
+  console.log('  N        关闭/开启博士事件');
+  console.log('  K        手动放一次博士演出（★ 平时【不会】自动演出）');
+  console.log('  Shift+K  切换演出方式（3D 巨人 / 全屏贴脸）');
+  console.log('  Q        画质 高/中/低');
+  console.log('  Shift+Q  帧率上限 1/2屏刷（默认）/ 不限 / 1/3屏刷');
+  console.log('  Tab      房间列表（任何房间都能按）');
+  console.log('  ★ 准星对准家具 → 底部显示家具名字 + 官方描述（不用按键）');
+  console.log('  F        性能面板');
+console.log('  B        泛光(开/关)');
+  console.log('  M        静音');
+  console.log('  [ ]      视线高度微调');
+  console.log('  URL ?reset  重置博士记忆');
+  console.log('%c─────────────────────────────────', 'color:#8298ac');
+}, 1200);
+
+// 临时提示（调高度时看数值）
+let sayT = 0;
+function say(msg){
+  let el = document.getElementById('say');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(sayT);
+  sayT = setTimeout(()=>el.classList.remove('on'), 1500);
+}
+
+// ── 鼠标转头（Pointer Lock）
+let locked = false;
+const startEl = document.getElementById('start');
+
+// ═══════════════════════════════════════════════════ 背景音乐
+// ★ 浏览器自动播放策略很挑：
+//   必须在"用户手势"的同步调用栈里调 play()，而且失败了要能重试。
+//   所以这里：① 任何首次交互都试一次 ② 失败了记录状态，下次交互再试
+const bgm = document.getElementById('bgm');
+const muteBtn = document.getElementById('mutebtn');
+bgm.volume = 0.32;
+let bgmOn = false;          // 正在播放
+let bgmBlocked = false;     // 被策略拦过
+let bgmUserMuted = false;   // 用户主动静音（不再自动重试）
+
+function bgmState(){
+  return {
+    就绪: bgm.readyState, 网络: bgm.networkState,
+    时长: bgm.duration ? bgm.duration.toFixed(1) : null,
+    暂停: bgm.paused, 音量: bgm.volume,
+    错误: bgm.error ? (bgm.error.code + '/' + bgm.error.message) : '无',
+  };
+}
+
+function startBgm(fromUser){
+  if (bgmUserMuted && !fromUser) return;
+  if (!bgm.paused) return;                     // 已在播
+  const p = bgm.play();
+  if (p && p.then){
+    p.then(()=>{
+      bgmOn = true; bgmBlocked = false;
+      muteBtn.classList.add('on'); muteBtn.classList.remove('err');
+      console.log('%c♪ BGM 开始播放', 'color:#5fd8e8', bgmState());
+    }).catch(err=>{
+      bgmOn = false; bgmBlocked = true;
+      muteBtn.classList.add('err');
+      console.warn('❌ BGM 播放被拒（等下次交互再试）:', err.name, err.message, bgmState());
+    });
+  }
+}
+
+function toggleMute(){
+  if (bgm.paused){
+    bgmUserMuted = false;
+    startBgm(true);
+  } else {
+    bgm.pause();
+    bgmOn = false; bgmUserMuted = true;
+    muteBtn.classList.remove('on');
+    console.log('♪ BGM 已暂停（用户静音）');
+  }
+}
+muteBtn.addEventListener('click', e=>{ e.stopPropagation(); toggleMute(); });
+
+bgm.addEventListener('error', ()=>{
+  muteBtn.classList.add('err');
+  console.error('❌ BGM 载入失败:', bgmState());
+});
+bgm.addEventListener('loadedmetadata', ()=>{
+  console.log('%c♪ BGM 元数据就绪 ' + (bgm.duration||0).toFixed(1) + ' 秒', 'color:#5fd8e8');
+});
+bgm.addEventListener('playing', ()=>{
+  bgmOn = true; bgmBlocked = false;
+  muteBtn.classList.add('on'); muteBtn.classList.remove('err');
+});
+
+// ★ 任何首次用户交互都尝试启动（点击 / 按键 / 触摸）
+//   浏览器只要"有一次手势"，之后就能播了
+function kickBgm(){
+  if (bgmUserMuted) return;
+  if (!bgm.paused) return;
+  startBgm();
+}
+['pointerdown','click','keydown','touchstart'].forEach(ev=>{
+  addEventListener(ev, kickBgm, { passive: true });
+});
+
+function lock(){
+  /* ★ 2026-10-12：requestPointerLock 在【无头浏览器 / iframe】里必然抛
+     WrongDocumentError（"root document is not valid for pointer lock"），
+     以前它冒到全局 → 控制台刷一条 [启动错误]，排查时很吵。
+     加上 try/catch + promise 兜底：失败就静默（键鼠拖动照样能用）。 */
+  try {
+    const r = renderer.domElement.requestPointerLock?.();
+    if (r && typeof r.catch === 'function') r.catch(() => {});
+  } catch (e) { /* 静默：无头/iframe 里锁不了是正常的 */ }
+}
+
+/* ═══════════════════════════════════════════════════ 手机端交互
+   ★ 手机上没键盘 → 加屏幕按钮：
+     · 蹲下按钮（右下角）
+     · 连点标题 5 次 = 填满信赖（调试彩蛋用，访客不会发现） */
+(function initTouchUI(){
+  const cb = document.getElementById('crouchbtn');
+  if (cb){
+    // 用 touchstart 而不是 click —— 响应更快，且和拖拽不冲突
+    const fire = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleCrouch();
+      cb.classList.toggle('on', crouchOn);
+      cb.classList.remove('pressed'); void cb.offsetWidth; cb.classList.add('pressed');
+    };
+    cb.addEventListener('touchstart', fire, { passive:false });
+    cb.addEventListener('mousedown', fire);
+    // 防止长按弹出菜单/选中
+    cb.addEventListener('contextmenu', e => e.preventDefault());
+  }
+
+  // ★ 隐藏手势：连点页面标题 5 次 → 填满信赖（手机上没法按 T）
+  const title = document.getElementById('brandTitle');
+  if (title){
+    let hits = 0, timer = 0;
+    const tap = () => {
+      hits++;
+      clearTimeout(timer);
+      timer = setTimeout(()=>{ hits = 0; }, 1400);
+      if (hits >= 5){
+        hits = 0;
+        fillTrust(100);
+        say('（隐藏调试：信赖已填满）');
+        if (navigator.vibrate) navigator.vibrate(30);
+      }
+    };
+    title.addEventListener('click', tap);
+    title.addEventListener('touchstart', e => { e.stopPropagation(); tap(); }, { passive:true });
+  }
+
+  // 触摸提示几秒后淡出
+  const th = document.getElementById('touchhelp');
+  if (th) setTimeout(()=>th.classList.add('fade'), 6000);
+})();
+
+// ★ 进入游戏（必须点按钮才会调到）
+let entered = false;
+function enterGame(){
+  if (entered || !loaded) return;      // 没载完不让进
+  entered = true;
+  startBgm(true);                      // 用户点击 → 可以播音频了
+  lock();
+  startEl.classList.add('done');
+  setTimeout(()=>startEl.remove(), 600);
+  showRotateHint();                    // ★ 手机端提示屏幕方向
+  console.log('%c▶ 进入第一人称', 'color:#5fd8e8;font-weight:bold');
+}
+
+/* ═══════════════════════════════════════════════════ 手机端屏幕方向
+   ★ 之前的 bug：orientationchange 时调 updateRotateHint(true) 会重新加 .on，
+     但没重设定时器 → 竖屏时提示永远不消失
+   → 现在统一由 refreshRotateHint() 处理"显示 + 定时隐藏"两件事 */
+const isPhone = matchMedia('(pointer: coarse)').matches &&
+                Math.min(innerWidth, innerHeight) < 820;
+let rotateTimer = 0;
+
+function refreshRotateHint(){
+  const el = document.getElementById('rotatehint');
+  if (!el || !isPhone) return;
+  clearTimeout(rotateTimer);
+
+  const portrait = innerHeight >= innerWidth;
+  const sub = document.getElementById('rhsub');
+
+  if (portrait){
+    // 竖屏：提示一下，4 秒后自动消失
+    el.classList.remove('turn');
+    if (sub) sub.innerHTML = '单手操作更方便<br>左下角摇杆移动 · 拖动屏幕转头';
+    el.classList.add('on');
+    rotateTimer = setTimeout(()=>el.classList.remove('on'), 4000);
+  } else {
+    // 横屏：图标转成旋转动画，一直显示到转过来为止
+    el.classList.add('turn', 'on');
+    if (sub) sub.innerHTML = '请把手机转成竖直<br>（横屏时视角会变得很窄）';
+  }
+}
+
+function showRotateHint(){ refreshRotateHint(); }
+
+/* ★ 相机 FOV 随宽高比自适应
+   竖屏时把垂直 FOV 放大，保证水平视野不至于太窄 */
+const FOV_BASE = 72;
+function updateCameraFov(){
+  const aspect = innerWidth / innerHeight;
+  if (aspect < 1){
+    // 竖屏：按"目标水平视野 ≈ 75°"反推垂直 FOV
+    const targetH = 75 * Math.PI / 180;
+    let v = 2 * Math.atan(Math.tan(targetH / 2) / aspect) * 180 / Math.PI;
+    v = Math.min(v, 104);              // 上限，再大就鱼眼了
+    camera.fov = v;
+  } else {
+    camera.fov = FOV_BASE;
+  }
+  camera.updateProjectionMatrix();
+}
+updateCameraFov();
+
+// 注：resize 由末尾的主监听器统一处理（它会设 aspect 再调 updateCameraFov）
+addEventListener('orientationchange', () => {
+  setTimeout(()=>{ updateCameraFov(); refreshRotateHint(); }, 120);
+});
+
+document.getElementById('startbtn').addEventListener('click', e => {
+  e.stopPropagation();
+  enterGame();
+});
+startEl.addEventListener('click', enterGame);
+// 点了画布也能进（遮罩还在的时候）
+renderer.domElement.addEventListener('click', () => {
+  if (!entered){ enterGame(); return; }
+  if (!locked && !eggActive) lock();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === renderer.domElement;
+});
+document.addEventListener('mousemove', e => {
+  if (!locked || eggActive) return;
+  player.yaw   -= e.movementX * 0.0022;
+  player.pitch -= e.movementY * 0.0022;
+  player.pitch = Math.max(-1.35, Math.min(1.35, player.pitch));
+});
+
+// ── 手机：摇杆 + 拖动转头
+const stickEl = document.getElementById('stick');
+const stickKnob = stickEl.querySelector('i');
+const isTouch = matchMedia('(pointer: coarse)').matches;
+if (isTouch) stickEl.classList.add('on');
+
+const stick = { x:0, y:0, id:null, cx:0, cy:0 };
+function stickStart(e){
+  const t = e.changedTouches ? e.changedTouches[0] : e;
+  const r = stickEl.getBoundingClientRect();
+  stick.id = t.identifier ?? 'mouse';
+  stick.cx = r.left + r.width/2; stick.cy = r.top + r.height/2;
+  stickMove(e);
+}
+function stickMove(e){
+  if (stick.id === null) return;
+  let t = null;
+  if (e.changedTouches){
+    for (const c of e.touches) if ((c.identifier ?? 'mouse') === stick.id) t = c;
+    if (!t) return;
+  } else t = e;
+  let dx = t.clientX - stick.cx, dy = t.clientY - stick.cy;
+  const max = 44;
+  const len = Math.hypot(dx, dy) || 1;
+  const k = Math.min(1, len / max);
+  dx = dx/len*k; dy = dy/len*k;
+  stick.x = dx; stick.y = dy;
+  stickKnob.style.transform = `translate(${dx*max}px, ${dy*max}px)`;
+}
+function stickEnd(e){
+  if (e.changedTouches){
+    let found = false;
+    for (const c of e.touches) if ((c.identifier ?? 'mouse') === stick.id) found = true;
+    if (found) return;
+  }
+  stick.id = null; stick.x = 0; stick.y = 0;
+  stickKnob.style.transform = 'translate(0,0)';
+}
+stickEl.addEventListener('touchstart', e=>{e.preventDefault();stickStart(e);}, {passive:false});
+stickEl.addEventListener('touchmove',  e=>{e.preventDefault();stickMove(e);},  {passive:false});
+stickEl.addEventListener('touchend',   e=>{e.preventDefault();stickEnd(e);},   {passive:false});
+stickEl.addEventListener('touchcancel',stickEnd);
+
+// 拖动屏幕转头（手机）
+let look = { id:null, x:0, y:0 };
+renderer.domElement.addEventListener('touchstart', e=>{
+  if (eggActive) return;
+  const t = e.changedTouches[0];
+  look.id = t.identifier; look.x = t.clientX; look.y = t.clientY;
+}, {passive:true});
+renderer.domElement.addEventListener('touchmove', e=>{
+  if (eggActive || look.id === null) return;
+  for (const t of e.changedTouches){
+    if (t.identifier !== look.id) continue;
+    player.yaw   -= (t.clientX - look.x) * 0.0055;
+    player.pitch -= (t.clientY - look.y) * 0.0055;
+    player.pitch = Math.max(-1.35, Math.min(1.35, player.pitch));
+    look.x = t.clientX; look.y = t.clientY;
+  }
+}, {passive:true});
+renderer.domElement.addEventListener('touchend', e=>{
+  for (const t of e.changedTouches) if (t.identifier === look.id) look.id = null;
+}, {passive:true});
+
+function resetPlayer(){
+  player.pos.copy(player.home);
+  player.yaw = 0; player.pitch = -0.06;
+}
+
+// ═══════════════════════════════════════════════════ 碰撞
+/* ★★★ 2026-10-13 用户需求：加一个「无视碰撞」开关（G 键 / 手机设置菜单里也有）。   ─────────────────────────────────────────────────────────────────────────
+   ★ 用户以为原来有这个键（"我记得原来有，但是不知道还能不能用"）——**其实没有**。
+     他记的应该是 N 键，那个是 toggleFreeze() = 冻结【信赖】（博士事件），和碰撞无关。
+   ★ 一次性放开两样东西：
+       ① 家具的碰撞盒（boxes）
+       ② 房间边界（BOUND）—— 否则"能穿家具但出不了房间"，感觉像半成品
+     ⇒ 开了之后可以穿过家具、也能走到房间外（外面是黑背景 + 黑雾，本来就是给彩蛋用的）。
+   ⚠️ 关掉时如果人正卡在墙/家具里，就会动不了 —— toggleNoclip() 里会提示按 R 回出生点。 */
+let NOCLIP = false;
+function toggleNoclip(){
+  NOCLIP = !NOCLIP;
+  if (NOCLIP){
+    say('无视碰撞：已开启　可以穿过家具（再按 G 关闭）');
+  } else {
+    // ★ 关掉时如果人正卡在家具里，分轴移动两边都会被挡住 → 会"定住不动"，必须提示
+    const stuck = hitsAny(player.pos.x, player.pos.z);
+    say(stuck ? '无视碰撞：已关闭　⚠ 你现在卡在家具里 —— 按 R 回出生点'
+              : '无视碰撞：已关闭');
+  }
+  console.log('%c★ 无视碰撞：%s', 'color:#f0c34a', NOCLIP ? '开' : '关');
+}
+function hitsAny(x, z){
+  /* ★ 出界判定【始终生效】—— 用户 2026-10-14："不需要能走出房间"。
+     所以「无视碰撞」只放开【家具碰撞盒】，房间边界照旧拦着。
+     （第一版把 BOUND 也放开了，能走到房间外面去，用户明确说不要。） */
+  if (x < BOUND.x0 || x > BOUND.x1 || z < BOUND.z0 || z > BOUND.z1) return true;
+  if (NOCLIP) return false;
+  for (const b of boxes){
+    if (x > b.min.x - RADIUS && x < b.max.x + RADIUS &&
+        z > b.min.z - RADIUS && z < b.max.z + RADIUS) return true;
+  }
+  return false;
+}
+
+// ═══════════════════════════════════════════════════ 信赖系统
+// ★ 按"每走一步"加信赖（房间只有 2.2 米进深，按时间涨太慢）
+// ★ 跳脸触发后，每步增加量【递减】，避免走几步就跳
+const trust = {
+  v: 0,
+  stepDist: 0,      // 累计走动距离
+  stepLen: 0.70,    // 走 0.7 米算"一步"
+  steps: 0,         // 走了几步
+  triggered: 0,     // 跳脸触发过几次
+  frozen: false,    // ★ 按 N 冻结（不再增长）
+  lastShown: -1,    // ★ 上次写进 DOM 的数值（避免每帧写）
+  lastTxt: '',      // ★ 上次写进 DOM 的文案
+};
+/* ★★★ 2026-10-13 用户需求：「每次进入新宿舍信赖会重置」→ 修掉。
+   ─────────────────────────────────────────────────────────────────────────
+   原来 `trust.v` **从不持久化**（每次载入 walk.html 都从 0 开始）——
+   于是"在会客室走满信赖 → 进别的宿舍 → 又变 0%"，
+   而且和我新加的"信赖满 → 博士出现（revealed 落盘）"对不上：
+   刷新后头还在，信赖条却显示 0，状态自相矛盾。
+   ⇒ 现在把信赖值存进 localStorage，进任何房间都接着上次的进度。
+   ★ 写入点复用了下面"数值真的变了才写 DOM"那处节流（每 0.5% 才写一次），
+     不是每帧写 —— localStorage 是同步 IO，每帧写会拖帧。
+   ★ 重置入口：`?reset` / Shift+R（走 resetDoctorMemory）会把两个键一起清掉。 */
+const TRUST_KEY = 'dorm_trust';
+try {
+  const _s = parseFloat(localStorage.getItem(TRUST_KEY));
+  if (Number.isFinite(_s) && _s >= 0) trust.v = Math.min(100, _s);
+} catch (e) {}
+function saveTrust(){
+  try { localStorage.setItem(TRUST_KEY, String(Math.round(trust.v * 10) / 10)); } catch (e) {}
+}
+// 第 1 / 2 / 3 / 4+ 轮时，每步增加量的 [最小%, 最大%]
+//   每步 = 0.7 米；房间宽 7.5 米 → 一个来回约 21 步
+const STEP_GAIN = [
+  [2.0, 4.0],     // 第 1 轮（第一次触发前）→ 平均 3% → 约 33 步填满 ≈ 3 个来回
+  [1.0, 1.8],     // 第 2 轮
+  [0.7, 1.3],     // 第 3 轮
+  [0.5, 1.0],     // 第 4 轮起
+];
+
+function stepGain(){
+  const g = STEP_GAIN[Math.min(trust.triggered, STEP_GAIN.length - 1)];
+  return g[0] + Math.random() * (g[1] - g[0]);
+}
+
+const fillEl  = document.getElementById('trustfill');
+const pctEl   = document.getElementById('trustpct');
+const hintEl  = document.getElementById('trusthint');
+const HINTS = [
+  '在宿舍里走动可以慢慢积累信赖…',
+  '信赖增长中 · 据说满了会有事发生',
+  '快满了…',
+];
+function fillTrust(v){ trust.v = Math.min(100, v); saveTrust(); }
+
+function updateTrust(dt, movedDist){
+  if (eggActive) return;
+  // ★ 按走过的距离加信赖（冻结时不加）
+  if (movedDist > 0 && !trust.frozen){
+    trust.stepDist += movedDist;
+    while (trust.stepDist >= trust.stepLen){
+      trust.stepDist -= trust.stepLen;
+      trust.steps++;
+      trust.v = Math.min(100, trust.v + stepGain());
+    }
+  }
+  const p = trust.v;
+
+  // ★ 只在【数值真的变了】才写 DOM（每帧写会触发布局+重绘）
+  if (Math.abs(p - trust.lastShown) >= 0.5 || Math.floor(p) !== Math.floor(trust.lastShown)){
+    trust.lastShown = p;
+    fillEl.style.width = p.toFixed(1) + '%';
+    pctEl.textContent = Math.floor(p) + '%';
+    // ★ 2026-10-13：顺手落盘（复用这个节流点 —— 每 0.5% 才写一次 localStorage）
+    saveTrust();
+  }
+
+  // 提示文案
+  let txt;
+  if (trust.frozen){
+    txt = '信赖已冻结 · 按 N 解冻';
+  } else if (p >= 100){
+    /* ★★★ 2026-10-13 用户需求 4：文案跟着行为改。
+       原来写的是「特殊事件即将发生」—— 但那个"特殊事件"（强制转向去看博士 / 伸手点你）
+       已经被用户明确删掉了（见下面 2665 那一大段注释），再留着这句就是骗人。
+       中间试过写成「他一直在黑暗里看着你」，用户 2026-10-13 晚定稿：
+       **只要写「信赖已满」就行**，别加戏。 */
+    txt = '★ 信赖已满';
+  } else {
+    txt = HINTS[p > 66 ? 2 : (p > 33 ? 1 : 0)];
+    if (trust.triggered > 0) txt += '　（按 N 冻结信赖）';
+  }
+  if (txt !== trust.lastTxt){
+    trust.lastTxt = txt;
+    hintEl.textContent = txt;
+  }
+  hintEl.classList.toggle('full', !trust.frozen && p >= 100);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     ★★★ 2026-10-13 用户需求 4（好友反馈：博士事件打断观赏房间的沉浸感）
+     ─────────────────────────────────────────────────────────────────────────
+     用户原话：
+       "我打算改成信赖满后就只在黑暗中出现博士的头并始终正对访问者（即现有效果），
+        把删掉其他强制视角朝向的事件（第一次出现的强制视角看向，和后面出现的摸摸事件），
+        信赖满了之后就一直保持100%即可"
+     ⇒ 要做三件事：
+        ① 删掉【第一次现身的强制视角演出】和【之后伸手点你（poke）】
+        ② 保留"黑暗里出现博士的头 + 始终正对访问者"（= updateDoctorFade +
+           updateDoctorBillboard，那两个函数一行没动）
+        ③ 信赖满了之后一直保持 100%（不再被清零）
+
+     ★★ 怎么删最干净：`triggerEgg()` 全文件【只有一个调用点】—— 就是原来这里那段
+        900ms 定时器。删掉它 ⇒ eggActive 永远为 false ⇒ 强拉视角 / 解锁鼠标 /
+        关灯 / 噪点 / 黑幕 / 震屏 / 伸手 全部自然消失（那些代码一个字都不用改，
+        它们全在 `if (eggActive)` 的分支里）。
+        这比逐行去抠演出代码安全得多，也【可以随时还原】（把这段注释下面的
+        定时器加回来即可）。
+
+     ⚠️⚠️ 千万别"既保留定时器、又把 trust.v = 0 去掉" —— 那样 eggArmed 每 900ms
+        重新排程 → 无限触发表演循环。这两件事只能取一件，这里取的是"删定时器"。
+
+     ★ 副作用（是有意的）：收场时那句 `trust.v = 0`（egg 阶段 3）再也不会执行
+       ⇒ 信赖值停在 100 不动（2627/2637 的 Math.min(100, …) 兜底），
+         所以 updateTrust 里【不需要】再写任何"保持 100"的逻辑。
+     ═══════════════════════════════════════════════════════════════════════ */
+  if (!trust.frozen && p >= 100){
+    /* 信赖满 → 让博士就这样待在黑暗里，不再有任何演出。
+       ★ 只写 `headTarget`，【不要】直接写 `.visible` —— 那个字段被
+         updateDoctorFade() 每帧按 headOp 覆写，直接写只在这一帧有效。 */
+    DOCTOR.revealed = true;
+    if (DOCTOR.enabled) DOCTOR.headTarget = 1;
+    if (!DOCTOR._savedReveal){
+      DOCTOR._savedReveal = true;            // 只落盘一次，别每帧写 localStorage
+      try { localStorage.setItem('dorm_doctor_revealed', '1'); } catch(e){}
+      console.log('%c★ 信赖已满 —— 博士出现在黑暗里（不再有强制视角演出）',
+        'color:#8298ac;font-weight:bold');
+    }
+  }
+  /* ⚠️ 原来这里（紧跟上面）是那段 900ms → triggerEgg() 的定时器，
+     已按用户需求 4 删除。要还原演出：把下面三行取消注释即可。
+       if (!trust.frozen && p >= 100 && !eggArmed){
+         eggArmed = true;
+         setTimeout(()=>{ if (trust.v >= 100 && !trust.frozen) triggerEgg(); }, 900);
+       } else if (p < 100){ eggArmed = false; } */
+}
+let eggArmed = false;
+
+// ═══════════════════════════════════════════════════ 博士：真 3D 巨人
+// ★ 为什么不用全屏 2D 贴图：
+//   2D 贴图没有空间关系，观众只觉得"有张图盖住我了"，不像"有个人在外面"
+//   做成 3D 物体才能获得四个关键线索：
+//     ① 尺度 —— 头 6.5 米 > 房间高 2.2 米
+//     ② 仰视 —— 头中心在 Y=3.2，必须抬头看
+//     ③ 视差 —— 玩家移动时，远处的头移动得慢（自动产生）
+//     ④ 遮挡 —— 房间开口的边缘裁掉它的一部分
+//
+// ★★ 叙事设计（三段式）：
+//     第一次信赖满 → 他从黑暗里现身，然后【永久留在那里看着你】
+//     之后信赖满   → 只伸一只手进来"点"你一下（= 原游戏点干员加信赖的动作）
+//     按 N         → 关掉整个事件（他也消失），再按恢复
+const DOCTOR = {
+  head: null, headMat: null,
+  hand: null, handMat: null,
+  headOp: 0, headTarget: 0,        // 头的透明度
+  handOp: 0, handTarget: 0,        // 手的透明度
+  handZ: 6.5, handZTarget: 6.5,    // 手在 Z 轴的深度（越小越靠近玩家）
+  revealed: false,                 // ★ 是否已经"现身"过（现身后永久留在黑暗里）
+  enabled: true,                   // ★ N 键总开关
+  // 位置：房间外的黑暗里（房间开的那面在 Z = +1.08）
+  headPos: new THREE.Vector3(0.2, 3.2, 4.2),
+  headHeight: 6.5,
+  handStartZ: 6.5,                 // 手从很远的地方伸过来
+  handEndZ: 0.15,                  // 伸到几乎戳到玩家
+};
+
+const headTex = new THREE.TextureLoader().load('assets/doctor_face.webp', t => {
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+});
+const handTex = new THREE.TextureLoader().load('assets/doctor_hand.webp', t => {
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.anisotropy = 4;
+  t.needsUpdate = true;
+});
+
+(function buildDoctor(){
+  // ── 头
+  const ar = 1500 / 1125;
+  const h = DOCTOR.headHeight;
+  DOCTOR.headMat = new THREE.MeshBasicMaterial({
+    map: headTex, transparent: true, depthWrite: false, depthTest: true,
+    opacity: 0, fog: false, side: THREE.DoubleSide,
+    // ★ MeshBasicMaterial = 不受光照影响。这是【故意的】：
+    //   把房间的灯关掉时，房间变暗而他不变 → 他从黑暗里"显"出来
+    color: 0xffffff, toneMapped: false,
+  });
+  DOCTOR.head = new THREE.Mesh(new THREE.PlaneGeometry(h * ar, h), DOCTOR.headMat);
+  DOCTOR.head.position.copy(DOCTOR.headPos);
+  DOCTOR.head.renderOrder = 5;
+  DOCTOR.head.visible = false;
+  scene.add(DOCTOR.head);
+
+  // ── 手（从房间外的黑暗里伸进来）
+  DOCTOR.handMat = new THREE.MeshBasicMaterial({
+    map: handTex, transparent: true, depthWrite: false, depthTest: true,
+    opacity: 0, fog: false, side: THREE.DoubleSide,
+    color: 0xffffff, toneMapped: false,
+  });
+  DOCTOR.hand = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 3.2), DOCTOR.handMat);
+  DOCTOR.hand.position.set(0.2, 1.1, DOCTOR.handStartZ);
+  DOCTOR.hand.renderOrder = 6;
+  DOCTOR.hand.visible = false;
+  scene.add(DOCTOR.hand);
+
+  console.log('%c★ 博士已就位：头高 ' + h + ' 米（房间才 2.2 米），站在 Z=+' +
+              DOCTOR.headPos.z + '（房间外）', 'color:#5fd8e8');
+})();
+
+/* ★ 把房间的灯调暗（代替黑幕）
+   博士的头/手是 MeshBasicMaterial，不受这个影响 → 房间暗、他亮 */
+/* ★ LIGHT_BASE 已挪到灯光定义处（见 "灯光：按 .blend 场景 1:1 数值移植"）*/
+function dimLights(f){ applyLightIntensities(f); }
+
+/* 每帧：让头和手始终面向玩家（只绕 Y 轴，保持竖直） */
+function updateDoctorBillboard(){
+  for (const m of [DOCTOR.head, DOCTOR.hand]){
+    if (!m || !m.visible) continue;
+    m.rotation.y = Math.atan2(
+      camera.position.x - m.position.x,
+      camera.position.z - m.position.z
+    );
+  }
+}
+
+/* 每帧：淡入淡出 + 手的前进 */
+function updateDoctorFade(dt){
+  const k = Math.min(1, dt * 3.2);
+
+  DOCTOR.headOp += (DOCTOR.headTarget - DOCTOR.headOp) * k;
+  if (DOCTOR.headMat) DOCTOR.headMat.opacity = DOCTOR.headOp;
+  if (DOCTOR.head) DOCTOR.head.visible = DOCTOR.headOp > 0.004;
+
+  DOCTOR.handOp += (DOCTOR.handTarget - DOCTOR.handOp) * Math.min(1, dt * 4.5);
+  if (DOCTOR.handMat) DOCTOR.handMat.opacity = DOCTOR.handOp;
+  if (DOCTOR.hand){
+    DOCTOR.hand.visible = DOCTOR.handOp > 0.004;
+    // ★ 手往玩家方向前进 —— 3D 里这是天然的透视放大，比手动 scale 真实
+    DOCTOR.handZ += (DOCTOR.handZTarget - DOCTOR.handZ) * Math.min(1, dt * 2.6);
+    DOCTOR.hand.position.z = DOCTOR.handZ;
+    // 手伸近时稍微上抬，做出"戳"的动作
+    const t = 1 - Math.min(1, Math.max(0, (DOCTOR.handZ - DOCTOR.handEndZ) /
+                                           (DOCTOR.handStartZ - DOCTOR.handEndZ)));
+    DOCTOR.hand.position.y = 1.1 + t * t * 0.55;
+  }
+}
+
+/* ★ 关闭 / 开启整个博士事件（N 键）
+   关闭 = 他消失 + 信赖冻结
+   开启 = 若已现过身，他回到黑暗里继续看着 */
+function setDoctorEvent(on, silent){
+  DOCTOR.enabled = on;
+  trust.frozen = !on;
+  if (on){
+    DOCTOR.headTarget = DOCTOR.revealed ? 1 : 0;
+    say(DOCTOR.revealed ? '……他又回到那儿了' : '博士事件：已开启');
+  } else {
+    DOCTOR.headTarget = 0;
+    DOCTOR.handTarget = 0;
+    DOCTOR.handZTarget = DOCTOR.handStartZ;
+    say('博士事件：已关闭 · 信赖已冻结');
+  }
+  try { localStorage.setItem('dorm_doctor_on', on ? '1' : '0'); } catch(e){}
+}
+// ═══════════════════════════════════════════════════ 彩蛋：博士
+/* ★★★ 2026-10-13 用户需求 4 —— 玩法改了，下面是【现在的】行为，别照旧注释理解：
+     · 自动演出：★【没有了】。原来"信赖满 → 强制把你转过去看博士 / 伸手点你"两段，
+       已按用户要求删掉（触发器在 updateTrust 里，那段注释写清了怎么还原）。
+     · 现在信赖满 = 他只是【待在房间外的黑暗里看着你】（头 + 始终正对访问者），
+       不接管视角、不解锁鼠标、不关灯、不震屏 —— 房间照常观赏。
+     · 信赖值满了之后【一直保持 100%】（因为原来那句清零在演出收场里，演出不再发生）。
+     · 演出本身没删：按 K 可以【手动】放一次（Shift+K 切 3D 巨人 / 全屏贴脸），
+       方便需要时找回效果。
+     · 按 N 仍然是总开关（关掉 = 他消失 + 信赖冻结）。
+   ─────────────────────────────────────────────────────────────────────────
+   （以下是原来那段三段式叙事的描述，保留作历史参考）
+     第一次信赖满 → 他从黑暗里【现身】，之后【永久留在那里看着你】
+     之后信赖满   → 只伸一只手进来"点"你一下
+     按 N         → 关掉整个事件（他也消失），再按恢复
+
+   头位置：Z=+4.2（房间外，开口在 Z=+1.08）   高 6.5 米（房间才 2.2 米高）
+   手从 Z=+6.5 伸到 Z=+0.15，跨过房间开口那一瞬间最有冲击力 */
+let eggActive = false, eggT = 0, eggPhase = 0;
+const eggEl   = document.getElementById('egg');
+const darkEl  = document.getElementById('dark');
+const noiseEl = document.getElementById('noise');
+const eggImg  = document.getElementById('eggimg');
+
+// 两种演出模式：'giant' = 3D 巨人（默认）· 'screen' = 全屏 2D 旧版
+// ★ 2026-10-13：K 改成"手动放一次"，Shift+K 才是切换（见 keydown 里那段注释）
+let eggMode = 'giant';
+
+// ── 合成音效（不依赖音频文件）
+let audioCtx = null;
+function getAudio(){
+  if (!audioCtx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playScare(){
+  const ctx = getAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.85;
+  master.connect(ctx.destination);
+
+  // ① 宽频噪声（"嘶——"）
+  const len = Math.floor(ctx.sampleRate * 1.9);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++){
+    const t = i / len;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.5);
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(2400, now);
+  bp.frequency.exponentialRampToValueAtTime(320, now + 1.5);
+  bp.Q.value = 0.8;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.0001, now);
+  ng.gain.exponentialRampToValueAtTime(0.5, now + 0.01);
+  ng.gain.exponentialRampToValueAtTime(0.0008, now + 1.8);
+  src.connect(bp); bp.connect(ng); ng.connect(master);
+  src.start(now);
+
+  // ② 低频轰鸣（"咚——"）
+  const osc = ctx.createOscillator(); osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(170, now);
+  osc.frequency.exponentialRampToValueAtTime(26, now + 1.3);
+  const og = ctx.createGain();
+  og.gain.setValueAtTime(0.0001, now);
+  og.gain.exponentialRampToValueAtTime(0.42, now + 0.015);
+  og.gain.exponentialRampToValueAtTime(0.0008, now + 1.6);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420;
+  osc.connect(lp); lp.connect(og); og.connect(master);
+  osc.start(now); osc.stop(now + 1.9);
+}
+
+// ── 点击音效（"咔" —— 手指戳到屏幕）
+function playClick(){
+  const ctx = getAudio();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.7;
+  master.connect(ctx.destination);
+
+  // ① 高频"咔"：方波快速下滑
+  const osc = ctx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(2100, now);
+  osc.frequency.exponentialRampToValueAtTime(300, now + 0.055);
+  const g1 = ctx.createGain();
+  g1.gain.setValueAtTime(0.0001, now);
+  g1.gain.exponentialRampToValueAtTime(0.40, now + 0.003);
+  g1.gain.exponentialRampToValueAtTime(0.0008, now + 0.13);
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 1500; bp.Q.value = 0.9;
+  osc.connect(bp); bp.connect(g1); g1.connect(master);
+  osc.start(now); osc.stop(now + 0.15);
+
+  // ② 短噪声：让它听起来"实"（像指甲敲玻璃）
+  const len = Math.floor(ctx.sampleRate * 0.09);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++){
+    const t = i / len;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3);
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2200;
+  const g2 = ctx.createGain(); g2.gain.value = 0.30;
+  src.connect(hp); hp.connect(g2); g2.connect(master);
+  src.start(now + 0.004);
+
+  // ③ 低频"闷响"：加了厚度
+  const osc2 = ctx.createOscillator();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(170, now);
+  osc2.frequency.exponentialRampToValueAtTime(55, now + 0.11);
+  const g3 = ctx.createGain();
+  g3.gain.setValueAtTime(0.0001, now);
+  g3.gain.exponentialRampToValueAtTime(0.34, now + 0.006);
+  g3.gain.exponentialRampToValueAtTime(0.0008, now + 0.20);
+  osc2.connect(g3); g3.connect(master);
+  osc2.start(now); osc2.stop(now + 0.22);
+}
+
+// ── 低频轰鸣（巨人登场专用："咚——"）
+//   比 playScare 温和但更沉，营造"庞大物体在移动"的压迫感
+function playRumble(scale){
+  const ctx = getAudio();
+  if (!ctx) return;
+  const s = scale || 1;
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.8 * s;
+  master.connect(ctx.destination);
+
+  // ① 深层低频：40Hz → 22Hz，很长
+  const osc = ctx.createOscillator(); osc.type = 'sine';
+  osc.frequency.setValueAtTime(44, now);
+  osc.frequency.exponentialRampToValueAtTime(22, now + 2.2);
+  const g1 = ctx.createGain();
+  g1.gain.setValueAtTime(0.0001, now);
+  g1.gain.exponentialRampToValueAtTime(0.52, now + 0.25);
+  g1.gain.exponentialRampToValueAtTime(0.0008, now + 2.6);
+  osc.connect(g1); g1.connect(master);
+  osc.start(now); osc.stop(now + 2.7);
+
+  // ② 次低频：给"体感"（55Hz 的锯齿，过极低通）
+  const osc2 = ctx.createOscillator(); osc2.type = 'sawtooth';
+  osc2.frequency.setValueAtTime(58, now);
+  osc2.frequency.exponentialRampToValueAtTime(31, now + 1.8);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 130;
+  const g2 = ctx.createGain();
+  g2.gain.setValueAtTime(0.0001, now);
+  g2.gain.exponentialRampToValueAtTime(0.26, now + 0.3);
+  g2.gain.exponentialRampToValueAtTime(0.0008, now + 2.2);
+  osc2.connect(lp); lp.connect(g2); g2.connect(master);
+  osc2.start(now); osc2.stop(now + 2.3);
+
+  // ③ 一层很轻的噪声：像"气流/衣料摩擦"，让巨人显得有实体
+  const len = Math.floor(ctx.sampleRate * 1.6);
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++){
+    const t = i / len;
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 1.2);
+  }
+  const src = ctx.createBufferSource(); src.buffer = buf;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass';
+  bp.frequency.value = 320; bp.Q.value = 0.5;
+  const g3 = ctx.createGain(); g3.gain.value = 0.10 * s;
+  src.connect(bp); bp.connect(g3); g3.connect(master);
+  src.start(now);
+}
+// ── 触发
+const eggRestore = { yaw: 0, pitch: 0 };     // ★ 记住跳脸【之前】的视角
+let eggPhase2Pulsed = false;                 // "他注意到你了"那一下只放一次
+
+function triggerEgg(){
+  if (eggActive || !DOCTOR.enabled) return;
+  eggActive = true;
+  eggPhase = 0; eggT = 0;
+  eggArmed = false;
+  eggPhase2Pulsed = false;
+  // ★ 存下当前视角，演完要转回来
+  eggRestore.yaw   = player.yaw;
+  eggRestore.pitch = player.pitch;
+  if (document.pointerLockElement) document.exitPointerLock();
+  eggImg.src = 'assets/doctor_face.webp?' + Date.now();
+
+  // ★★ 分两种演出：
+  //   还没现过身 → 【现身演出】（第一次）
+  //   已经现过身 → 【伸手点你】（之后每次）
+  eggVariant = DOCTOR.revealed ? 'poke' : 'reveal';
+  if (eggVariant === 'reveal'){
+    DOCTOR.headOp = 0;
+    DOCTOR.headTarget = 0;
+    DOCTOR.head.visible = false;
+  }
+  DOCTOR.handOp = 0;
+  DOCTOR.handTarget = 0;
+  DOCTOR.handZ = DOCTOR.handStartZ;
+  DOCTOR.handZTarget = DOCTOR.handStartZ;
+
+  hintEl.textContent = '……';
+  hintEl.classList.remove('full');
+  getAudio();
+  console.log('%c★ 博士演出：' + (eggVariant === 'reveal' ? '第一次现身' : '伸手点你'),
+              'color:#5fd8e8');
+}
+let eggVariant = 'reveal';
+
+// ── 每帧推进
+function updateEgg(dt){
+  if (!eggActive) return;
+  eggT += dt;
+  const GIANT = eggMode === 'giant';
+
+  // 阶段 0：死寂 —— 画面压黑
+  if (eggPhase === 0){
+    if (GIANT){
+      // ★ 巨人模式：不盖黑幕（会挡住 3D 的博士），改成【把房间的灯关掉】
+      //   博士是 MeshBasicMaterial 不受光照 → 房间暗下去，他显出来
+      darkEl.classList.remove('on');
+      darkEl.classList.remove('vignette');
+      dimLights(0.10);
+    } else {
+      darkEl.classList.add('on');            // 旧的 2D 模式：全黑幕
+    }
+    // 视角转向"外面"（+Z，yaw = π）
+    const k = Math.min(1, eggT / 0.9);
+    const e = 1 - Math.pow(1 - k, 2.4);
+    player.yaw   += (Math.PI - player.yaw) * e * 0.16;
+    // ★ 巨人模式：视线略微【上抬】—— 他比你高得多，你要抬头看他
+    const targetPitch = GIANT ? 0.30 : 0.02;
+    player.pitch += (targetPitch - player.pitch) * e * 0.14;
+    if (eggT > 0.55){ eggPhase = 1; eggT = 0; }
+  }
+  // 阶段 1：噪点渐入 + 视角猛拉
+  else if (eggPhase === 1){
+    noiseEl.classList.add('on');
+    const k = Math.min(1, eggT / 0.40);
+    const e = k * k;
+    player.yaw   += (Math.PI - player.yaw) * e * 0.55;
+    const targetPitch = GIANT ? (eggVariant === 'reveal' ? 0.34 : 0.16) : 0.06;
+    player.pitch += (targetPitch - player.pitch) * e * 0.5;
+    if (eggT > 0.40){
+      if (GIANT){
+        darkEl.classList.add('vignette');     // 暗角，聚焦视线
+        darkEl.classList.add('on');
+        if (eggVariant === 'reveal'){
+          // ★★★ 第一次：他从黑暗里【现身】+ 电影感低频轰鸣
+          DOCTOR.headTarget = 1;
+          DOCTOR.head.visible = true;
+          playRumble(1.0);
+          if (navigator.vibrate) navigator.vibrate([60, 40, 120]);
+        } else {
+          // ★★★ 之后每次：他已经在外面了，只伸一只手进来
+          DOCTOR.handTarget = 1;
+          DOCTOR.handZTarget = DOCTOR.handEndZ;   // 往玩家方向伸
+          if (navigator.vibrate) navigator.vibrate([30, 40, 60]);
+        }
+      } else {
+        // 旧的 2D 跳脸：瞬间贴满屏幕 + 抖动
+        eggEl.classList.add('pop');
+        document.body.classList.add('shake');
+        playScare();
+        if (navigator.vibrate) navigator.vibrate([45, 30, 90, 25, 160]);
+      }
+      eggPhase = 2; eggT = 0;
+    }
+  }
+  // 阶段 2：他在外面看着你 / 手戳过来
+  else if (eggPhase === 2){
+    if (!GIANT && eggT > 0.40 && document.body.classList.contains('shake')){
+      document.body.classList.remove('shake');
+    }
+    if (GIANT){
+      if (eggVariant === 'reveal'){
+        // ★ 他"注意到你"了 —— 再来一次低频轰鸣
+        if (eggT > 0.65 && !eggPhase2Pulsed){
+          eggPhase2Pulsed = true;
+          playRumble(0.7);
+          if (navigator.vibrate) navigator.vibrate([35, 60, 90]);
+        }
+        if (eggT > 2.60){ eggPhase = 3; eggT = 0; }
+      } else {
+        // ★ 手：伸到跟前 → 戳！ → 缩回
+        if (eggT > 1.15 && !eggPhase2Pulsed){
+          eggPhase2Pulsed = true;
+          playClick();                                   // ★ 戳中的"咔"
+          document.body.classList.add('shake');
+          setTimeout(()=>document.body.classList.remove('shake'), 180);
+          if (navigator.vibrate) navigator.vibrate([70, 25, 110]);
+          console.log('%c★ 戳！', 'color:#f0c34a;font-weight:bold');
+        }
+        if (eggT > 2.30){ eggPhase = 3; eggT = 0; }
+      }
+    } else {
+      if (eggT > 2.60){ eggPhase = 3; eggT = 0; }
+    }
+  }
+  // 阶段 3：收场
+  else if (eggPhase === 3){
+    // ★ 在画面还暗着的时候，把视角转回原位 —— 否则玩家会看到"一片黑"
+    if (eggT === 0 || player.yaw !== eggRestore.yaw){
+      player.yaw   = eggRestore.yaw;
+      player.pitch = eggRestore.pitch;
+    }
+    // ★★ 关键：现身演出结束后，头【不淡出】—— 他留在黑暗里看着你
+    if (eggVariant === 'reveal'){
+      DOCTOR.revealed = true;
+      DOCTOR.headTarget = DOCTOR.enabled ? 1 : 0;      // 永久留下
+    } else {
+      DOCTOR.headTarget = DOCTOR.enabled ? 1 : 0;      // 本来就该在
+      DOCTOR.handTarget = 0;                           // 手收回去
+      DOCTOR.handZTarget = DOCTOR.handStartZ;
+    }
+    dimLights(1.0);                          // ★ 把灯调回正常
+    eggEl.classList.remove('pop');
+    document.body.classList.remove('shake');
+    noiseEl.classList.remove('on');
+    darkEl.classList.remove('vignette');
+    if (eggT > 0.7){
+      darkEl.classList.remove('on');
+      darkEl.classList.remove('vignette');
+      eggActive = false;
+      eggPhase2Pulsed = false;
+      dimLights(1.0);
+      /* ★★ 2026-10-13 用户需求 4：原来这里有一句 `trust.v = 0;`
+         ─────────────────────────────────────────────────────────────────
+         那是给"自动演出 → 演完重新积累信赖"设计的。但现在自动演出已经被删掉了
+         （见 updateTrust 里那段注释），这句【只会在用户手动按 K 时】执行 ——
+         结果是"刚满的信赖被自己手动看一眼演出清空"，和用户要的
+         "信赖满了之后就一直保持100%"直接矛盾。
+         ⚠️ 安全前提：删掉它【必须】配合"触发器已删"。如果哪天把自动演出还原了，
+            这一句也要一起还原 —— 否则 eggArmed 会每 900ms 重新排程 → 无限演出循环。 */
+      trust.triggered++;                 // ★ 只记一次"看过"，影响下次每步增幅的档位（无害）
+      try {
+        localStorage.setItem('dorm_doctor_revealed', DOCTOR.revealed ? '1' : '0');
+      } catch(e){}
+      setTimeout(()=>{
+        if (eggVariant === 'reveal'){
+          say('……刚才是不是有人来过？（按 N 可关掉这个事件）');
+        } else {
+          say('……他戳了你一下。');
+        }
+      }, 600);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════ 房间门口（从走廊进来时才有）
+// 房间正面本来是完全敞开的（2D 立绘要能看进去）。
+// 第一人称下那样不对 —— 补一道墙 + 一扇门，从门进出。
+let exitDoorZ = 0;          // 门的 Z（玩家走到这附近就能出去）
+
+// ★ 从 GLB 里找游戏自带的门（ROOM_LDoor / ROOM_RDoor / ROOM_DOOR_L / ROOM_DOOR_R）
+//   算出"站在门前"的判定范围
+let exitDoorX = [];         // [{x, z0, z1}] 每个门的墙面 X 和门的 Z 跨度
+let exitFrameMats = [];
+
+function locateDoors(root){
+  const bySide = {};
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const nm = o.name.toUpperCase();
+    let side = null;
+    if (nm.includes('_LDOOR') || nm.includes('DOOR_L')) side = 'L';
+    else if (nm.includes('_RDOOR') || nm.includes('DOOR_R')) side = 'R';
+    if (!side) return;
+    const b = new THREE.Box3().setFromObject(o);
+    const midX = (b.min.x + b.max.x) / 2;
+    // 门板（ROOM_DOOR_*）比参考平面更好，优先用
+    const isLeaf = nm.startsWith('ROOM_DOOR');
+    if (!bySide[side] || isLeaf){
+      bySide[side] = { x: midX, z0: b.min.z, z1: b.max.z, h: b.max.y - b.min.y };
+    }
+  });
+  exitDoorX = Object.values(bySide);
+  if (exitDoorX.length){
+    console.log('%c★ 找到游戏自带的门 %d 扇：%s', 'color:#5fd8e8;font-weight:bold',
+      exitDoorX.length,
+      exitDoorX.map(d => 'X=' + d.x.toFixed(2) + ' Z ' + d.z0.toFixed(2) + '~' + d.z1.toFixed(2)).join('  |  '));
+
+    // ★★★ 人物比例按【门的实际高度】自动定
+    //     游戏里干员跟门差不多高（甚至稍矮）
+    //     视线高度 = 门高 × 0.78  →  总高约等于门高
+    //     原来写死 1.40 米、门才 1.0 米高 → 人显得像巨人
+    let dh = 0;
+    for (const d of exitDoorX) dh = Math.max(dh, d.h || 0);
+    if (dh > 0.3){
+      console.log('%c★ 门高 %.2f 米（自动定人物已关闭，可用 [ ] 手动调视线高度）',
+        'color:#8298ac', dh);
+      // ★ 不再自动改 EYE：不同主题门高不同，自动定不可靠
+      //   玩家自己调，高度会记在 localStorage 里
+      loadEye();
+    }
+  } else {
+    console.warn('★ GLB 里没找到门，出门判定退回"走到边上"');
+  }
+}
+
+function buildRoomDoor(root){
+  const W_ = ROOM.x1 - ROOM.x0;          // 房间宽
+  const H_ = ROOM.y1 - ROOM.y0;          // 房间高
+  const zFront = ROOM.z1;                // 正面（three.js Z 正方向）
+  const DOORW = 1.29, DOORH = 2.15;      // 跟走廊的门一致
+  const cx = (ROOM.x0 + ROOM.x1) / 2;
+
+  // ── 门（用游戏的门贴图）
+  const tex = new THREE.TextureLoader().load('./assets/door.png');
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const doorMat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(DOORW, DOORH), doorMat);
+  door.position.set(cx, ROOM.y0 + DOORH / 2, zFront - 0.03);
+  door.rotation.y = Math.PI;              // 面朝房间内
+  door.renderOrder = 2;
+  root.add(door);
+  exitDoorZ = zFront - 0.45;
+
+  // ── 门两侧补墙（用木色，跟房间框一致）
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x6b4a33, side: THREE.DoubleSide });
+  const parts = [];
+  const leftW = (cx - DOORW / 2) - ROOM.x0;
+  const rightW = ROOM.x1 - (cx + DOORW / 2);
+  if (leftW > 0.05){
+    parts.push([leftW, H_, ROOM.x0 + leftW / 2, ROOM.y0 + H_ / 2]);
+  }
+  if (rightW > 0.05){
+    parts.push([rightW, H_, ROOM.x1 - rightW / 2, ROOM.y0 + H_ / 2]);
+  }
+  // 门上方过梁
+  const lintelH = H_ - DOORH;
+  for (const [w, h, px, py] of parts){
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallMat);
+    m.position.set(px, py, zFront - 0.03);
+    m.rotation.y = Math.PI;
+    root.add(m);
+  }
+  if (lintelH > 0.05){
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(DOORW, lintelH), wallMat);
+    m.position.set(cx, ROOM.y0 + DOORH + lintelH / 2, zFront - 0.03);
+    m.rotation.y = Math.PI;
+    root.add(m);
+  }
+
+  // ── 门框白边（跟走廊一致，靠近时点亮）
+  const frameMat = new THREE.MeshLambertMaterial({ color: 0x9fb4c8, emissive: new THREE.Color(0xa8d8ff),
+                                                   emissiveIntensity: 0, side: THREE.DoubleSide, toneMapped: false });
+  const fw = 0.055;
+  const frames = [
+    [fw, DOORH + fw * 2, cx - DOORW / 2 - fw / 2, ROOM.y0 + (DOORH + fw * 2) / 2],
+    [fw, DOORH + fw * 2, cx + DOORW / 2 + fw / 2, ROOM.y0 + (DOORH + fw * 2) / 2],
+    [DOORW + fw * 2, fw, cx, ROOM.y0 + DOORH + fw / 2],
+    [DOORW + fw * 2, fw, cx, ROOM.y0 - fw / 2 + 0.01],
+  ];
+  exitFrameMats = [];
+  for (const [w, h, px, py] of frames){
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), frameMat.clone());
+    m.position.set(px, py, zFront - 0.035);
+    m.rotation.y = Math.PI;
+    root.add(m);
+    exitFrameMats.push(m.material);
+  }
+
+  console.log('%c★ （自造正门已弃用 —— 改用游戏自带的左右门）', 'color:#8298ac');
+}
+
+// ═══════════════════════════════════════════════════ 回走廊的门
+// 房间开着的一面在 Z = +1.08（three.js），站到那附近按 E 就回走廊
+const EXIT_Z = ROOM.z1 - 0.55;
+const promptEl = (() => {
+  let el = document.getElementById('prompt');
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'prompt';
+    el.style.cssText = 'position:fixed;left:50%;bottom:24%;transform:translateX(-50%);' +
+      'padding:12px 26px;border:1px solid #4a6a8c;border-radius:3px;' +
+      'background:rgba(14,20,28,.9);font-size:14px;letter-spacing:.1em;color:#dceaf8;' +
+      'opacity:0;transition:opacity .18s ease;z-index:25;pointer-events:none;white-space:nowrap';
+    document.body.appendChild(el);
+  }
+  return el;
+})();
+let nearExit = false, leavingToHub = false;
+
+function checkExit(){
+  if (!FROM_HUB) return;
+  // ★ 2026-10-13 用户要求：门的提示要"准星对着门才显示，移开马上消失"。
+  //   原来和走廊那边一样是【纯位置判定】，完全不看朝向 → 人站在门附近提示就一直在。
+  const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw);
+  const FACE_MIN = 0.47;                    // ±62°，和 hub.html 的 DOOR_FACE_MIN 保持一致
+  let on = false;
+  if (exitDoorX.length){
+    for (const d of exitDoorX){
+      if (Math.abs(player.pos.x - d.x) >= 0.85) continue;
+      if (!(player.pos.z > d.z0 - 0.55 && player.pos.z < d.z1 + 0.55)) continue;
+      // ★ 朝向：门中心 = (d.x, (z0+z1)/2)，玩家前方向必须大致指着它
+      const cz = (d.z0 + d.z1) / 2;
+      const dx = d.x - player.pos.x, dz = cz - player.pos.z;
+      const len = Math.hypot(dx, dz);
+      if (len > 1e-4 && (fx * dx + fz * dz) / len < FACE_MIN) continue;
+      on = true; break;
+    }
+  } else {
+    on = player.pos.z > EXIT_Z;      // 兜底：没找到门就退回"走到边上"
+  }
+  // 门框白边渐亮（如果做了的话）
+  if (exitFrameMats && exitFrameMats.length){
+    for (const m of exitFrameMats){
+      const tgt = on ? 1.30 : 0.0;
+      m.emissiveIntensity += (tgt - m.emissiveIntensity) * 0.25;
+    }
+  }
+  if (on !== nearExit){
+    nearExit = on;
+    promptEl.innerHTML = on ? '<span style="display:inline-block;margin-right:9px;padding:1px 8px;' +
+      'border:1px solid #6d90b4;border-radius:2px;background:#1d2a38;color:#a8d4f0;' +
+      'font-weight:600">E</span>推门出去' : '';
+    promptEl.style.opacity = on ? '1' : '0';
+  }
+}
+
+function goHub(){
+  if (leavingToHub) return;
+  leavingToHub = true;
+  let fade = document.getElementById('fade');
+  if (!fade){
+    fade = document.createElement('div');
+    fade.id = 'fade';
+    fade.style.cssText = 'position:fixed;inset:0;z-index:50;background:#05070a;' +
+      'opacity:0;pointer-events:none;transition:opacity .32s ease';
+    document.body.appendChild(fade);
+  }
+  fade.style.opacity = '1';
+  /* ★★★ 2026-10-13：出门要带上【从哪个房间出来的】+ 光照模式。
+     ─────────────────────────────────────────────────────────────────────────
+     原来这里是裸跳转 './hub.html' → 走廊不知道玩家是从哪扇门出来的，
+     只能把人丢回走廊出生点（决策 3 要求"回到会客室门口"就是这个原因）。
+     现在带 ?from=<主题>，走廊据此把玩家放到【自己那扇门前】（hub.html 的
+     hubSpawnFrom()，7 扇门通用的逻辑）。
+     ★ mode 也带上（rig 回退时别丢）；走廊会原样再带给下一次进入的房间。 */
+  const _q = [];
+  if (THEME) _q.push('from=' + encodeURIComponent(THEME));
+  if (MODE)  _q.push('mode=' + encodeURIComponent(MODE));
+  const suffix = _q.length ? ('?' + _q.join('&')) : '';
+  setTimeout(() => { location.href = './hub.html' + suffix; }, 340);
+}
+
+// ═══════════════════════════════════════════════════ ★★★ 会客室「主题终端」（任务 B）
+/* 2026-10-13 新增（依据交接文档《新窗口提示词-会客室终端与走廊连接.md》任务 B）
+   ───────────────────────────────────────────────────────────────────────────
+   需求：在会客室里做一个"走近 → 按 E → 选房间"的终端。
+   已知约束（每条都在本项目踩过坑，照抄结论别再试）：
+     ① ★ 终端【不能进碰撞盒】。`boxes` 只在 GLTFLoader 回调的 root.traverse 里生成，
+        所以只要用 `scene.add()`（不是 root.add）加、且加在那次 traverse 之后，
+        它永远进不了 boxes（项目先例：博士的头/手）。
+     ② ★ 会客室是 unlit 房间：别用 `THREE.AdditiveBlending`（本项目 renderer 是
+        premultipliedAlpha:true → 加色会被实现成 blendFunc(ONE,ONE)，叠上 Bloom 直接整屏黑）。
+        本终端的做法是【完全不透明混合】:一块 MeshBasicMaterial + toneMapped:false 的
+        亮屏 —— 亮度越过 Bloom 阈值(0.80) 就自己洇光，一行混合参数都不用碰。
+     ③ ★ 面板里的数字键要和灯光面板(L)互斥：灯板开着时 1-9 被它占了（tuneShown）。
+     ④ ★ 面板要能点 → 打开时主动 exitPointerLock（项目先例：导出浮层 / 跳脸演出）。
+        关掉后不主动重新上锁（Chrome 有退锁冷却），交给现成的"点画面即回锁"。
+     ⑤ ★ z-index 取 48：要比 #fade(50) 低，切房间时淡出才盖得住面板；
+        又要比开灯面板(45) 高。
+
+   ★★ 决策 2：终端位置【先出三选一让用户挑】—— 所以下面 spots 里放了三个候选，
+      改 `TERMINAL.active` 一行就能整体搬过去（本体 + 交互点一起走）。 */
+
+/* 面板里能切过去的房间（复用走廊那 6 间；文案与 hub.html 的 DOOR_THEME 保持一致） */
+/* ★★★ 2026-10-13：面板里的房间列表【从 rooms/manifest.js 派生】——
+   加房间只改那一个文件，别在这里手写第二份（原来就是手抄的，迟早和走廊那份不同步）。
+   · 排除【当前所在的这间】（点了等于原地重载，没意义）
+   · 用户说下一步要加很多宿舍、走廊只放精选 → 所以这里的列表 = 全部房间，
+     走廊上有没有门是另一回事（manifest 的 inHub 字段管那个）。 */
+const ROOM_MENU = ROOMS
+  .filter((r) => r.theme && r.theme !== THEME)
+  .map((r) => ({ theme: r.theme, name: r.name, tag: r.tag || '', desc: r.desc || '' }));
+
+const TERMINAL = {
+  // ★★★ 用户 2026-10-13 拍板 = 'board'（留言板）
+  active: 'board',
+  spots: {
+    /* ① 留言板 messageboard_01
+       实测包围盒 X 2.252~3.468  Y 0.012~1.664  Z -1.495~-0.925（正面朝 +Z）
+       anchor = 【贴面中心】（不是屏幕位置！屏幕位置由 updateTerminalFacing() 每帧算）
+       radius = 屏幕沿"以 anchor 为圆心"的竖直圆弧滑动时的半径 */
+    board: {
+      label: '留言板', piece: 'messageboard_01',
+      anchor: [2.86, 1.22, -0.925], yaw: 0, radius: 0.30, size: [0.60, 0.36],
+      stand: [2.86, 0.10], r: 1.30,
+    },
+    /* ② 音响 musicplayer_01
+       实测 X -2.370~-1.810  Y 0.012~1.029  Z 0.038~0.622（正面朝 +Z）
+       ★ 屏幕尺寸要按件定：音响本体只有 0.56 宽，用默认的 0.66 会【比本体还宽】，
+         远看就是"一块浮在空中、后面什么都没有"的牌子（实测第一版就是这样）。
+         所以这里缩到 0.50 × 0.30 —— 顶上那个圆形喇叭口还露在外面。
+       注：旁边 (-2.53, 0.55) 有个 cutoff_01 隔断，站位挑在正前方避开它 */
+    music: {
+      label: '音响', piece: 'musicplayer_01',
+      anchor: [-2.09, 0.70, 0.622], yaw: 0, radius: 0.22, size: [0.50, 0.30],
+      stand: [-2.09, 1.40], r: 1.25,
+    },
+    /* ③ 书桌 desk_01
+       实测 X 3.773~4.367  Y 0~1.054  Z -1.061~0.841（长边沿 Z，正面朝 -X）
+       → yaw = -π/2 让贴面法线指向 -X（站到桌子 -X 那侧看它）
+       注：书桌自己是碰撞盒（内缩后 X 3.833~4.307），玩家最远只能站到 X≈3.633，
+           所以站位给到 2.85，留出看屏幕的距离 */
+    desk: {
+      label: '书桌', piece: 'desk_01',
+      anchor: [3.773, 0.92, -0.10], yaw: -Math.PI / 2, radius: 0.25, size: [0.60, 0.36],
+      stand: [2.85, -0.10], r: 1.40,
+    },
+  },
+};
+
+/* ★★★ 2026-10-13（用户需求 3）：屏幕【始终正对用户】，但只在正前方 ±75°（共 150°）内追随。
+   ─────────────────────────────────────────────────────────────────────────────
+   为什么不能"原地旋转"（这是几何事实，不是偷懒）：
+     一块【绕自己中心转】的平面，转到与背景成 Δ 角时，它有一半宽度 halfW
+     会扫到背景平面的【后方】 halfW·sinΔ 处。算例：
+       屏宽 0.66（halfW = 0.33）、贴在留言板前 0.065 m
+       → 只要 Δ > atan(0.065 / 0.33) = 11°，屏就已经插进留言板里了。
+     要做到 ±75° 不穿模，得满足 离板距离 ≥ halfW·tan75° = 1.23 m
+     —— 那等于把屏扔到房间中间，不可接受。
+
+   解法：让屏幕沿【以贴面中心为圆心、半径 R 的竖直圆弧】滑动，法线始终朝外（背对圆心）。
+     ⇒ 屏到圆心距离恒为 R，永远在贴面【外侧】；
+       而且屏两端到圆心的距离 = √(R² + halfW²) > R
+     ⇒ ★【任何角度都不可能穿模】，±75° 于是真的能做了。
+     ⇒ 站在正前方 ±75° 内，屏永远正面朝人；再往外站，屏停在 75° 边界上（斜着看得到）。
+   ★ 副作用（当成特性用）：屏会随人左右【横向滑动】±R·sin75°。
+     留言板：±0.29 m，仍在 1.22 m 宽的板面范围内 ✓ */
+const TERMINAL_FOLLOW = {
+  maxYaw: 75 * Math.PI / 180,   // 正前方 ±75°（用户要的"150 度"）
+};
+
+/* 每帧：把屏幕摆到"以 anchor 为圆心、朝玩家那一侧"的圆弧上，并让它正对玩家 */
+function updateTerminalFacing(){
+  if (!terminalMesh) return;
+  const spot = TERMINAL.spots[TERMINAL.active];
+  if (!spot || !spot.anchor) return;
+  const ax = spot.anchor[0], az = spot.anchor[2];
+  const dx = player.pos.x - ax, dz = player.pos.z - az;
+  const len = Math.hypot(dx, dz);
+  if (!(len > 1e-4)) return;
+  // 玩家相对【贴面法线】的方位角（spot.yaw 的法线 = (sin, cos)）
+  let rel = Math.atan2(dx / len, dz / len) - spot.yaw;
+  rel = Math.atan2(Math.sin(rel), Math.cos(rel));            // 归一化到 -π ~ π
+  rel = Math.max(-TERMINAL_FOLLOW.maxYaw, Math.min(TERMINAL_FOLLOW.maxYaw, rel));
+  const g = spot.yaw + rel;                                  // 屏幕最终的法线方向
+  const R = (spot.radius != null) ? spot.radius : 0.30;
+  terminalMesh.position.set(ax + Math.sin(g) * R, spot.anchor[1], az + Math.cos(g) * R);
+  terminalMesh.rotation.y = g;                               // PlaneGeometry 法线 = +Z → 旋转后 = (sin g, cos g)
+}
+
+/* ★★★ 2026-10-13 修 BUG（用户实测截图反馈：一间木格窗房间里也冒出了"会客室终端"）：
+   终端原来是【无条件创建】的 → 于是【每一个房间】都会在同一个世界坐标冒出这块屏，
+   连「E 打开终端」的提示都照弹。终端是【会客室专属】的，这里按主题收窄。
+   ★ 以后想让别的房间也有终端：往数组里加主题名即可（别改回无条件）。 */
+const TERMINAL_THEMES = ['basicRoom'];
+const HAS_TERMINAL = TERMINAL_THEMES.indexOf(THEME) >= 0;
+
+let terminalMat = null;          // 屏幕材质（只读调试用）
+let terminalMesh = null;
+let nearTerminal = false;
+/* ★ 2026-10-13：这里【不再】放 roomPanelOpen 这个变量 ——
+   面板的开关状态由共享模块 rooms/panel.js 持有，本文件一律用 isRoomPanelOpen() 问它。
+   （两个状态变量一定会不同步，这种坑别自己造。） */
+
+/* ★ 2026-10-13：`?terminal=board|music|desk` —— 三个候选点【直接用 URL 对比】，
+   不用改文件（用户挑位置时、以及以后想换位置时都方便，和 ?cam= 同一套调试思路）。
+   非法值忽略，保持 TERMINAL.active 的默认值。 */
+try {
+  const _t = QS.get('terminal');
+  if (_t && TERMINAL.spots[_t]) TERMINAL.active = _t;
+} catch (e) {}
+
+/* ── 终端"本体"：一块会自己发亮的屏（canvas 画出来的，不依赖任何外部图片） */
+function buildTerminalScreen(){
+  const spot = TERMINAL.spots[TERMINAL.active];
+  if (!spot) { console.warn('★ TERMINAL.active 无效：' + TERMINAL.active); return; }
+
+  const CVW = 528, CVH = 320;                      // 比例 1.65 → 贴片 0.66 × 0.40 m
+  const cv = document.createElement('canvas');
+  cv.width = CVW; cv.height = CVH;
+  const g = cv.getContext('2d');
+  if (!g) return;
+
+  const rr = (x, y, w, h, r) => {
+    g.beginPath();
+    if (g.roundRect){ g.roundRect(x, y, w, h, r); return; }
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);         g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  };
+
+  // 屏框
+  g.fillStyle = '#0b1620'; rr(0, 0, CVW, CVH, 16); g.fill();
+  g.strokeStyle = '#8fd8ff'; g.lineWidth = 5; rr(6, 6, CVW - 12, CVH - 12, 12); g.stroke();
+  // 顶部标题条
+  g.fillStyle = 'rgba(143,216,255,0.16)'; rr(14, 14, CVW - 28, 54, 8); g.fill();
+  g.textBaseline = 'middle';
+  g.fillStyle = '#dff2ff';
+  g.font = '600 30px "HarmonyOS Sans SC","Microsoft YaHei","PingFang SC",sans-serif';
+  g.textAlign = 'left';  g.fillText('会客室终端', 30, 42);
+  g.textAlign = 'right'; g.font = '500 22px Consolas,ui-monospace,monospace';
+  g.fillStyle = 'rgba(143,216,255,0.85)'; g.fillText('RECEPTION', CVW - 30, 42);
+  // 主体
+  g.textAlign = 'center';
+  g.fillStyle = '#eaf6ff';
+  g.font = '600 52px "HarmonyOS Sans SC","Microsoft YaHei","PingFang SC",sans-serif';
+  g.fillText('主题房间 · 6', CVW / 2, 132);
+  g.fillStyle = 'rgba(214,238,255,0.88)';
+  g.font = '400 30px "HarmonyOS Sans SC","Microsoft YaHei","PingFang SC",sans-serif';
+  g.fillText('走进来，按 E 选择要去哪', CVW / 2, 196);
+  // 底部按键提示 + 一个向下的箭头（提示"过来按"）
+  g.fillStyle = 'rgba(143,216,255,0.9)';
+  g.font = '500 26px Consolas,ui-monospace,monospace';
+  g.fillText('[ E ]', CVW / 2, 258);
+  g.strokeStyle = '#8fd8ff'; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
+  for (let i = 0; i < 2; i++){
+    const cy = 276 + i * 20;
+    g.beginPath(); g.moveTo(CVW / 2 - 30, cy); g.lineTo(CVW / 2, cy + 16); g.lineTo(CVW / 2 + 30, cy);
+    g.stroke();
+  }
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+
+  terminalMat = new THREE.MeshBasicMaterial({
+    map: tex, toneMapped: false,          // ★ 不受曝光/色调映射 → 纯亮 → 自己会越过 Bloom 阈值
+    side: THREE.DoubleSide,               // 从背面看也不穿帮
+    fog: false,                           // 屏不该被房间雾吃掉
+  });
+  /* ★ 屏幕尺寸按件定（默认 0.66 × 0.40）—— 屏幕比本体还宽就会显得"浮在空中" */
+  const SW = (spot.size && spot.size[0]) || 0.66;
+  const SH = (spot.size && spot.size[1]) || 0.40;
+  terminalMesh = new THREE.Mesh(new THREE.PlaneGeometry(SW, SH), terminalMat);
+  terminalMesh.name = 'FK_TERMINAL_SCREEN';
+  terminalMesh.renderOrder = 4;
+  updateTerminalFacing();                 // ★ 位置/朝向由它算（圆弧滑动 + 正对玩家）
+  scene.add(terminalMesh);                // ★★★ scene 不是 root → 永远不进碰撞盒（约束 ①）
+  console.log('%c★ 会客室终端已放置：%s（%s）屏幕 %s×%s 圆弧半径 %s 贴面 %s',
+    'color:#5fd8e8;font-weight:bold', spot.label, spot.piece, SW.toFixed(2), SH.toFixed(2),
+    (spot.radius != null ? spot.radius : 0.30).toFixed(2),
+    spot.anchor.map((v) => v.toFixed(2)).join(', '));
+  console.log('  ★ 屏幕会沿该圆弧滑动并【始终正对玩家】，追随范围 ±%d°（共 %d 度）',
+    Math.round(TERMINAL_FOLLOW.maxYaw * 180 / Math.PI), Math.round(TERMINAL_FOLLOW.maxYaw * 360 / Math.PI));
+}
+if (HAS_TERMINAL) buildTerminalScreen();
+else console.log('%c★ 本房间（%s）没有终端 —— 终端目前只在：%s',
+  'color:#8298ac', THEME || '(默认 dorm)', TERMINAL_THEMES.join(' / '));
+
+/* ── 交互：走近 → 提示（和"推门出去"共用同一个 #prompt 元素，所以两边要互斥） */
+function checkTerminal(){
+  if (!HAS_TERMINAL) return;              // ★ 非会客室：连判定都不做（修上面的 BUG）
+  if (isRoomPanelOpen()) return;
+  const spot = TERMINAL.spots[TERMINAL.active];
+  if (!spot || leavingToHub) return;
+  // ★ 门的提示优先：站在门口时不要和"推门出去"打架
+  const on = !nearExit &&
+    Math.hypot(player.pos.x - spot.stand[0], player.pos.z - spot.stand[1]) < spot.r;
+  if (on !== nearTerminal){
+    nearTerminal = on;
+    if (on){
+      promptEl.innerHTML = '<span style="display:inline-block;margin-right:9px;padding:1px 8px;' +
+        'border:1px solid #6d90b4;border-radius:2px;background:#1d2a38;color:#a8d4f0;' +
+        'font-weight:600">E</span>打开终端 <span style="color:#8fb6d8">· 切换房间</span>';
+      promptEl.style.opacity = '1';
+    } else if (!nearExit){
+      promptEl.style.opacity = '0';
+      promptEl.textContent = '';
+    }
+  }
+}
+
+/* ── 房间选择面板（★ 2026-10-13 抽成共享模块 `rooms/panel.js`）
+   ─────────────────────────────────────────────────────────────────────────
+   为什么要抽（用户需求 2）：要求"无论在何地都可以唤起终端页面" —— 也就是【走廊】
+   里也要有同一个面板（因为走廊只放 6 间精选，其余房间只能从面板进）。
+   既然两边要长得一样、按键一样、卡片一样，就别抄第二份。
+   ★ 这里只保留 walk.html 特有的副作用：解锁鼠标、清空按键、关掉提示。
+   ★ 面板的"开/关"状态由模块自己持有（isRoomPanelOpen()），本文件【不再存第二份】
+     —— 两个状态变量一定会不同步（这是踩过的老坑）。 */
+function openRoomPanel(){
+  if (isRoomPanelOpen() || leavingToHub) return;
+  nearTerminal = false;
+  promptEl.style.opacity = '0';
+  // ★ 面板要能用鼠标点 → 先解锁（项目先例：导出浮层 1191 / 跳脸演出 2981）
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+  // ★ 防止"面板开着但人还在走"：把按下的键全部清掉（和 blur 那段同一套做法）
+  for (const k in keys) keys[k] = false;
+  showRoomPanel({
+    rooms: ROOM_MENU,
+    onPick: (t) => switchRoom(t),
+    onHub: () => goHub(),
+    onClose: () => { nearTerminal = false; },        // 下次靠近重新弹提示
+  });
+}
+function closeRoomPanel(){ hideRoomPanel(); }
+
+/* ── 切房间：照抄 goHub() 那套"淡出 → 换页"，别自己发明 */
+let leavingRoom = false;
+function switchRoom(theme){
+  if (leavingRoom) return;
+  if (!theme || theme === THEME){ closeRoomPanel(); return; }
+  leavingRoom = true;
+  closeRoomPanel();
+  let fade = document.getElementById('fade');
+  if (!fade){
+    fade = document.createElement('div');
+    fade.id = 'fade';
+    fade.style.cssText = 'position:fixed;inset:0;z-index:50;background:#05070a;' +
+      'opacity:0;pointer-events:none;transition:opacity .32s ease';
+    document.body.appendChild(fade);
+  }
+  fade.style.opacity = '1';
+  // from= 带上"从哪来"（和走廊那套保持一致，方便以后按来源做动画/音效）
+  setTimeout(() => {
+    location.href = './walk.html?theme=' + encodeURIComponent(theme) +
+      (THEME ? ('&from=' + encodeURIComponent(THEME)) : '');
+  }, 340);
+}
+
+/* ── 键盘：E 开/关（只在终端前）· Tab 随时开关 · Esc 关 · 1~9 选房间
+   ★ 灯板（L）开着时数字键让位给灯板
+   ★ 2026-10-13：面板那部分的键位（Esc / 1~9 / 0）已经交给共享模块的 panelKey()，
+     本函数只负责【本页特有】的两件事：Tab 开关、E（终端 / 出门）。 */
+function roomKey(e){
+  const code = e.code || '';
+  /* ★★★ 2026-10-13 用户需求 2：「无论在何地都可以唤起终端页面」。
+     为什么需要（用户原话）："之后要加很多宿舍，而走廊做很长不太现实，
+     我打算走廊的 6 间只放我个人比较喜欢的" —— 也就是说：
+       走廊只放精选几间，其余房间【只能靠这个面板进】。
+     ⇒ 所以这个键【不依赖终端、也不依赖房间】：
+         · 任何房间（含没 theme 的默认 dorm.glb 页）都能按
+         · 走廊 hub.html 里也有同一个键（共用 rooms/panel.js，见那边的接法）
+       ★ 选 Tab 的理由：Tab 在 walk.html 里本来就没人用，而且"Tab = 打开菜单"
+         是通用直觉。副作用是它会切换浏览器焦点 → 所以这里【必须】return true
+         让调用方 preventDefault 掉。 */
+  if (code === 'Tab'){
+    if (isRoomPanelOpen()) closeRoomPanel(); else openRoomPanel();
+    return true;
+  }
+  if (code === 'KeyE'){
+    if (isRoomPanelOpen()){ closeRoomPanel(); return true; }
+    // ★ 只有在终端前按 E 才开面板；房间中央按 E 什么都不做（Tab 才是万能入口）
+    if (nearTerminal && !nearExit){ openRoomPanel(); return true; }
+    return false;                        // 门口那个 E 交给 goHub()
+  }
+  // ★ 面板开着时的 Esc / 1~9 / 0 → 交给共享模块（它知道列表里有哪些房间）
+  if (sharedPanelKey(e)) return true;
+  return false;
+}
+window.__roomKey = roomKey;
+
+
+// ═══════════════════════════════════════════════════ ★★★ 家具信息（准星对准就显示）
+/* 2026-10-13 用户拍板的【方案 1】（三个方案里选的这个，见 `待办-家具数据与互动.md` §1.4）：
+     准星指着家具 → 底部浮现「名字 + 官方描述」，**一个键都不用按**，视线移开就消失。
+   ─────────────────────────────────────────────────────────────────────────────
+   ★ 为什么用"准星对准"而不是"走近"：会客室 15 件家具、房间才 3.52 m 进深 ——
+     站在中间"靠近"会同时满足两三件，不知道该显示谁；准星是玩家的**意图表达**，永远唯一。
+     （这也是几乎所有第一人称游戏的做法。）
+   ★ 手机上同样成立：触屏拖拽转头时，**屏幕正中就是视线方向**，等价于准星。
+   ★ 数据：`assets\furni_text.json`（由 `3D渲染\tools\_fk_export_furni_text.cjs` 生成，
+     内容是 building_data.json → customData.furnitures 里的 name + description）。
+     表里只有"已上线房间 GLB 里真实出现过的"那 125 件 —— 加新房间后重跑一次那个脚本即可。
+
+   实现上的 4 个要点：
+     ① 家具 ID 怎么认出来：沿父链找 `GRP_` 祖先（影子件 / 子分件都挂在它下面），
+        并兼容**两代导入器的命名**（新的 `GRP_<完整ID>` / 旧的 `GRP_<件名>`，后者靠后缀索引 + 主题名消歧）。
+     ② ID 只在 GLB 载入后算【一次】存进 `userData.fkFurni`，每帧不做字符串处理。
+     ③ 射线只在【视线或位置真的变了】时才重算 —— 站着不动时零开销。
+     ④ 0.28 s 防抖：快速扫视房间时不会一路乱闪。
+   ★ 性能：射线只打"能被认成家具的 mesh"（房间壳 / 地板 / 门都不在里面）。 */
+const FURNI_TEXT_URL = './assets/furni_text.json';
+let FURNI_TEXT = null;              // { furniId: [名字, 描述] }
+let FURNI_BY_SUFFIX = null;         // 件名 → Set(完整家具ID)，给旧 rig 版的 GRP_ 短名用
+let furniMeshes = [];               // 参与射线的 mesh（都带 userData.fkFurni）
+
+/* ★★★ 2026-10-13 用户需求：家具介绍要有个「显示开关」（手机端也要）。
+   默认开；选择记进 localStorage（进新房间不会又自己打开/关掉）。
+   ★ 关掉时 updateFurniInfo() 会**直接 return —— 连射线都不打**，
+     所以这也是一个"嫌它影响性能就关掉"的开关（见 待办-性能优化.md 嫌疑 3）。 */
+const FURNI_INFO_KEY = 'dorm_furni_info';
+let FURNI_INFO_ON = (() => {
+  try { return localStorage.getItem(FURNI_INFO_KEY) !== '0'; } catch (e) { return true; }
+})();
+function toggleFurniInfo(){
+  FURNI_INFO_ON = !FURNI_INFO_ON;
+  try { localStorage.setItem(FURNI_INFO_KEY, FURNI_INFO_ON ? '1' : '0'); } catch (e) {}
+  say(FURNI_INFO_ON ? '家具介绍：已开启（准星对准家具即显示）' : '家具介绍：已关闭');
+  console.log('%c★ 家具介绍：%s', 'color:#8298ac', FURNI_INFO_ON ? '开' : '关');
+  if (!FURNI_INFO_ON) hideFurniInfo();
+}
+
+const furniInfoEl = document.getElementById('furniInfo');
+const furniNameEl = furniInfoEl ? furniInfoEl.querySelector('.n') : null;
+const furniDescEl = furniInfoEl ? furniInfoEl.querySelector('.d') : null;
+
+function furniIdOfTable(id){ return !!(FURNI_TEXT && id && FURNI_TEXT[id]); }
+
+/** 后缀索引：`furni_classroom_bayWindow_01` → 同时登记 `classroom_bayWindow_01` / `bayWindow_01` */
+function buildFurniSuffixIndex(){
+  FURNI_BY_SUFFIX = new Map();
+  if (!FURNI_TEXT) return;
+  for (const id in FURNI_TEXT){
+    if (id.charAt(0) !== 'f' || id.charAt(0) === '_' || id.charAt(0) === 'f' && id.startsWith('_')) continue;
+    if (id.startsWith('_')) continue;
+    const parts = id.split('_');
+    for (let i = 2; i < parts.length; i++){        // 跳过 `furni`/`furniM` + 主题名
+      const suf = parts.slice(i).join('_');
+      if (!FURNI_BY_SUFFIX.has(suf)) FURNI_BY_SUFFIX.set(suf, new Set());
+      FURNI_BY_SUFFIX.get(suf).add(id);
+    }
+  }
+}
+function furniBySuffix(shortName, hint){
+  if (!FURNI_BY_SUFFIX) return null;
+  const s = FURNI_BY_SUFFIX.get(shortName);
+  if (!s) return null;
+  if (s.size === 1) return [...s][0];
+  if (hint){                                      // 有歧义 → 用当前主题名消歧
+    const t = String(hint).toLowerCase();
+    const hit = [...s].find((id) => id.toLowerCase().indexOf(t) >= 0);
+    if (hit) return hit;
+  }
+  return null;                                    // 歧义又没线索 → 宁可不认
+}
+/** 从一个 GRP_/mesh 名猜家具 ID（和 _fk_export_furni_text.cjs 里同一套规则，别只改一边） */
+function guessFurniId(rawName){
+  const name = String(rawName || '');
+  if (name.startsWith('GRP_')){
+    const id = name.slice(4);
+    if (furniIdOfTable(id)) return id;
+    const hit = furniBySuffix(id, THEME);
+    if (hit) return hit;
+  }
+  let n = name.replace(/_mesh(\$\d+)?$/i, '').replace(/\$\d+$/, '').replace(/\.\d+$/, '');
+  let guard = 0;
+  while (n.length > 6 && guard++ < 24){
+    if (furniIdOfTable(n)) return n;
+    const h = furniBySuffix(n, THEME);
+    if (h) return h;
+    const m = n.replace(/_[^_]+$/, '');
+    if (m === n) break;                           // ★ 裁不动就退出（否则无下划线的名字会死循环）
+    n = m;
+  }
+  return null;
+}
+/** 给场景里每个家具 mesh 打上家具 ID（GLB 载入后调一次；表晚到时再补一次） */
+function tagFurniMeshes(){
+  if (!FURNI_TEXT){ furniMeshes = []; return; }
+  furniMeshes = [];
+  const kinds = new Set();
+  scene.traverse((o) => {
+    if (!o.isMesh) return;
+    let p = o, id = null, guard = 0;
+    while (p && guard++ < 64){
+      if ((p.name || '').startsWith('GRP_')){ id = guessFurniId(p.name); break; }
+      p = p.parent;
+    }
+    if (!id || !furniIdOfTable(id)) id = guessFurniId(o.name) || id;
+    if (!id || !furniIdOfTable(id)) return;
+    o.userData.fkFurni = id;
+    furniMeshes.push(o);
+    kinds.add(id);
+  });
+  console.log('%c★ 家具可对准：%d 个 mesh / %d 件家具%s',
+    'color:#8298ac', furniMeshes.length, kinds.size,
+    furniMeshes.length ? '' : '（本房间没认出家具 —— 家具文本表可能没覆盖这间）');
+}
+
+const furniRay = new THREE.Raycaster();
+furniRay.far = 6.5;                               // 房间才 3.5 m 进深，6.5 足够
+const _furniNdc = new THREE.Vector2(0, 0);        // 屏幕正中 = 准星
+let _furniPending = null, _furniSince = 0, _furniShown = null;
+const FURNI_HOLD_MS = 280;                        // 连续对准多久才显示（防抖）
+
+function hideFurniInfo(){
+  if (_furniShown !== null){ _furniShown = null; if (furniInfoEl) furniInfoEl.classList.remove('on'); }
+  _furniPending = null; _furniSince = 0;
+}
+
+function updateFurniInfo(dt){
+  if (!FURNI_TEXT || !furniInfoEl) return;
+  // ★ 用户开关关掉时直接 return —— 连射线都不打（所以它同时是个性能开关）
+  if (!FURNI_INFO_ON){ if (_furniShown !== null) hideFurniInfo(); return; }
+  /* 面板打开 / 博士演出中 → 收起来（那两种状态下玩家没法好好看家具） */
+  if ((typeof isRoomPanelOpen === 'function' && isRoomPanelOpen()) || eggActive){
+    if (_furniShown !== null) hideFurniInfo();
+    return;
+  }
+  if (!furniMeshes.length) return;
+
+  /* ★★ 每帧都重算，【不做位姿缓存】。
+     ─────────────────────────────────────────────────────────────────────
+     第一版为了省性能加过一层缓存（"玩家位姿没变就不重算"），结果踩了个很隐蔽的坑：
+     位姿缓存只看【玩家】的位置/朝向，但相机与家具在加载早期还会变
+     （GLB 是异步载入的、`?cam=` 定点相机是在 findSpawn 里才摆位的），
+     于是**第一帧**（相机还在出生点、朝向是默认值）算出的命中被永久缓存 →
+     实测症状：站在会客室正中看着长沙发，底部却一直显示「会客室中空隔断」，
+     而且因为玩家随后一动不动，这个错误结果 14 秒都没被刷新（调试时 `heldMs=14337`）。
+     ⇒ 本来就只有 40 来个 mesh 要打（每个先测包围球、绝大多数被秒排除），
+       成本在毫秒以下，**不值得为它引入缓存一致性 bug**。
+       （将来真要省，也请按"每 N 帧一次"来降频，不要再按位姿做条件缓存。） */
+  camera.updateMatrixWorld();                     // ★ 必须手动更新（setFromCamera 读的是 matrixWorld）
+  furniRay.setFromCamera(_furniNdc, camera);
+  const hits = furniRay.intersectObjects(furniMeshes, false);
+  const hitNow = (hits.length && hits[0].object.userData.fkFurni) || null;
+
+  /* ④ 防抖：连续对准 FURNI_HOLD_MS 毫秒才显示。
+     ★★ 用 performance.now() 而不是累加 dt —— `dt` 被 Math.min(0.05,…) 截断过，
+        帧率一低（比如掉到 5 fps）"游戏时间"就比真实时间慢很多，
+        0.28 秒的防抖会变成一秒多才生效（2026-10-13 无头验证时实测撞到）。
+        用真实时间戳就和帧率无关了。 */
+  if (hitNow !== _furniPending){ _furniPending = hitNow; _furniSince = performance.now(); }
+  const want = (hitNow && (performance.now() - _furniSince) >= FURNI_HOLD_MS) ? hitNow : null;
+
+  if (want !== _furniShown){
+    _furniShown = want;
+    if (want){
+      const t = FURNI_TEXT[want] || ['', ''];
+      if (furniNameEl) furniNameEl.textContent = t[0] || '';
+      if (furniDescEl) furniDescEl.textContent = t[1] || '';
+      furniInfoEl.classList.add('on');
+    } else {
+      furniInfoEl.classList.remove('on');
+    }
+  }
+}
+
+/* 拉家具文本表 —— 和 GLB 并行加载；失败就整个功能静默关闭（不影响其它一切） */
+fetch(FURNI_TEXT_URL)
+  .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
+  .then((j) => {
+    FURNI_TEXT = j;
+    let n = 0;
+    for (const k in j) if (k.charAt(0) !== '_') n++;
+    console.log('%c★ 家具文本表已载入：%d 件（准星对准家具 → 显示名字 + 官方描述）',
+      'color:#8298ac;font-weight:bold', n);
+    buildFurniSuffixIndex();
+    tagFurniMeshes();          // GLB 可能已经载完了，这里补算一次
+  })
+  .catch((e) => {
+    FURNI_TEXT = null;
+    console.warn('家具文本表没载入 → 家具描述功能关闭：' + (e && e.message || e));
+  });
+
+
+// ═══════════════════════════════════════════════════ ★★★ 手机端设置菜单
+/* 2026-10-13 用户需求（原话）：
+     "要不给手机端专门做个『设置』按钮，可以打开菜单调整各种东西，
+      把电脑端的功能都补上，比如调整视觉高度之类的，下蹲留在外面即可。"
+   ─────────────────────────────────────────────────────────────────────────
+   ★ 为什么需要：手机端按钮已经不少（摇杆、蹲下），而这轮又要加"家具介绍""无视碰撞"
+     两个开关 —— 再往外摆就满了。所以除了【下蹲】（用户明确要求留外面），
+     电脑端所有按键功能都收进这个菜单。
+   ★ 只在手机端显示（`#setbtn` 默认 `display:none`，见 media query 里再打开）。
+   ★ 数据驱动：下面 SET_ITEMS 一项 = 菜单里一行，加功能只要加一项，不用改渲染代码。 */
+function fpsCapLabel(){
+  if (fpsDiv === 1) return _screenHz ? ('不限 ' + _screenHz) : '不限';
+  return '1/' + fpsDiv + (_screenHz ? (' · ' + Math.round(_screenHz / fpsDiv)) : '');
+}
+function togglePerfPanel(){
+  perf.shown = !perf.shown;
+  const el = document.getElementById('fps');
+  if (!perf.shown && el) el.remove();
+  else updateFpsHud();
+  say(perf.shown ? '显示性能面板' : '隐藏性能面板');
+}
+
+const SET_ITEMS = [
+  { label: '视线高度', type: 'step',
+    val: () => HEIGHT.base.toFixed(2) + ' m',
+    dec: () => setEye(HEIGHT.base - 0.05),
+    inc: () => setEye(HEIGHT.base + 0.05),
+    rst: () => setEye(1.40, true) },
+  { label: '画质', type: 'tap', val: () => QUALITY[qualityIdx].name, tap: () => cycleQuality() },
+  { label: '帧率上限', type: 'tap', val: () => fpsCapLabel(), tap: () => setFpsCap(fpsDivIdx + 1) },
+  { label: '泛光', type: 'toggle', on: () => bloomOn, tap: () => window.__toggleBloom && window.__toggleBloom() },
+  { label: '家具介绍', type: 'toggle', on: () => FURNI_INFO_ON, tap: () => toggleFurniInfo() },
+  { label: '无视碰撞', type: 'toggle', on: () => NOCLIP, tap: () => toggleNoclip() },
+  { label: '静音', type: 'toggle', on: () => !!bgm.paused, tap: () => toggleMute() },
+  { label: '性能面板', type: 'toggle', on: () => perf.shown, tap: () => togglePerfPanel() },
+  /* ★ 2026-10-14 用户："切换房间按键也应该搬出来放在边上，这个应该是需要快速访问的"
+     ⇒ 「房间列表」【从菜单里搬走了】，改成右下角常驻按钮 #roombtn（和下蹲并排）。
+        菜单里不再重复放它。 */
+];
+if (FROM_HUB){
+  SET_ITEMS.push({ label: '回走廊', type: 'tap', val: () => '出门',
+    tap: () => { closeSetMenu(); goHub(); } });
+}
+
+const setBtnEl  = document.getElementById('setbtn');
+const setMenuEl = document.getElementById('setmenu');
+const setListEl = document.getElementById('setmenuList');
+
+function renderSetMenu(){
+  if (!setListEl) return;
+  setListEl.innerHTML = '';
+  for (const it of SET_ITEMS){
+    const row = document.createElement('div');
+    row.className = 'setrow';
+    const lab = document.createElement('div');
+    lab.className = 'sl';
+    lab.textContent = it.label;
+    row.appendChild(lab);
+
+    const mkBtn = (text, cls) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'setbtn2' + (cls ? ' ' + cls : '');
+      b.textContent = text;
+      return b;
+    };
+
+    if (it.type === 'toggle'){
+      const on = !!it.on();
+      const b = mkBtn(on ? '开' : '关', on ? 'on' : '');
+      b.addEventListener('click', () => { it.tap(); renderSetMenu(); });
+      row.appendChild(b);
+    } else if (it.type === 'tap'){
+      const v = document.createElement('div');
+      v.className = 'sv';
+      v.textContent = it.val();
+      const b = mkBtn('切换');
+      b.addEventListener('click', () => { it.tap(); renderSetMenu(); });
+      row.appendChild(v); row.appendChild(b);
+    } else if (it.type === 'step'){
+      const dec = mkBtn('−');
+      dec.addEventListener('click', () => { it.dec(); renderSetMenu(); });
+      const v = document.createElement('div');
+      v.className = 'sv';
+      v.textContent = it.val();
+      const inc = mkBtn('＋');
+      inc.addEventListener('click', () => { it.inc(); renderSetMenu(); });
+      row.appendChild(dec); row.appendChild(v); row.appendChild(inc);
+      if (it.rst){
+        const r = mkBtn('默认');
+        r.addEventListener('click', () => { it.rst(); renderSetMenu(); });
+        row.appendChild(r);
+      }
+    }
+    setListEl.appendChild(row);
+  }
+}
+function openSetMenu(){
+  if (!setMenuEl) return;
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+  for (const k in keys) keys[k] = false;      // 别让"按着 W 开菜单"变成松手还在走
+  renderSetMenu();                            // ★ 每次打开都重渲染（状态可能变了）
+  setMenuEl.classList.add('on');
+}
+function closeSetMenu(){ if (setMenuEl) setMenuEl.classList.remove('on'); }
+if (setBtnEl) setBtnEl.addEventListener('click', (e) => { e.stopPropagation(); openSetMenu(); });
+/* ★ 房间列表常驻按钮（2026-10-14）：和 Tab 键、设置菜单里的旧入口走同一个 openRoomPanel() */
+const roomBtnEl = document.getElementById('roombtn');
+if (roomBtnEl) roomBtnEl.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (isRoomPanelOpen()) closeRoomPanel(); else openRoomPanel();
+});
+if (setMenuEl) setMenuEl.addEventListener('click', (e) => { if (e.target === setMenuEl) closeSetMenu(); });
+{
+  const c = document.getElementById('setmenuClose');
+  if (c) c.addEventListener('click', closeSetMenu);
+}
+/* Esc 也能关（手机上外接键盘 / 桌面调试时方便）——
+   挂在 __roomKey 里，因为它是 document 级、且比游戏键监听先跑 */
+const _origRoomKey = roomKey;
+window.__roomKey = function(e){
+  if (e.code === 'Escape' && setMenuEl && setMenuEl.classList.contains('on')){
+    closeSetMenu();
+    return true;
+  }
+  return _origRoomKey(e);
+};
+
+
+// ═══════════════════════════════════════════════════ 主循环
+let last = performance.now();
+let movingFlag = false;
+let movedDist = 0;                 // 本帧实际走过的距离（米）
+
+// ★ 动态分辨率：帧率低就降像素比，高了再升回来（高画质档关闭此功能）
+const perf = {
+  frames: 0, acc: 0, fps: 0, timer: 0,
+  lastAdjust: 0, adjustCount: 0, shown: false, autoEnabled: false,
+  jsMs: 0, jsAcc: 0,          // ★ 每帧自己的 JS 耗时（update + render 调用）
+  idleSkip: 0,                // ★ 因为画面没变而跳过的帧数
+};
+function autoQuality(dt){
+  perf.frames++;
+  perf.timer += dt;
+  if (perf.timer < 0.5) return;
+  perf.fps = perf.frames / perf.timer;
+  perf.frames = 0; perf.timer = 0;
+
+  if (!perf.autoEnabled){ if (perf.shown) updateFpsHud(); return; }
+
+  // 每 1.2 秒最多调一次（避免抖动）
+  perf.lastAdjust += 0.5;
+  if (perf.lastAdjust < 1.2){ if (perf.shown) updateFpsHud(); return; }
+  perf.lastAdjust = 0;
+
+  const FPS_LOW = 48, FPS_HIGH = 58;
+  if (perf.fps < FPS_LOW && pixelRatio > PR_MIN){
+    pixelRatio = Math.max(PR_MIN, pixelRatio - 0.15);
+    renderer.setPixelRatio(pixelRatio);
+    perf.adjustCount++;
+    console.log('%c↓ 帧率 ' + perf.fps.toFixed(0) + ' → 降分辨率到 ' + pixelRatio.toFixed(2),
+                'color:#f0c34a');
+  } else if (perf.fps > FPS_HIGH && pixelRatio < PR_MAX){
+    pixelRatio = Math.min(PR_MAX, pixelRatio + 0.10);
+    renderer.setPixelRatio(pixelRatio);
+    perf.adjustCount++;
+    console.log('%c↑ 帧率 ' + perf.fps.toFixed(0) + ' → 升分辨率到 ' + pixelRatio.toFixed(2),
+                'color:#5fd8e8');
+  }
+  if (perf.shown) updateFpsHud();
+}
+
+function updateFpsHud(){
+  let el = document.getElementById('fps');
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'fps';
+    el.style.cssText = 'position:fixed;left:20px;bottom:18px;z-index:24;' +
+      'font:600 12px/1.65 ui-monospace,Consolas,monospace;color:#5fd8e8;' +
+      'background:rgba(11,17,26,.92);border:1px solid rgba(120,200,220,.22);' +
+      'border-radius:3px;padding:8px 12px;pointer-events:none;max-width:78vw';
+    document.body.appendChild(el);
+  }
+  const info = renderer.info.render;
+  const q = QUALITY[qualityIdx];
+  const fps = perf.fps;
+  const frameMs = fps > 0 ? 1000 / fps : 0;
+  const jsMs = perf.jsMs;
+  const otherMs = Math.max(0, frameMs - jsMs);
+  const col = s => s < 6 ? '#5fd8e8' : (s < 12 ? '#f0c34a' : '#e0574a');
+
+  let warn = '';
+  if (GPU_INFO.software) warn = '<div style="color:#e0574a">⚠ 软件渲染！</div>';
+  else if (GPU_INFO.integrated) warn = '<div style="color:#f0c34a">⚠ 疑似核显</div>';
+
+  el.innerHTML =
+    '<b style="color:#f0c34a">' + q.label + '</b>' +
+    (perf.autoEnabled ? ' <span style="color:#8298ac">(自动)</span>' : '') + '<br>' +
+    '<b>' + fps.toFixed(0) + ' FPS</b>　帧 ' + frameMs.toFixed(1) + 'ms<br>' +
+    'JS ' + '<span style="color:' + col(jsMs) + '">' + jsMs.toFixed(1) + 'ms</span>' +
+    '　其他 ' + otherMs.toFixed(1) + 'ms<br>' +
+    '像素比 ' + pixelRatio.toFixed(2) + '　各向异性 ' + q.aniso + 'x　光源 ' + (q.fullLights ? 4 : 2) + '<br>' +
+    '绘制 ' + info.calls + ' · 三角 ' + info.triangles.toLocaleString() + '<br>' +
+    '<span style="color:#8298ac;font-size:11px">' +
+      'GPU: ' + GPU_INFO.renderer.slice(0, 46) +
+    '</span>' + warn;
+}
+
+/* ★★★ 2026-10-13 用户需求：「现在有帧数上限设置吗，要不要设置一个」
+   ─────────────────────────────────────────────────────────────────────────
+   原来【完全没有上限】—— requestAnimationFrame 直接跑，120/144Hz 的屏幕就满速渲染。
+   这个页面是"观赏房间"用的，60 fps 完全够；高刷屏上跑满只会明显费电 / 发热 / 响风扇。
+   ⇒ 加了帧率上限，`Shift+Q` 切换。
+   ★★★ 2026-10-13 晚【重做档位】—— 用户反馈："我目前看帧率上限是72，
+       开启无上限才会变成我的屏幕帧率上线144fps"，怀疑上限没生效。
+   ─────────────────────────────────────────────────────────────────────────
+   真相不是 bug，是**物理限制**：`requestAnimationFrame` 的回调频率只能是
+   **屏幕刷新率的整数分之一** —— 144Hz 屏上只可能出现 144 / 72 / 48 / 36…
+   **取不到 120**。原来那档写 120 时，算法正确地选了"不超上限的最大可达值" = 72，
+   但用户看到"设了 120 却是 72"自然会以为坏了。
+   ⇒ 所以档位不再用"绝对 fps"，改成**屏刷的几分之一**（帧计数实现，语义和硬件一致）：
+        1/2 屏刷（144Hz 屏 → 72 fps，默认）
+        不限  （跟屏幕走 → 144 fps）
+        1/3 屏刷（144Hz 屏 → 48 fps）
+     并在切换时把**实测 fps** 一起报出来，免得再出现"数字对不上"的困惑。
+
+   ★ 实现要点（三个坑）：
+     ① 用【帧计数】而不是时间差：`_frameNo % fpsDiv` —— rAF 本身就是屏刷驱动的，
+        所以"每 N 帧画一次"精确等于 屏刷/N，没有任何容差/抖动问题。
+        （时间差法在 144Hz 上给 120 会算成 72、给 100 也会算成 72，很难解释。）
+     ② 跳帧那一次【必须直接 return，且不能动 `last`、不能调 clock.getDelta()】——
+        否则下一帧的 dt 会被算错（变成"只过了很短时间"），人物会突然变慢。
+     ③ `requestAnimationFrame(tick)` 必须在函数【最前面】——
+        原来在末尾，一跳帧就 return，rAF 再也排不上，整个页面直接停住。
+   ★ 另外注意 dt 上面被 clamp 到 0.05（= 20fps）：所以 1/3 以下没有意义（会退化成 20）。 */
+const FPS_DIVS = [2, 1, 3];            // 默认 1/2 屏刷；按一次 = 不限；再按 = 1/3
+let fpsDivIdx = 0;
+let fpsDiv = FPS_DIVS[0];
+let _frameNo = 0;
+let _screenHz = 0;                     // 实测屏幕刷新率（只用于把档位报成 fps）
+
+/* 实测屏幕刷新率：独立跑 31 帧取平均间隔。★ 采样期间不跳帧（见 tick 里的 `_screenHz === 0` 判断） */
+(function sampleScreenHz(){
+  let n = 0, prev = 0, sum = 0;
+  function step(now){
+    if (n > 0) sum += (now - prev);
+    prev = now; n++;
+    if (n <= 31){ requestAnimationFrame(step); return; }
+    const avg = sum / 30;
+    _screenHz = avg > 0 ? Math.round(1000 / avg) : 0;
+    if (_screenHz) console.log('%c★ 屏幕刷新率实测 ≈ %d Hz → 帧率上限可选 %d / %s / %d fps',
+      'color:#8298ac', _screenHz, Math.round(_screenHz / 2), '不限', Math.round(_screenHz / 3));
+  }
+  requestAnimationFrame(step);
+})();
+
+function setFpsCap(i){
+  fpsDivIdx = ((i % FPS_DIVS.length) + FPS_DIVS.length) % FPS_DIVS.length;
+  fpsDiv = FPS_DIVS[fpsDivIdx];
+  const hz = _screenHz;
+  let msg;
+  if (fpsDiv === 1) msg = '帧率：不限制' + (hz ? ('（跟屏幕，约 ' + hz + ' fps）') : '');
+  else msg = '帧率上限：1/' + fpsDiv + ' 屏刷' + (hz ? ('（约 ' + Math.round(hz / fpsDiv) + ' fps）') : '');
+  say(msg + '　Shift+Q 切换');
+}
+
+function tick(now){
+  requestAnimationFrame(tick);          // ★ 必须在最前面（见上面要点 ③）
+  // ★ 帧率上限：每 fpsDiv 帧才画一次（帧计数法，精确 = 屏刷 / fpsDiv）
+  //   ★ 屏刷还没测出来时不跳帧，免得把采样本身搞歪
+  if (fpsDiv > 1 && _screenHz > 0 && (_frameNo++ % fpsDiv) !== 0) return;
+
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  /* ★ 2026-10-13：面板开着时不移动、不转头。
+     ★★ 面板的开关状态现在住在共享模块里（isRoomPanelOpen()），本文件不再维护第二份。
+     为什么必须拦：鼠标虽然解锁了，但 keys 那套只看 keys[e.code]，不看 locked
+     → 不拦的话按着 W 人还会走。和 eggActive 同一套"全局态 + tick 守卫"约定。 */
+  if (loaded && !eggActive && !isRoomPanelOpen()){
+    // 输入
+    let f = 0, s = 0;
+    if (keys['KeyW']) f += 1;
+    if (keys['KeyS']) f -= 1;
+    if (keys['KeyA']) s -= 1;
+    if (keys['KeyD']) s += 1;
+    // ★ 2026-10-10 用户要求：方向键【不再】用于移动 —— 它专供灯光调试（Shift+方向键）。
+    //   原来这里是 keys['KeyW'] || keys['ArrowUp'] 等，导致按方向键调灯时会一边走。
+    //   现在移动只用 WASD。
+    if (stick.id !== null){ f -= stick.y; s += stick.x; }
+    const run = keys['ShiftLeft'] || keys['ShiftRight'];
+    // ★ COS 杜林：切换式（按一下蹲下，再按一下站起），不再需要按住
+    const crouching = crouchOn;
+    const speed = (crouching ? 0.95 : (run ? 3.1 : 1.75)) * CHAR_SCALE;   // ★ 按人物比例缩放
+
+    const len = Math.hypot(f, s);
+    if (len > 1){ f /= len; s /= len; }
+    movingFlag = len > 0.08;
+
+    // 方向（yaw=0 朝 -Z）
+    const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
+    const dx = (s * cos - f * sin) * speed * dt;
+    const dz = (-s * sin - f * cos) * speed * dt;
+
+    // 分轴移动 + 碰撞
+    const p = player.pos;
+    const bx = p.x, bz = p.z;
+    if (!hitsAny(p.x + dx, p.z)) p.x += dx;
+    if (!hitsAny(p.x, p.z + dz)) p.z += dz;
+    movedDist = Math.hypot(p.x - bx, p.z - bz);     // ★ 本帧实际走过的距离
+
+    // ★ 从走廊进来的：靠近房间开口就提示"按 E 回走廊"
+    if (typeof checkExit === 'function') checkExit();
+    // ★ 2026-10-13：会客室终端（走近 → 「E 打开终端」）
+    if (typeof checkTerminal === 'function') checkTerminal();
+    // ★ 2026-10-13（用户需求 3）：让终端屏每帧"正对玩家"（沿圆弧滑动，永不穿模）
+    if (typeof updateTerminalFacing === 'function') updateTerminalFacing();
+
+    // ★ 高度：蹲下 / 站立平滑过渡
+    // ★ 蹲下 = 当前视线高度 − CROUCH_DROP（不是绝对高度）
+    HEIGHT.target = eyeTarget(crouching);
+    HEIGHT.cur += (HEIGHT.target - HEIGHT.cur) * Math.min(1, dt * 11);
+    // 安全网：万一算出 NaN，立刻重置（避免整个画面变黑）
+    if (!Number.isFinite(HEIGHT.cur)) { HEIGHT.cur = HEIGHT.base; }
+    if (!Number.isFinite(HEIGHT.target)) { HEIGHT.target = HEIGHT.base; }
+
+    // 头部起伏（走路感）
+    let bob = (movingFlag && !crouching) ? Math.sin(now * 0.011) * 0.022 * (run ? 1.5 : 1) : 0;
+    if (!Number.isFinite(bob)) bob = 0;
+    camera.position.set(p.x, HEIGHT.cur + bob, p.z);
+  } else if (eggActive){
+    camera.position.set(player.pos.x, HEIGHT.cur, player.pos.z);
+  }
+  // 安全网：任何一步算出非有限值，都拉回出生点
+  if (!Number.isFinite(camera.position.x) || !Number.isFinite(camera.position.y) ||
+      !Number.isFinite(camera.position.z)){
+    console.warn('相机坐标异常，已重置', camera.position.toArray());
+    camera.position.set(player.home.x, HEIGHT.base, player.home.z);
+  }
+  if (!Number.isFinite(player.yaw))   player.yaw = 0;
+  if (!Number.isFinite(player.pitch)) player.pitch = 0;
+
+  updateEgg(dt);
+  updateDoctorFade(dt);
+  updateDoctorBillboard();
+  camera.rotation.y = player.yaw;
+  camera.rotation.x = player.pitch;
+
+  /* ★★★ 2026-10-13（用户方案 1）：准星对准家具 → 底部显示名字 + 官方描述。
+     ⚠️⚠️ 位置很关键：必须放在**设完 camera.rotation 之后**。
+        `Raycaster.setFromCamera()` 用的是 `camera.matrixWorld`，而那个矩阵
+        要到 render() 时才更新 —— 所以放在这里还不够，函数内部会先手动
+        `camera.updateMatrixWorld()`。第一版我把调用放在移动块里（camera.rotation
+        还没设），结果射线永远用**上一帧的视线**，表现为"准星指向和显示内容差一拍"。 */
+  if (typeof updateFurniInfo === 'function') updateFurniInfo(dt);
+
+  updateTrust(dt, movedDist);
+  movedDist = 0;
+
+  autoQuality(dt);
+
+  // ★ 计时：只量"我们自己的 JS + render 调用"花了多少
+  //   如果这个数很小但帧率低 → 瓶颈在浏览器合成/呈现，不在我们代码
+  const t0 = performance.now();
+  renderer.info.reset();
+  renderFrame();
+  const t1 = performance.now();
+  perf.jsSamples = (perf.jsSamples || 0) + 1;
+  perf.jsAcc += (t1 - t0);
+  if (perf.jsSamples >= 30){          // 滑动平均：保留最近 30 帧
+    perf.jsMs = perf.jsAcc / perf.jsSamples;
+    perf.jsAcc = perf.jsMs * 15;
+    perf.jsSamples = 15;
+  }
+  if (perf.shown && perf.jsSamples % 15 === 0) updateFpsHud();
+
+  // ★ 2026-10-13：requestAnimationFrame(tick) 已挪到函数最前面（帧率上限跳帧时需要它继续排）
+}
+// ═══════════════════════════════════════════════════ ★ Bloom 泛光（2026-10-09 加）
+//  为什么：游戏里"金碧辉煌"的一大来源是自发光面往外洇光。我们管线里
+//  已经有自发光材质（WEB_furni1_emit / WEB_furni3_alpha），叠上 Bloom 就出来了。
+//  可开关：按 B 切换；参数保守，只让很亮的像素泛光。
+let composer = null, bloomPass = null, bloomOn = true;
+try {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  // ★ 2026-10-12：泛光初始值按房间类型取（unlit = 0.22/0.80，旧 rig = 0.42/0.80）
+  const _bd0 = bloomDefaults();
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), _bd0.strength, 0.55, _bd0.threshold);
+  composer.addPass(bloomPass);
+  composer.addPass(new OutputPass());      // ★ 必须：负责线性 → sRGB 的输出转换
+  composer.setSize(innerWidth, innerHeight);
+  // ★ 2026-10-11：把面板里调好的泛光参数应用上去（bloomPass 到这一步才刚创建）
+  try { applyBloomTune(tuneTheme || THEME || 'closureRoom'); } catch (e) {}
+  console.log('%c★ Bloom 已启用（按 B 开关 · 按 L 再按 7 调强度/阈值）', 'color:#ffd28a');
+} catch (e) {
+  console.warn('Bloom 初始化失败，退回直出渲染：', e);
+  composer = null;
+}
+function renderFrame(){
+  if (composer && bloomOn) composer.render();
+  else renderer.render(scene, camera);
+}
+/* ★★ 2026-10-12：只读调试句柄 —— 排查"某件不对"时，自动化脚本（无头 CDP）需要
+   从页面外部拿到场景/相机/玩家/材质清单。模块作用域的变量外部访问不到，这里显式暴露一份。
+   ★ 只读约定：不要通过它改场景（要用它测量、投影、列材质）。 */
+window.__FK = {
+  three: THREE, scene, camera, player, renderer,
+  get mats(){ return UNLIT_MATS; },
+  get unlit(){ return IS_UNLIT; },
+  get mode(){ return MODE || '(unlit 默认)'; },
+  /* ★ 2026-10-13 加：碰撞盒名单（只读）。boxes 是模块作用域变量，外部拿不到，
+     而"某个新加的东西有没有变成障碍物"正是最需要验的一件事
+     —— 光看 boxes 的数量对不上号，得能看见名字。 */
+  get boxNames(){ return boxes.map(b => b.name); },
+  /* ★★★ 2026-10-13 加：博士 / 信赖 / 终端屏的只读状态。
+     为什么需要：用户需求 4 改的就是这块（删掉强制视角演出），
+     而无头脚本要能断言"信赖满了 → 博士出现，但视角【没被抢走】"。
+     没有这几个字段就只能靠读图或者读日志猜，不可靠。 */
+  get trust(){
+    return { v: +trust.v.toFixed(2), frozen: trust.frozen, triggered: trust.triggered, steps: trust.steps };
+  },
+  get doctor(){
+    return {
+      revealed: DOCTOR.revealed, enabled: DOCTOR.enabled,
+      headTarget: DOCTOR.headTarget, headOp: +DOCTOR.headOp.toFixed(3),
+      headVisible: !!(DOCTOR.head && DOCTOR.head.visible),
+      handTarget: DOCTOR.handTarget, handOp: +DOCTOR.handOp.toFixed(3),
+      handVisible: !!(DOCTOR.hand && DOCTOR.hand.visible),
+    };
+  },
+  get eggActive(){ return eggActive; },
+  /** 家具信息（方案 1）的内部状态 —— 排查"准星对了却不显示"用 */
+  get furni(){
+    return {
+      textLoaded: !!FURNI_TEXT,
+      meshes: furniMeshes.length,
+      kinds: furniMeshes.length ? new Set(furniMeshes.map((m) => m.userData.fkFurni)).size : 0,
+      pending: _furniPending, shown: _furniShown,
+      heldMs: _furniSince ? Math.round(performance.now() - _furniSince) : 0,
+      holdNeed: FURNI_HOLD_MS,
+    };
+  },
+  /** 终端屏的实时位姿（验证"始终正对玩家 + 沿圆弧滑动不穿模"用） */
+  get terminal(){
+    if (!terminalMesh) return null;
+    const spot = TERMINAL.spots[TERMINAL.active];
+    return {
+      spot: TERMINAL.active,
+      pos: [+terminalMesh.position.x.toFixed(3), +terminalMesh.position.y.toFixed(3),
+            +terminalMesh.position.z.toFixed(3)],
+      rotY: +terminalMesh.rotation.y.toFixed(4),
+      maxYawDeg: Math.round(TERMINAL_FOLLOW.maxYaw * 180 / Math.PI),
+      anchor: spot && spot.anchor ? spot.anchor.slice() : null,
+      radius: spot ? spot.radius : null,
+    };
+  },
+  get stats(){
+    return {
+      unlitMats: UNLIT_MATS.length,
+      boxes: boxes.length,
+      cam: [camera.position.x, camera.position.y, camera.position.z],
+      yawDeg: player.yaw * 180 / Math.PI,
+      pitchDeg: player.pitch * 180 / Math.PI,
+      // ★ 2026-10-13 新增（只读，给无头脚本验会客室终端用）
+      terminal: (typeof TERMINAL !== 'undefined') ? TERMINAL.active : null,
+      fpsDiv: (typeof fpsDiv !== 'undefined') ? fpsDiv : null,   // 1 = 不限；2 = 1/2 屏刷；3 = 1/3
+      screenHz: (typeof _screenHz !== 'undefined') ? _screenHz : null,
+      quality: (typeof QUALITY !== 'undefined' && QUALITY[qualityIdx]) ? QUALITY[qualityIdx].name : null,
+      // ★ 2026-10-13 新加的两个开关（都是模块作用域，外部读不到，这里暴露出来给无头脚本断言）
+      noclip: (typeof NOCLIP !== 'undefined') ? NOCLIP : null,
+      furniInfo: (typeof FURNI_INFO_ON !== 'undefined') ? FURNI_INFO_ON : null,
+      furniMeshes: (typeof furniMeshes !== 'undefined') ? furniMeshes.length : null,
+      setMenuOpen: (() => { const e = document.getElementById('setmenu'); return !!(e && e.classList.contains('on')); })(),
+      nearTerminal: (typeof nearTerminal !== 'undefined') ? nearTerminal : null,
+      roomPanel: (typeof isRoomPanelOpen === 'function') ? isRoomPanelOpen() : null,
+      nearExit: (typeof nearExit !== 'undefined') ? nearExit : null,
+    };
+  },
+};
+window.__toggleBloom = function(){
+  if (!composer){ say('Bloom 不可用'); return; }
+  bloomOn = !bloomOn;
+  say(bloomOn ? '泛光 开' : '泛光 关');
+};
+requestAnimationFrame(tick);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  updateCameraFov();
+  renderer.setSize(innerWidth, innerHeight);
+  if (composer) composer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
+
