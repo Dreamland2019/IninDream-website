@@ -416,7 +416,7 @@ body.shake > *{animation:shake .075s infinite !important}
     <div class="row new"><span class="ks"><kbd>[</kbd><kbd>]</kbd></span><span>视线高度（可调人物身高）</span></div>
     <div class="row new"><span class="ks"><kbd>Tab</kbd></span><span>房间列表（任何房间都能按）</span></div>
     <div class="row"><span class="ks"><kbd>Q</kbd></span><span>画质 高/中/低</span></div>
-    <div class="row new"><span class="ks"><kbd>Shift</kbd>+<kbd>Q</kbd></span><span>帧率上限 1/2屏刷 · 不限 · 1/3屏刷</span></div>
+    <div class="row new"><span class="ks"><kbd>Shift</kbd>+<kbd>Q</kbd></span><span>帧率上限 不限（默认）· 1/2屏刷 · 1/3屏刷</span></div>
     <div class="row new"><span class="ks"><kbd>G</kbd></span><span>无视碰撞（穿家具）</span></div>
     <div class="row new"><span class="ks"><kbd>I</kbd></span><span>家具介绍 开/关</span></div>
     <div class="row new"><span class="ks">👁</span><span>准星对准家具 → 看名字和描述</span></div>
@@ -2493,7 +2493,7 @@ setTimeout(()=>{
   console.log('  K        手动放一次博士演出（★ 平时【不会】自动演出）');
   console.log('  Shift+K  切换演出方式（3D 巨人 / 全屏贴脸）');
   console.log('  Q        画质 高/中/低');
-  console.log('  Shift+Q  帧率上限 1/2屏刷（默认）/ 不限 / 1/3屏刷');
+  console.log('  Shift+Q  帧率上限 不限（默认，= 屏幕刷新率）/ 1/2屏刷 / 1/3屏刷');
   console.log('  Tab      房间列表（任何房间都能按）');
   console.log('  ★ 准星对准家具 → 底部显示家具名字 + 官方描述（不用按键）');
   console.log('  F        性能面板');
@@ -4552,11 +4552,31 @@ function updateFpsHud(){
    **屏幕刷新率的整数分之一** —— 144Hz 屏上只可能出现 144 / 72 / 48 / 36…
    **取不到 120**。原来那档写 120 时，算法正确地选了"不超上限的最大可达值" = 72，
    但用户看到"设了 120 却是 72"自然会以为坏了。
-   ⇒ 所以档位不再用"绝对 fps"，改成**屏刷的几分之一**（帧计数实现，语义和硬件一致）：
-        1/2 屏刷（144Hz 屏 → 72 fps，默认）
-        不限  （跟屏幕走 → 144 fps）
-        1/3 屏刷（144Hz 屏 → 48 fps）
+   ⇒ 所以档位不再用"绝对 fps"，改成**屏刷的几分之一**（帧计数实现，语义和硬件一致），
      并在切换时把**实测 fps** 一起报出来，免得再出现"数字对不上"的困惑。
+
+   ★★★★ 2026-10-14 用户定稿：**默认档从 1/2 屏刷改成「不限」**
+   ─────────────────────────────────────────────────────────────────────────
+   用户原话："帧数上限能不能默认为当前屏幕上限……我看直播有些小游戏没做优化，
+   会渲染出来几百帧，浪费性能，我们有这个问题吗，如果没有的话请你默认就改成无帧数上限吧。"
+   ⇒ **答案：浏览器里「不限」就等于「当前屏幕上限」，二者本来就是同一件事。**
+     · 本页**唯一**的渲染循环是 `requestAnimationFrame(tick)`（全文件只此一处，
+       初始那一脚在文件末尾）⇒ 一个 rAF 回调里最多画一帧。
+     · rAF 的回调**由 VSYNC 驱动**，每个屏幕刷新周期最多回调一次
+       ⇒ 144Hz 屏上上限就是 **144 次/秒**。**网页里拿不到"几百帧"。**
+     · 想绕过它只能不用 rAF（`setTimeout` / `MessageChannel` 死循环），但 WebGL 的
+       **呈现(present) 仍被合成器按 vsync 卡住** ⇒ 多出来的 `render()` 不会变成多出来的
+       画面，只会白烧 CPU/GPU。**我们不这么干，所以那种"几百帧"的浪费不存在。**
+     · 浏览器还有两道保险：标签页不可见时 rAF 被节流到接近 0；窗口在哪个显示器上，
+       rAF 就跟哪个显示器的刷新率。
+   ⇒ **所以"默认成当前屏幕上限"= 选「不限」，不需要另做一个"跟屏幕"的档。**
+   ⚠️ 要清楚的代价：144Hz 屏上默认从 72 变成 144，**功耗 / 发热 / 风扇会明显上去**
+      （当初加上限就是为了压这个）。想安静就按一次 `Shift+Q` 回到 1/2 屏刷。
+
+   ── 现行三档（★ 默认 = 不限）──
+        不限    （跟屏幕走 → 144Hz 屏就是 144 fps）   ← ★ 默认
+        1/2 屏刷（144Hz 屏 → 72 fps）
+        1/3 屏刷（144Hz 屏 → 48 fps）
 
    ★ 实现要点（三个坑）：
      ① 用【帧计数】而不是时间差：`_frameNo % fpsDiv` —— rAF 本身就是屏刷驱动的，
@@ -4567,7 +4587,7 @@ function updateFpsHud(){
      ③ `requestAnimationFrame(tick)` 必须在函数【最前面】——
         原来在末尾，一跳帧就 return，rAF 再也排不上，整个页面直接停住。
    ★ 另外注意 dt 上面被 clamp 到 0.05（= 20fps）：所以 1/3 以下没有意义（会退化成 20）。 */
-const FPS_DIVS = [2, 1, 3];            // 默认 1/2 屏刷；按一次 = 不限；再按 = 1/3
+const FPS_DIVS = [1, 2, 3];            // ★ 2026-10-14 默认改成「不限」= 跟屏幕；按一次 = 1/2 屏刷；再按 = 1/3
 let fpsDivIdx = 0;
 let fpsDiv = FPS_DIVS[0];
 let _frameNo = 0;
