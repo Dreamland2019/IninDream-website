@@ -330,6 +330,13 @@ body.shake > *{animation:shake .075s infinite !important}
   #furniInfo .n{font-size:12px}
   #furniInfo .d{font-size:11px;line-height:1.6;max-height:10em}
 
+  /* ★ 2026-10-14 用户："手机端的提示应该删除'按E''E'这些字符，只留下'推门出去''进入xxx'"
+     ⇒ 提示框里那个「E」小方块（class="pk"）在手机端不显示。
+       走廊 hub.html 里同样的东西由它自己的 media query 处理。 */
+  #prompt .pk{display:none}
+  /* ★ 手机上提示框同时也是【按钮】（点它 = 按 E 出门/开终端），所以给它留出可点面积 */
+  #prompt{cursor:pointer;padding:14px 22px;bottom:30%}
+
   /* ★ 设置齿轮按钮：放在蹲下按钮【上方】……
      ⚠️ 2026-10-14：按钮上的图标【不用 emoji】—— 第一版用了 🚪 / ⚙，
         在无头 Edge 里 🚪 渲染成了一个橙色方块（字体缺失）。
@@ -410,6 +417,8 @@ body.shake > *{animation:shake .075s infinite !important}
     <div class="row new"><span class="ks"><kbd>Tab</kbd></span><span>房间列表（任何房间都能按）</span></div>
     <div class="row"><span class="ks"><kbd>Q</kbd></span><span>画质 高/中/低</span></div>
     <div class="row new"><span class="ks"><kbd>Shift</kbd>+<kbd>Q</kbd></span><span>帧率上限 1/2屏刷 · 不限 · 1/3屏刷</span></div>
+    <div class="row new"><span class="ks"><kbd>G</kbd></span><span>无视碰撞（穿家具）</span></div>
+    <div class="row new"><span class="ks"><kbd>I</kbd></span><span>家具介绍 开/关</span></div>
     <div class="row new"><span class="ks">👁</span><span>准星对准家具 → 看名字和描述</span></div>
     <div class="row"><span class="ks"><kbd>M</kbd></span><span>静音 / 取消静音</span></div>
     <div class="row"><span class="ks"><kbd>Esc</kbd></span><span>松开鼠标</span></div>
@@ -1800,7 +1809,13 @@ function applyLightIntensities(f = 1){
 const ROOM = { x0:-3.61, x1:3.87, z0:-1.12, z1:1.08, y0:0.22, y1:2.42 };
 const WALL = 0.30;                                    // 离墙距离
 const BOUND = { x0:ROOM.x0+WALL, x1:ROOM.x1-WALL, z0:ROOM.z0+WALL, z1:ROOM.z1-0.06 };
-let   EYE = 1.40;                                     // 站立视线高度（默认值，用户可调）
+/* ★★★ 2026-10-14 用户实测定的默认值：**1.00 米**。
+   原话："手机端各项数据都重置了 …… 应该使用我已经测试最合适的数据，如角色身高默认为1m等。"
+   ⚠️ 这个值是给【没有 localStorage 记录】的设备用的（手机、新浏览器、清了缓存）。
+      用户在电脑上调过的值存在 localStorage 的 `dorm_eye` 里，加载时会覆盖这里 ——
+      两边不一致，正是"手机端身高变回默认"的根因。改完这里记得也把 rig 光照那套
+      （`dorm_light_tune`）的默认值对齐，见文件里 LIGHT_TUNE 那段。 */
+let   EYE = 1.00;                                     // 站立视线高度（默认值，用户可调）
 const CROUCH_DROP = 0.34;                            // ★ 蹲下 = 当前视线高度 − 34cm
 let   EYE_CROUCH = 0.92;                              // ★ 派生值（由 HEIGHT.base 算出），保留给旧引用
 // ★ 2026-10-10 修：原来蹲下是【绝对高度 0.92m】写死。
@@ -2099,7 +2114,11 @@ new GLTFLoader().load(GLB_URL, gltf => {
       console.log('%c★ 从走廊进来 —— 跳过开始页', 'color:#5fd8e8;font-weight:bold');
       try { enterGame(); } catch(e){}
       // 浏览器可能不接受"非用户手势"的自动锁定 → 给一条提示引导点一下（锁定后自动淡出）
-      if (!document.pointerLockElement){
+      /* ★ 2026-10-14 用户："点击画面开始操作提示不应该在手机端出现"
+         ★ 根因很实在：手机上根本没有指针锁定，`document.pointerLockElement` **永远是 null**
+           ⇒ 这条提示在手机上会永远挂着（而且它 `pointer-events:none`，点了也不消失）。
+         桌面端保留它，因为桌面确实可能因为"非用户手势"而锁定失败。 */
+      if (!document.pointerLockElement && !isTouch){
         const h = document.createElement('div');
         h.textContent = '点击画面开始操作';
         h.style.cssText = 'position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);' +
@@ -2576,7 +2595,39 @@ function enterGame(){
   startEl.classList.add('done');
   setTimeout(()=>startEl.remove(), 600);
   showRotateHint();                    // ★ 手机端提示屏幕方向
+  if (isTouch) requestImmersive();     // ★ 手机端自动进全屏（桌面端不抢用户的全屏）
   console.log('%c▶ 进入第一人称', 'color:#5fd8e8;font-weight:bold');
+}
+
+/* ★★★ 2026-10-14 用户需求（问题 2 后半）：
+     "能不能进入沉浸模式即网页全屏，不显示浏览器上下的网址等。"
+   ─────────────────────────────────────────────────────────────────────────
+   ★ 调用位置很关键：Fullscreen API 要求**用户手势**触发，而 enterGame() 正好是
+     点「进入」按钮调过来的 —— 就在手势上下文里。放进定时器/加载回调一定会被拒。
+   ★ 只在触摸设备上做：桌面端用户常要多窗口对照着看，别抢他的全屏。
+   ★ navigationUI:'hide' 是给移动浏览器的建议值（部分浏览器忽略，无害）。
+   ★ 退出方式：① 手机系统手势（返回键 / 上滑）② 设置菜单里的「沉浸模式（全屏）」③ Esc（外接键盘）
+   ⚠️ iPhone 版 Safari 不支持元素全屏（只有 iPad 支持）→ 那里会静默跳过，不影响游玩。
+   ★ 函数本身【不做 isTouch 判断】—— "自动进"的开关在 enterGame 里（`if (isTouch)`），
+     这样设置菜单里那个手动开关在桌面端也能用（调试时想全屏看看很方便）。 */
+function requestImmersive(){
+  try {
+    if (isImmersive()) return;
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!req) return;
+    const p = req.call(el, { navigationUI: 'hide' });
+    if (p && p.catch) p.catch(() => {});         // 被拒绝 → 静默，不打扰
+  } catch (e) {}
+}
+function exitImmersive(){
+  try {
+    if (document.exitFullscreen && document.fullscreenElement) document.exitFullscreen();
+    else if (document.webkitExitFullscreen && document.webkitFullscreenElement) document.webkitExitFullscreen();
+  } catch (e) {}
+}
+function isImmersive(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
 
 /* ═══════════════════════════════════════════════════ 手机端屏幕方向
@@ -2602,9 +2653,11 @@ function refreshRotateHint(){
     el.classList.add('on');
     rotateTimer = setTimeout(()=>el.classList.remove('on'), 4000);
   } else {
-    // 横屏：图标转成旋转动画，一直显示到转过来为止
-    el.classList.add('turn', 'on');
-    if (sub) sub.innerHTML = '请把手机转成竖直<br>（横屏时视角会变得很窄）';
+    /* ★ 2026-10-14 用户："建议竖屏游玩提示删掉吧，也许有人就喜欢横屏游玩呢"
+       ⇒ 横屏时【不再】提示「请把手机转成竖直」，直接把提示收掉。
+         横屏视野偏窄的问题不靠"劝用户转屏"解决，而是靠下面 updateCameraFov() 的
+         FOV 自适应（按宽高比放大垂直 FOV，保证水平视野够用）。 */
+    el.classList.remove('turn', 'on');
   }
 }
 
@@ -3531,6 +3584,23 @@ const promptEl = (() => {
 })();
 let nearExit = false, leavingToHub = false;
 
+/* ★★★ 2026-10-14 用户需求（问题 5）："按E打开终端和按E推门出去在手机端无效"
+   ─────────────────────────────────────────────────────────────────────────
+   手机没有键盘 ⇒ 把【提示框本身】变成按钮：点它 = 按 E。
+   动作取决于当前是哪条提示（两条互斥；`nearExit` 优先，和 checkTerminal 里的判定一致）。
+   ★ 只在触摸设备上开 `pointer-events` —— 桌面端鼠标在指针锁定时根本看不见光标，
+     但按 Esc 解锁之后是能点的，那时误触会很烦。
+   ★ 提示里的「E」那个小方块（class="pk"）在窄屏/触摸设备上会由 CSS 隐藏，
+     只留「推门出去」「打开终端 · 切换房间」这样的纯动作文字（用户明确要求）。 */
+if (isTouch){
+  promptEl.style.pointerEvents = 'auto';
+  promptEl.style.cursor = 'pointer';
+  promptEl.addEventListener('click', () => {
+    if (nearExit) goHub();
+    else if (nearTerminal) openRoomPanel();
+  });
+}
+
 function checkExit(){
   if (!FROM_HUB) return;
   // ★ 2026-10-13 用户要求：门的提示要"准星对着门才显示，移开马上消失"。
@@ -3561,7 +3631,7 @@ function checkExit(){
   }
   if (on !== nearExit){
     nearExit = on;
-    promptEl.innerHTML = on ? '<span style="display:inline-block;margin-right:9px;padding:1px 8px;' +
+    promptEl.innerHTML = on ? '<span class="pk" style="display:inline-block;margin-right:9px;padding:1px 8px;' +
       'border:1px solid #6d90b4;border-radius:2px;background:#1d2a38;color:#a8d4f0;' +
       'font-weight:600">E</span>推门出去' : '';
     promptEl.style.opacity = on ? '1' : '0';
@@ -3816,7 +3886,7 @@ function checkTerminal(){
   if (on !== nearTerminal){
     nearTerminal = on;
     if (on){
-      promptEl.innerHTML = '<span style="display:inline-block;margin-right:9px;padding:1px 8px;' +
+      promptEl.innerHTML = '<span class="pk" style="display:inline-block;margin-right:9px;padding:1px 8px;' +
         'border:1px solid #6d90b4;border-radius:2px;background:#1d2a38;color:#a8d4f0;' +
         'font-weight:600">E</span>打开终端 <span style="color:#8fb6d8">· 切换房间</span>';
       promptEl.style.opacity = '1';
@@ -4045,6 +4115,12 @@ function updateFurniInfo(dt){
     if (_furniShown !== null) hideFurniInfo();
     return;
   }
+  /* ★ 2026-10-14 用户："手机端的家具信息会挡住会客室的按E打开终端提示"
+     ⇒ 只要当前有可交互提示（推门出去 / 打开终端），就把家具信息收起来 ——
+        此时玩家的意图是"交互"而不是"看家具"，让位给提示。
+        手机竖屏尤其明显：家具条在 bottom:184px、高约 100px（上沿到 ~284px），
+        而 #prompt 在 bottom:30%（844 高的屏 ≈ 253px），正好压在一起。 */
+  if (nearExit || nearTerminal){ if (_furniShown !== null) hideFurniInfo(); return; }
   if (!furniMeshes.length) return;
 
   /* ★★ 每帧都重算，【不做位姿缓存】。
@@ -4137,6 +4213,11 @@ const SET_ITEMS = [
   { label: '无视碰撞', type: 'toggle', on: () => NOCLIP, tap: () => toggleNoclip() },
   { label: '静音', type: 'toggle', on: () => !!bgm.paused, tap: () => toggleMute() },
   { label: '性能面板', type: 'toggle', on: () => perf.shown, tap: () => togglePerfPanel() },
+  /* ★ 2026-10-14：沉浸模式（全屏）。只在触摸设备上自动进全屏，
+     这里给一个手动开关 —— 手机全屏后没有浏览器 UI，用户需要一个明确的"退出"入口
+     （另一个入口是手机系统手势 / 外接键盘的 Esc）。 */
+  { label: '沉浸模式（全屏）', type: 'toggle', on: () => isImmersive(),
+    tap: () => { if (isImmersive()) exitImmersive(); else requestImmersive(); } },
   /* ★ 2026-10-14 用户："切换房间按键也应该搬出来放在边上，这个应该是需要快速访问的"
      ⇒ 「房间列表」【从菜单里搬走了】，改成右下角常驻按钮 #roombtn（和下蹲并排）。
         菜单里不再重复放它。 */
@@ -4573,6 +4654,7 @@ window.__FK = {
       quality: (typeof QUALITY !== 'undefined' && QUALITY[qualityIdx]) ? QUALITY[qualityIdx].name : null,
       // ★ 2026-10-13 新加的两个开关（都是模块作用域，外部读不到，这里暴露出来给无头脚本断言）
       noclip: (typeof NOCLIP !== 'undefined') ? NOCLIP : null,
+      eye: (typeof HEIGHT !== 'undefined') ? HEIGHT.base : null,   // 视线高度（默认应为 1.00）
       furniInfo: (typeof FURNI_INFO_ON !== 'undefined') ? FURNI_INFO_ON : null,
       furniMeshes: (typeof furniMeshes !== 'undefined') ? furniMeshes.length : null,
       setMenuOpen: (() => { const e = document.getElementById('setmenu'); return !!(e && e.classList.contains('on')); })(),

@@ -126,6 +126,10 @@
     /* ★ 提示框可点 = 按 E 进门（手机上没键盘，这是唯一的进门方式） */
     #prompt{bottom:32%;padding:14px 22px;font-size:15px;cursor:pointer}
     #prompt:active{background:rgba(30,45,62,.95);border-color:#7fb4dc}
+    /* ★ 2026-10-14 用户："手机端的提示应该删除'按E''E'这些字符，只留下'推门出去''进入xxx'"
+       ⇒ 那个「E」小方块（class="k"）在手机端不显示，只留「进入 圣马尔索校内教室」。
+         房间页 walk.html 的提示框同理（那边 class 叫 "pk"）。 */
+    #prompt .k{display:none}
 
     #fps{right:14px;bottom:12px;font-size:10.5px}
   }
