@@ -51,6 +51,10 @@ export const ROOMS = [
   /* ★★ 以后加房间就照上面追加一行。加完记得：
        ① 把 GLB 放进 `网页原型\rooms\<theme>.glb`
        ② 房间预览图放 `网页原型\assets\previews\<theme>.png`
+          ★★★ 2026-10-14 起：**放 .png 源图之后必须再转一份 .webp**，
+             网页只加载 .webp（见文件末尾 previewOf 的注释）——
+             不转的话该房间在走廊门上和 Tab 面板里都会是破图。
+             重转命令：`python 3D渲染\tools\_fk_previews_to_webp.py`
           ★★★ 图源有两套，**优先用第 ① 套**（用户 2026-10-13 拍板：商店图更有游戏特色、
               分辨率也更高）：
           ┌ ① 家具商店宣传卡 —— 480×296，图上带「罗德岛采购部 家居套装」+ 主题名
@@ -72,8 +76,14 @@ export const ROOMS = [
        ④ 想让它在走廊有 rig 回退 → 先把旧 GLB 放进 `rooms\_rig\`，再 hasRig:true */
 ];
 
-/** 预览图路径（约定：一张图 = assets/previews/<theme>.png） */
-export function previewOf(theme){ return './assets/previews/' + theme + '.png'; }
+/** 预览图路径（约定：一张图 = assets/previews/<theme>.webp）
+ *  ★★★ 2026-10-14 性能优化：.png → .webp
+ *    走廊首页把这 6 张图当【门贴图】加载，PNG 合计 1529 KB —— 占首页总流量 3857 KB 的 40%。
+ *    换 WebP q88 后 249 KB（−83.7%；最差 PSNR 35.1 dB，2x 放大肉眼无差，
+ *    对比图见 `3D渲染\_fk_render\接走廊\preview_webp_compare.png`）。
+ *    ★ 磁盘上的 .png 是【源图】，保留作重转底稿，但不再发布（见 _fk_stage_deploy.cjs）。
+ *    ★ 重转：`python 3D渲染\tools\_fk_previews_to_webp.py` */
+export function previewOf(theme){ return './assets/previews/' + theme + '.webp'; }
 
 /** 这间房有没有 rig 回退版（决定能不能带 &mode=rig） */
 export function hasRigBackup(theme){

@@ -459,7 +459,11 @@ body.shake > *{animation:shake .075s infinite !important}
 
 <div id="dark"></div>
 <div id="noise"></div>
-<div id="egg"><img id="eggimg" src="assets/doctor_face.webp" alt=""></div>
+<!-- ★ 2026-10-14 性能优化：这张 img 【故意不带 src】——
+     原来写 `src="assets/doctor_face.webp"` 会让浏览器在解析 HTML 时就下载它，
+     而它只在"全屏贴脸"那套演出里用得到（默认是 3D 巨人那套，根本不用这张图）。
+     真正的 src 由 ensureDoctorTextures() / triggerEgg() 在需要时补上。 -->
+<div id="egg"><img id="eggimg" alt=""></div>
 <div id="say"></div>
 
 <!-- ★ 手机端屏幕方向提示 -->
@@ -2206,6 +2210,7 @@ new GLTFLoader().load(GLB_URL, gltf => {
     if (localStorage.getItem('dorm_doctor_revealed') === '1') DOCTOR.revealed = true;
     if (localStorage.getItem('dorm_doctor_on') === '0'){ DOCTOR.enabled = false; trust.frozen = true; }
     if (DOCTOR.revealed && DOCTOR.enabled){
+      ensureDoctorTextures();        // ★ 2026-10-14：这次一进来就要显示他 → 立刻补拉贴图
       DOCTOR.headOp = 1; DOCTOR.headTarget = 1; DOCTOR.head.visible = true;
       console.log('%c……他在外面等着（上次已经现身过）', 'color:#8298ac');
       console.log('%c   想重置成"第一次"？按 Shift+R，或访问 walk.html?reset', 'color:#5c7086');
@@ -2896,9 +2901,37 @@ try {
   const _s = parseFloat(localStorage.getItem(TRUST_KEY));
   if (Number.isFinite(_s) && _s >= 0) trust.v = Math.min(100, _s);
 } catch (e) {}
-function saveTrust(){
-  try { localStorage.setItem(TRUST_KEY, String(Math.round(trust.v * 10) / 10)); } catch (e) {}
+/* ★★ 2026-10-14 性能优化：加"值没变不写 + 1 秒节流"。
+   ─────────────────────────────────────────────────────────────────────
+   原来每次调用都无条件 localStorage.setItem。唯一的高频调用点是 updateTrust 里
+   那个"数值真的变了才写 DOM"的节流块，判据是
+     `Math.abs(p - lastShown) >= 0.5 || Math.floor(p) !== Math.floor(lastShown)`
+   —— 后半条让【每变化 1%】就成立一次。步长 0.7 米、速度 1.75 m/s（跑步 3.1）
+   ⇒ 走动时 2.5 ~ 4.5 次/秒（`待办-性能优化.md` 里估的"每秒 10 次以上"偏大，
+     实际约为它的一半到三分之一）。
+   ★ 诚实的量级：localStorage.setItem 写一个 4 字符字符串，同步开销通常在
+     0.01~0.1 ms，只在浏览器真要刷盘时才偶发跳到几 ms。
+     也就是**这条一年也省不出 1% 的帧时间** —— 它算"卫生"而不是"性能"。
+     真按注释里说的"每帧写会拖帧"是另一回事，这里本来就不是每帧。
+   ⇒ 还是改掉，因为纯收益、零风险，而且把"值没变还写"这条路彻底堵死：
+       · 值没变 → 直接 return（100% 之后每帧调用也不会写盘了）
+       · 未满 100% → 最多 1 秒写一次
+       · 满了 100% → 立即写（那是彩蛋的关键状态）
+       · force=true → 绕过节流（fillTrust / 离开页面时用） */
+let _trustSavedAt = -1e9, _trustSavedVal = -1;
+function saveTrust(force){
+  const v = Math.round(trust.v * 10) / 10;
+  if (v === _trustSavedVal) return;                        // 值没变 → 绝不重复写
+  const now = performance.now();
+  if (!force && trust.v < 100 && now - _trustSavedAt < 1000) return;   // 1 秒节流
+  _trustSavedAt = now; _trustSavedVal = v;
+  try { localStorage.setItem(TRUST_KEY, String(v)); } catch (e) {}
 }
+/* 节流带来的代价是"最多丢 1 秒的走动量（≈3% 信赖）"——
+   页面要藏起来 / 关掉之前补写一次，这样进度永远是准的。 */
+function flushTrust(){ saveTrust(true); }
+addEventListener('pagehide', flushTrust);
+addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushTrust(); });
 // 第 1 / 2 / 3 / 4+ 轮时，每步增加量的 [最小%, 最大%]
 //   每步 = 0.7 米；房间宽 7.5 米 → 一个来回约 21 步
 const STEP_GAIN = [
@@ -2921,7 +2954,11 @@ const HINTS = [
   '信赖增长中 · 据说满了会有事发生',
   '快满了…',
 ];
-function fillTrust(v){ trust.v = Math.min(100, v); saveTrust(); }
+function fillTrust(v){
+  trust.v = Math.min(100, v);
+  saveTrust(true);                                  // ★ 显式设值 → 绕过节流，立即落盘
+  if (trust.v >= 60) ensureDoctorTextures();        // ★ 2026-10-14：贴图延后加载（见该函数注释）
+}
 
 function updateTrust(dt, movedDist){
   if (eggActive) return;
@@ -2935,6 +2972,12 @@ function updateTrust(dt, movedDist){
     }
   }
   const p = trust.v;
+
+  /* ★★ 2026-10-14 性能优化：信赖过半就把博士贴图拉下来。
+     为什么是 60 而不是 100：从 66% 到 100% 还要走约一个来回（≈10 秒），
+     足够 215 KB 到货 + 解码 —— 这样"现身"那一刻贴图早就准备好了，不会白一下。
+     ★ 代价：只有真的把信赖玩到过半的人才会付出这 215 KB / 15.4 MB 显存。 */
+  if (p >= 60) ensureDoctorTextures();
 
   // ★ 只在【数值真的变了】才写 DOM（每帧写会触发布局+重绘）
   if (Math.abs(p - trust.lastShown) >= 0.5 || Math.floor(p) !== Math.floor(trust.lastShown)){
@@ -3043,20 +3086,51 @@ const DOCTOR = {
   handEndZ: 0.15,                  // 伸到几乎戳到玩家
 };
 
-const headTex = new THREE.TextureLoader().load('assets/doctor_face.webp', t => {
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.magFilter = THREE.LinearFilter;
-  t.anisotropy = 4;
-  t.needsUpdate = true;
-});
-const handTex = new THREE.TextureLoader().load('assets/doctor_hand.webp', t => {
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.magFilter = THREE.LinearFilter;
-  t.anisotropy = 4;
-  t.needsUpdate = true;
-});
+/* ★★★ 2026-10-14 性能优化：博士贴图改成【要用才加载】
+   ─────────────────────────────────────────────────────────────────────
+   原来这两张图在模块初始化时就 TextureLoader.load()（HTML 里那个 <img> 更是
+   页面一解析就下载）⇒ `_fk_perf_probe.mjs` 实测：**每进一个房间都白拿**
+        · 215 KB 网络（doctor_face 95 KB ＋ doctor_hand 120 KB）
+        · ★★ 15.4 MB 显存（1500×1125 = 6.6 MB ＋ 1500×1500 = 8.8 MB）
+   而房间自己的【全部】贴图才 ~13 MB —— 也就是**一半以上的显存是给彩蛋备着的**，
+   偏偏彩蛋要信赖走到 100%（约 33 步）或手动按 K 才会出现。
+   ⇒ 改成：材质照建（着色器程序不变），先挂一张 1×1 占位贴图；
+     真正要用时才 load，到货后换掉 map。触发点 = 下面 ensureDoctorTextures() 的调用处。
+   ★ 为什么必须有占位贴图：写 `map: null` 会让 MeshBasicMaterial 编译成
+     【无贴图】版本的程序；等真图到了再挂上去 = 着色器要重新编译，那一刻掉一帧。
+     占位图让程序从第一帧起就带 map，换图只换纹理单元，不重编译。
+     （占位图的 colorSpace 故意设成 SRGB 和真图一致 —— 免得 colorSpace 也进程序缓存键。）
+   ★ 彩蛋的触发条件 / 演出 / 外观一个字没改，只是把"下载 + 解码 + 上传显存"
+     从【每次进房间】推迟到【真要出现时】。 */
+const _docTexPlaceholder = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+_docTexPlaceholder.colorSpace = THREE.SRGBColorSpace;
+_docTexPlaceholder.needsUpdate = true;
+let headTex = _docTexPlaceholder;      // ★ 先占位，真图到货后被换掉
+let handTex = _docTexPlaceholder;
+let _docTexStarted = false;
+function ensureDoctorTextures(){
+  if (_docTexStarted) return;
+  _docTexStarted = true;
+  const tl = new THREE.TextureLoader();
+  const tune = (t) => {
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.anisotropy = 4;
+    t.needsUpdate = true;
+  };
+  tl.load('assets/doctor_face.webp', (t) => {
+    tune(t); headTex = t;
+    if (DOCTOR.headMat){ DOCTOR.headMat.map = t; DOCTOR.headMat.needsUpdate = true; }
+  }, undefined, () => console.warn('博士头像贴图没载入（彩蛋仍可用，头会是白的）'));
+  tl.load('assets/doctor_hand.webp', (t) => {
+    tune(t); handTex = t;
+    if (DOCTOR.handMat){ DOCTOR.handMat.map = t; DOCTOR.handMat.needsUpdate = true; }
+  }, undefined, () => console.warn('博士手贴图没载入（彩蛋仍可用，手会是白的）'));
+  /* ★ "全屏贴脸"那套演出用的是 DOM <img>（HTML 里那个 img 现在不带 src 了） */
+  const ei = document.getElementById('eggimg');
+  if (ei && !ei.getAttribute('src')) ei.src = 'assets/doctor_face.webp';
+}
 
 (function buildDoctor(){
   // ── 头
@@ -3332,6 +3406,7 @@ let eggPhase2Pulsed = false;                 // "他注意到你了"那一下只
 
 function triggerEgg(){
   if (eggActive || !DOCTOR.enabled) return;
+  ensureDoctorTextures();            // ★ 2026-10-14：手动按 K 也要先把贴图拉下来
   eggActive = true;
   eggPhase = 0; eggT = 0;
   eggArmed = false;
@@ -4156,6 +4231,7 @@ const furniRay = new THREE.Raycaster();
 furniRay.far = 6.5;                               // 房间才 3.5 m 进深，6.5 足够
 const _furniNdc = new THREE.Vector2(0, 0);        // 屏幕正中 = 准星
 let _furniPending = null, _furniSince = 0, _furniShown = null;
+let _furniFrame = 0;                              // ★ 2026-10-14：射线降频用的帧计数（每 3 帧一次）
 const FURNI_HOLD_MS = 280;                        // 连续对准多久才显示（防抖）
 
 function hideFurniInfo(){
@@ -4180,7 +4256,23 @@ function updateFurniInfo(dt){
   if (nearExit || nearTerminal){ if (_furniShown !== null) hideFurniInfo(); return; }
   if (!furniMeshes.length) return;
 
-  /* ★★ 每帧都重算，【不做位姿缓存】。
+  /* ★★★ 2026-10-14 性能优化：射线降到【每 3 帧打一次】。
+     ─────────────────────────────────────────────────────────────────────
+     上面那几条早退（开关关掉 / 面板打开 / 演出中 / 有交互提示）保持【每帧】执行，
+     所以"该收起来"的时机一个字没变；只有下面这条射线+判定变成 3 帧一次。
+     144Hz 上 = 每 21 ms 一次，而下面防抖阈值是 280 ms ——
+     多等两帧（≤14 ms）对"准星对准才显示"这个体验完全无感。
+     ★★ `待办-性能优化.md` §嫌疑 3 明确许可这个改法，并且特别叮嘱：
+        **别再改回"按玩家位姿做条件缓存"** —— 第一版就是那么写的，踩了很隐蔽的坑：
+        位姿缓存只看玩家，而相机/家具在加载早期还会变（GLB 异步载入、`?cam=` 摆位），
+        于是第一帧的陈旧命中被永久缓存（实测：站在会客室正中看长沙发，
+        底部一直显示「会客室中空隔断」，14 秒不刷新）。
+        按帧计数降频没有这个问题 —— 它只是"晚 2 帧"，不会"永远错"。
+     ★ 诚实说量级：这 50~65 个 mesh 每个先测包围球、绝大多数被秒排除，
+       整条射线本来就只要几十微秒 —— 这条改动是"顺手抠掉"，不是主要收益。 */
+  if ((_furniFrame++ % 3) !== 0) return;
+
+  /* ★★ 每 3 帧重算，【绝不做位姿缓存】。
      ─────────────────────────────────────────────────────────────────────
      第一版为了省性能加过一层缓存（"玩家位姿没变就不重算"），结果踩了个很隐蔽的坑：
      位姿缓存只看【玩家】的位置/朝向，但相机与家具在加载早期还会变

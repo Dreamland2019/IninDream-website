@@ -84,7 +84,7 @@ export function openRoomPanel(opts){
     b.addEventListener('mouseleave', () => { b.style.borderColor = '#33506a'; b.style.transform = 'none'; });
     const img = document.createElement('img');
     /* ★★★ 2026-10-13（用户拍板）图源顺序：
-         ① `assets\previews\<主题>.png`  —— **首选**。这是游戏【家具商店的宣传卡】
+         ① `assets\previews\<主题>.webp` —— **首选**。这是游戏【家具商店的宣传卡】
             （480×296，分辨率更高，图上带「罗德岛采购部 家居套装」+ 主题名，有游戏特色）
             ⚠️ 但只有【商店套装】才有这套图
          ② `assets\theme_cards\<主题>.png` —— 备用。游戏「主题选择」界面的**干净渲染图**
@@ -94,7 +94,9 @@ export function openRoomPanel(opts){
        ★ 两套图【宽高比不同】（480×296 ≈ 1.62 vs 228×172 ≈ 1.33），
          所以下面用 `object-fit: contain` —— 高的那张填满，扁的那张自动左右留边，
          两种都不裁切、不变形。（原来写的是 cover，会把 theme_cards 那套上下裁掉 18%。） */
-    const CARD_SRC     = './assets/previews/' + r.theme + '.png';
+    /* ★★★ 2026-10-14 性能优化：.png → .webp（见 manifest.js 的 previewOf 注释）
+       7 张图 1529 KB → 249 KB，省 1.28 MB。图本身、分辨率、比例都没动。 */
+    const CARD_SRC     = './assets/previews/' + r.theme + '.webp';
     const FALLBACK_SRC = './assets/theme_cards/' + r.theme + '.png';
     img.src = CARD_SRC;
     img.alt = r.name;
