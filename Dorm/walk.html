@@ -508,6 +508,39 @@ body.shake > *{animation:shake .075s infinite !important}
   /* 性能面板在手机上小一点 */
   #fps{font-size:10px !important;padding:6px 9px !important;left:12px !important;bottom:62px !important}
 }
+
+/* ★★★ 2026-10-16 横屏（矮视口）修正
+   ─────────────────────────────────────────────────────────────────────────
+   用户真机实测反馈："实测竖屏没有问题，但是手机横屏的时候描述变中间了，挡视野。"
+   根因：手机端那套 `bottom:184px` 是【按竖屏调的绝对偏移】——
+     竖屏 844px 高时它只占 22%（贴在下面），**横屏视口只有 ~360px 高**时它变成 **51%**
+     ⇒ 框被顶到屏幕正中间，正好压住准星（准星就在正中心）。
+   ★ 而横屏其实【根本不需要那么多行】：框宽是竖屏的 ~2.2 倍（~700px），
+     最长那条 101 字只要 2 行 ⇒ 横屏应该"贴底 + 矮"，而不是"居中 + 高"。
+   ⇒ 三条一起改（缺一条都不行）：
+     ① `bottom` 184px → 52px：贴到最下面，但要避开信赖条（约 45px 高）。
+     ② `.d` 的 max-height 12em → 5em：横屏 2 行就够，5 行留足余量；
+        框高从 ~165px 降到 ~88px。
+     ③ `left:120px`：让开左下的摇杆（摇杆 left:18 + 宽 92 ⇒ 右边界 110）。
+        `right:84px` 不用动 —— 它是"按钮列 66 + 边距 18"，任何视口宽度下都成立。
+   ⇒ 落点（800×360 横屏）：框占 y ≈ 220~308。准星在 y=180 ✓ 不挡；
+     摇杆在 x ≤110 ✓ 让开；按钮列在 x ≥716 ✓ 让开；信赖条在 y ≥315 ✓ 让开。
+     （这些数都实测过：`node 3D渲染\tools\_fk_probe_furni_box.mjs <url> 800x360`）
+   ★ 判据故意用 `(orientation: landscape) and (max-height:500px)`，**不用指针类型**：
+     这样无头探针（不开触摸模拟）也验得到；而且桌面窗口矮到这个程度时本来就等同手机横屏，
+     套用同一套不会有坏处。
+   ★★ 这里必须把 `width` 设回 `auto`（基础规则是 `max-content`）——
+     **这是第一次改的时候踩的坑**：`width:max-content` + 同时给了 left/right 时，
+     规范规定 `right` **被忽略**（LTR 下三值都非 auto 时 right 不参与），
+     于是框会从 left:120 往右撑到 max-width 为止，实测最右到 **816px**
+     （视口才 800）⇒ 反而压到按钮列 100px。
+     改成 `width:auto` 后宽度由 left/right 精确夹出来 = 视口宽 − 120 − 84 = 596px，
+     右边界恒等于 716（= 按钮列左边界），任何描述长度都一样。
+   ⚠️ 这条必须写在上面那个手机端 media query **之后**（同级选择器、后来的赢），别往上搬。 */
+@media (orientation: landscape) and (max-height:500px){
+  #furniInfo{bottom:52px;left:120px;right:84px;width:auto;margin:0;transform:none}
+  #furniInfo .d{max-height:5em}
+}
 </style>
 </head>
 <body>
