@@ -42,6 +42,15 @@ export const ROOMS = [
   { theme: 'YuKitchen', name: '余味居后厨', tag: '后厨', inHub: true, hasRig: true,
     desc: '根据余味居宣传单复刻的后厨房间。整洁光亮，条理有序，萦绕着令人垂涎的饭食香味。烟火正盛的夜晚，比起尝鲜，更令人赞不绝口的，是烹饪的过程。这方小天地，经余之手已然成了天下最好的烹具。' },
 
+  /* ★★ 2026-10-15 新增：圣芭菲甜点店（furni_set_dessertShop · 活动套装 sortId 134）
+     · inHub:false —— 用户 2026-10-15 决定：**走廊就保持现有 6 个门位 6 个房间不动**
+       （原话："不然这么多套宿舍岂不是要做老长的走廊"）。
+       新房间一律走 **Tab 终端面板**进 —— panel.js 里已加搜索框，房间多了也能找到。
+     · hasRig:false —— 没做 `rooms\_rig\dessertShop.glb` 旧光照回退版（没这个必要）。
+     · 预览图：`arts\shop\furngroup\dessertshop_2026\dessertShop_2026_1.png`（商店宣传卡，480×296） */
+  { theme: 'dessertShop', name: '圣芭菲甜点店', tag: '甜点店', inHub: false, hasRig: false,
+    desc: '位于伊卡莱西亚区，备受本地人与游客欢迎的甜点店。附近的人常会来到这里度过一段悠闲时光。不仅周末，工作日也是如此——应该说，尤其是在工作日。' },
+
   /* ★ 会客室 = 第 7 间，是网站的初始场地。
        inHub:false —— 走廊尽头那扇走的是 hub.html 里单独的 END_DOOR，
        不是 DOORS 数组那 6 个门位（塞进去会让 DOOR_THEME 下标全部错位）。 */
