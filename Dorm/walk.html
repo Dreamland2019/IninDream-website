@@ -132,6 +132,22 @@ canvas{display:block;outline:none}
    ★ 左侧粗边 = 和 prompt 的居中描边框区分开，一眼能看出"这是家具说明"而不是"可交互" */
 #furniInfo{position:fixed;left:50%;bottom:9%;transform:translateX(-50%);
   z-index:26;max-width:min(760px,90vw);
+  /* ★★★ 2026-10-16 修（用户反馈："竖屏模式下家具描述过长会截断"）
+     ─────────────────────────────────────────────────────────────────────
+     加这一行 `width:max-content` 才是真正的修复，**别删**。
+     原来的问题是：`position:fixed` + `left:50%` + `width:auto` 会走
+     **shrink-to-fit**，而它的"可用宽度"是从 `left` 算到包含块右边的 ——
+     也就是 **50% 视口宽**。`transform:translateX(-50%)` 只把它视觉上挪回中间，
+     **完全不参与可用宽度的计算**，所以 `max-width:94vw` 根本轮不到生效。
+     ⇒ 实测（_fk_probe_furni_box.mjs，390×844 视口）：
+          框实际只有 **195px**（不是 366px）⇒ 每行只放 ~17 字
+          ⇒ 最长那条 101 字要 **7 行**，而 .d 的 max-height 只给 **6 行** ⇒ **正好差一行被吃掉**。
+       ★ 为什么以前没发现：CSS 注释里那句"够放 190 字，实测最长 98 字"是在
+         **桌面宽度**下量的，那时 50vw 有 600+px，自然不会截断。手机上 50vw 只剩 195px。
+     ⇒ `width:max-content` 让"按内容算宽度"这件事不再受 left 位置影响：
+       短描述 → 框就窄（保持原来的观感）；长描述 → 撑到 max-width 再换行。
+     ★ 桌面端同样受益（原来框永远不超过 50vw，到不了 min(760,90vw)）。 */
+  width:max-content;
   padding:9px 15px;border:1px solid rgba(120,200,220,.22);
   border-left:3px solid rgba(120,200,220,.62);border-radius:4px;
   background:rgba(10,15,22,.82);opacity:0;transition:opacity .18s ease;
@@ -141,6 +157,12 @@ canvas{display:block;outline:none}
   color:#8fd8ff;margin-bottom:2px}
 #furniInfo .d{display:block;font-size:12.5px;line-height:1.72;color:#cfe0f2;
   white-space:pre-line;max-height:6em;overflow:hidden}
+/* ★ 2026-10-16：描述仍被截断时显示的一行提示（用户提的方案，做成"兜底"）。
+   ⚠️ 提示语写【横屏】不是【横屏全屏】—— 全屏只是去掉浏览器工具栏（约 10% 高度），
+      真正让字放得下的是转屏：横屏时 94vw 变成 ~2.2 倍宽，行数直接砍半还多。 */
+#furniInfo .more{display:none;font-style:normal;font-size:11px;line-height:1.5;
+  color:#f0c34a;margin-top:5px}
+#furniInfo.more .more{display:block}
 
 /* ── 手机端设置菜单（2026-10-13 用户需求）──────────────────────────────────
    背景：手机端按钮越来越多（摇杆、蹲下、还要加"家具介绍""无视碰撞"开关），
@@ -149,6 +171,9 @@ canvas{display:block;outline:none}
    ⇒ 这一块把电脑端的键盘功能全搬进一个菜单，齿轮按钮只在手机端显示
      （桌面端有键盘快捷键，不需要多一个按钮占地方）。 */
 #setbtn{display:none}
+/* ★ 2026-10-15 全屏按钮（手机端）—— 默认隐藏，media query 里再打开。
+   为什么要有它：见下面 #fsbtn 的详细注释。 */
+#fsbtn{display:none}
 #setmenu{position:fixed;inset:0;z-index:47;display:none;
   align-items:center;justify-content:center;background:rgba(4,8,12,.74)}
 #setmenu.on{display:flex}
@@ -248,19 +273,52 @@ body.shake > *{animation:shake .075s infinite !important}
   transition:opacity .22s,transform .22s}
 #say.on{opacity:1;transform:translate(-50%,0)}
 
-/* ★ 屏幕方向提示（手机端） */
-#rotatehint{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);
-  z-index:55;opacity:0;pointer-events:none;transition:opacity .35s,transform .35s;
-  background:rgba(11,17,26,.95);border:1px solid rgba(95,216,232,.4);
-  border-radius:5px;padding:20px 28px;text-align:center;
-  box-shadow:0 20px 50px rgba(0,0,0,.75)}
-#rotatehint.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
-#rotatehint .rh-icon{font-size:34px;line-height:1;margin-bottom:12px;
-  display:inline-block}
-#rotatehint.turn .rh-icon{animation:rot 1.6s ease-in-out infinite}
-@keyframes rot{0%,45%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
-#rotatehint .rh-text{font-size:14px;letter-spacing:.2em;color:var(--accent);margin-bottom:7px}
-#rotatehint .rh-sub{font-size:10.5px;letter-spacing:.1em;color:var(--dim);line-height:1.7}
+/* ★★★ 2026-10-15 用户要求【删除】「建议竖屏游玩」提示。
+   ─────────────────────────────────────────────────────────────────────────
+   来龙去脉：这条提示原本只在"竖屏"时显示 4 秒（横屏那半 2026-10-14 已经删了）。
+   但用户实测后说："手机端的建议竖屏游玩提示还在，应该删除该提示" ——
+   理由很直接：**他本来就在竖屏**，还弹一条"建议竖屏游玩"纯属废话（见他的截图：
+   手机明明竖着，框里却在建议竖屏）。
+   ⇒ 整个 #rotatehint（HTML + CSS + JS）连根删掉。
+   ★ 横屏视野偏窄的问题【不靠劝用户转屏解决】，而是靠 updateCameraFov() 的
+     FOV 自适应（按宽高比放大垂直 FOV，保证水平视野够用）—— 那段代码【保留】。
+   ★ 以后要恢复这条提示：git 历史里搜 `#rotatehint`（2026-10-15 之前都有）。
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ★★★ 2026-10-15 加载进度（用户需求：慢网下要看得出"下了多少 / 还剩多少 / 多快"）
+   为什么用 id 而不是新做一个覆盖层：#start 本身就是一个全屏深色遮罩，
+   复用它就没有 z-index / 层叠顺序的额外风险，也不会和「开始页」打架。
+   ★ .showload 是"纯加载态"：把介绍文字 / 按键提示 / 性能提示全部收起来，
+     只留房间名 + 进度条 + 数字。这条是"从走廊自动进房间"时用的
+     （原来是直接把 #start 藏掉 → 用户看到的是【黑屏 + HUD】，见 2026-10-15 用户反馈）。 */
+/* ★★★ 2026-10-15 加载进度（用户需求：慢网下要看得出"下了多少 / 还剩多少 / 多快"）
+   为什么用 id 而不是新做一个覆盖层：#start 本身就是一个全屏深色遮罩，
+   复用它就没有 z-index / 层叠顺序的额外风险，也不会和「开始页」打架。
+   ★ 两个类，各管一件事（别合并）：
+     · .loading-on —— 显示进度块。**两条路都用**：
+         第一次来 = 开始页 + 进度条（按钮上方先看到"下了多少"）
+         自动进入 = 只留进度块（见下一条）
+     · .autoenter —— "从走廊自动进房间"那条路，把介绍文字 / 按键提示 / 性能提示收起来，
+       只留房间名 + 进度条 + 数字。
+   ★ .autoenter 是修"黑屏"的关键：原来是直接把 #start 藏掉（display:none），
+     于是 GLB 还在下载的那十几秒里屏幕上只剩【HUD + 纯黑】（用户 2026-10-15 截图）。
+     现在改成"仍然盖着屏幕，但显示进度"。 */
+#start .loading{display:none;margin-top:18px;width:min(78vw,340px)}
+#start.loading-on .loading{display:block}
+#start.autoenter h2,
+#start.autoenter .sub,
+#start.autoenter .keys,
+#start.autoenter .perfnote{display:none}
+#start.autoenter .btn{margin-top:0;opacity:.45;pointer-events:none}
+#start .ld-room{font-size:11.5px;letter-spacing:.18em;color:var(--accent);margin-bottom:10px}
+#start .ld-bar{height:4px;border-radius:2px;background:rgba(120,200,220,.16);overflow:hidden}
+#start .ld-bar i{display:block;height:100%;width:0;border-radius:2px;
+  background:linear-gradient(90deg,rgba(95,216,232,.7),#9fe8ff);
+  transition:width .2s linear}
+#start .ld-info{font-size:10.5px;letter-spacing:.05em;color:var(--dim);
+  margin-top:10px;line-height:1.85}
+#start .ld-info b{color:var(--txt);font-weight:500}
+#start .ld-warn{font-size:10.5px;color:#f0c34a;margin-top:8px;line-height:1.7}
 
 /* ★ 静音按钮（all:unset 必须放最前面，否则会重置后面的 position:fixed）
    ⚠ 同样不能用 backdrop-filter */
@@ -299,6 +357,35 @@ body.shake > *{animation:shake .075s infinite !important}
   /* 隐藏键盘提示 */
   #keyhelp{display:none}
 
+  /* ★★★ 2026-10-15 用户反馈（问题 5）："手机端加载页面不应该提示电脑端的按键设置"
+     ⇒ 开始页（#start）里那排 `W A S D 移动 / C COS杜林 / Shift 快走 / 鼠标 转头 / Esc 退出`
+       **整块在手机端隐藏**。
+     ★ 为什么以前是漏的：那条 `#tips .pc{display:none}` 只作用于【#tips】，
+       而开始页那排的父元素是【#start】，所以从来没被隐藏过（用户截图里能看到）。
+       现在直接按 `#start .keys` 选，不依赖 .pc 这个类名。 */
+  #start .keys{display:none}
+
+  /* ★★★ 2026-10-15 全屏按钮（用户问题 4）
+     ─────────────────────────────────────────────────────────────────────
+     用户原话："说是可以从顶部向下触摸退出全屏模式，但是手机端从顶部向下触摸会呼出
+     手机自带的功能菜单，应该直接放一个全屏的按钮在设置上方。"
+     ⇒ 全屏【进去】是自动的（enterGame 里 requestImmersive），但【出来】原来只有两条路：
+        ① 手机系统手势（在 Android 上就是从顶部下滑 —— 正好和"拉下通知栏"冲突，
+           用户实测拉出来的是系统菜单，不是退出全屏）
+        ② 设置菜单 → 沉浸模式（要点两下，隐藏得深）
+     ⇒ 所以加一个常驻按钮，摆在「设置」正上方。
+     ★ 位置是算出来的，别乱改：下蹲 78 / 房间 152 / 设置 218 / 全屏 284
+       （每个 66px 一档 = 按钮直径 52~66 + 间距；#fsbtn 尺寸和 #setbtn 一致）。 */
+  #fsbtn{display:flex;position:fixed;right:18px;bottom:284px;z-index:27;
+    width:52px;height:52px;border-radius:50%;border:1.5px solid rgba(120,200,220,.35);
+    background:rgba(11,17,26,.72);color:#cfe0f2;font-size:12.5px;line-height:1.2;
+    letter-spacing:.06em;
+    align-items:center;justify-content:center;padding:0;cursor:pointer;
+    touch-action:manipulation;-webkit-user-select:none;user-select:none;font-family:inherit}
+  #fsbtn:active{background:rgba(95,216,232,.25);border-color:rgba(95,216,232,.85)}
+  /* 已经全屏时高亮，让用户一眼看出当前状态（点一下就退出） */
+  #fsbtn.on{border-color:rgba(95,216,232,.8);background:rgba(95,216,232,.18);color:#9fe8ff}
+
   /* 手机版品牌标识（更小） */
   #topbar{padding:9px 12px}
   .brand{gap:6px;padding-top:2px}
@@ -323,12 +410,36 @@ body.shake > *{animation:shake .075s infinite !important}
      ★ 手机上"准星"就是屏幕正中 —— 拖拽转头时它天然指向你正在看的地方，
        所以方案 1 在手机上是成立的，不用另做一套交互。
      ★ max-height 用 em（按 font-size 算）而不是"行数"：1 行 = line-height 1.6em。
-       手机竖屏实测调了三轮：4.8em（3 行）截一行、8em（5 行）还差一行……
-       最后是【把信息条放宽】解决的（94vw 而不是 92vw → 每行多几个字 → 少一行就放完）：
-       现在 = 宽 94vw、字号 11px、上限 10em（≈6 行，够放 190 字，实测最长 98 字）。 */
-  #furniInfo{bottom:184px;max-width:94vw;padding:7px 11px}
+       ★★★ 2026-10-16 更正：这里原来写着"够放 190 字，实测最长 98 字"——**那是错的**，
+         因为它是在【桌面宽度】下量的。手机上真正的框宽由上面的 shrink-to-fit bug 决定
+         （只有 50% 视口 ≈ 195px），实际只能放 ~100 字 ⇒ 用户看到的就是"描述被截断"。
+         已在基础规则里用 `width:max-content` 修掉（详见那段长注释）。
+       ⇒ 修好后的实测容量（390×844 视口）：框宽 366px、字号 11px ⇒ **每行 ~31 字、上限 6 行 ≈ 186 字**。
+         而全库 125 条描述**最长只有 101 字**（中位数 78）⇒ 现在【全部放得下】，不需要任何提示。
+       ★ 那 6 行上限仍然保留：万一以后加了超长描述（>186 字），
+         `.more` 那条提示会兜底（见 HTML 里的 #furniMore 与 updateFurniInfo 里的溢出判定）。 */
+  /* ★★★ 2026-10-16：右侧必须让出【按钮列】。
+     为什么：修掉宽度 bug 之后框会变成 94vw = 367px，而按钮列从 x≈306 起
+     （最宽的蹲下按钮 66px + 右边距 18px = 84px），于是描述文字会跑到按钮底下。
+     虽然按钮 z-index 更高（27 > 26）仍然点得到，但叠在一起很糊（截图验证时发现）。
+     ★ 写法：`left:0` + `right:84px` + `margin:0 auto` + `width:max-content`
+       ⇒ 框在"屏幕左边 → 按钮列左边"这一段里居中；短描述仍然窄，
+         长描述最多撑到 calc(100vw - 104px)。
+     ★ 实测（390×844）：框宽 286px ⇒ 每行 ~25 字 ⇒ 最长那条 101 字占 5 行，
+       而上限是 6 行 ⇒ 仍然全部放得下（见 _fk_probe_furni_box.mjs 的表格）。
+     ★ transform:none 是为了把基础规则里的 translateX(-50%) 抵掉（不再靠位移居中）。 */
+  /* ★ 2026-10-16：上限从 10em 抬到 12em（6 行 → 7 行）。
+     为什么必须抬：让出按钮列之后框宽只剩 286px（每行 ~25 字），最长那条 101 字
+     **正好要 6 行**，和原来的 6 行上限【一格余量都没有】—— 换个字体、改个 DPR、
+     或者以后加一条 105 字的描述，立刻就又被截断。
+     ⇒ 12em = 132px ≈ 7.5 行 ⇒ 实给 7 行：最长那条留 1 行余量，
+       140 字的（7 行）也刚好放得下；190 字以上才走 .more 提示。
+     ★ 代价可控：框最高 ≈165px，底边在 184px ⇒ 只占屏幕下方约 20%，
+       且横向已经让开按钮列、也够不到正中的准星。 */
+  #furniInfo{bottom:184px;left:0;right:84px;margin:0 auto;transform:none;
+    max-width:calc(100vw - 104px);padding:7px 11px}
   #furniInfo .n{font-size:12px}
-  #furniInfo .d{font-size:11px;line-height:1.6;max-height:10em}
+  #furniInfo .d{font-size:11px;line-height:1.6;max-height:12em}
 
   /* ★ 2026-10-14 用户："手机端的提示应该删除'按E''E'这些字符，只留下'推门出去''进入xxx'"
      ⇒ 提示框里那个「E」小方块（class="pk"）在手机端不显示。
@@ -437,7 +548,7 @@ body.shake > *{animation:shake .075s infinite !important}
 
 <div id="stick"><i></i></div>
 <!-- ★ 家具信息条（2026-10-13）：准星对准家具时显示名字 + 官方描述，见 updateFurniInfo() -->
-<div id="furniInfo"><b class="n"></b><span class="d"></span></div>
+<div id="furniInfo"><b class="n"></b><span class="d"></span><i class="more" id="furniMore">▸ 描述过长 · 横屏查看更完整</i></div>
 
 <!-- ★ 手机端：蹲下按钮 + 触摸提示 -->
 <button id="crouchbtn" title="切换蹲下"><span class="cb-ico">🧎</span>COS杜林</button>
@@ -448,6 +559,10 @@ body.shake > *{animation:shake .075s infinite !important}
      ⚠️ 按钮文字不用 emoji —— 🚪 在无头 Edge 里渲染成了橙色方块，见 CSS 里的注释。 -->
 <button id="roombtn" title="房间列表（Tab）" aria-label="房间列表">房间</button>
 <button id="setbtn" title="设置" aria-label="设置">设置</button>
+<!-- ★ 2026-10-15 全屏按钮（用户问题 4）—— 放在「设置」正上方（bottom:284）。
+     全屏进去是自动的，但"出来"原来只能靠系统手势（Android 上正好和拉通知栏冲突）
+     或钻进设置菜单 ⇒ 给一个一眼可见、一下就能点的出口。 -->
+<button id="fsbtn" title="全屏 / 退出全屏" aria-label="全屏">全屏</button>
 <div id="setmenu">
   <div id="setmenuCard">
     <div id="setmenuHead">设 置<span>手机端 · 电脑端用键盘快捷键</span></div>
@@ -466,12 +581,10 @@ body.shake > *{animation:shake .075s infinite !important}
 <div id="egg"><img id="eggimg" alt=""></div>
 <div id="say"></div>
 
-<!-- ★ 手机端屏幕方向提示 -->
-<div id="rotatehint">
-  <div class="rh-icon">📱</div>
-  <div class="rh-text">建议竖屏游玩</div>
-  <div class="rh-sub" id="rhsub">单手操作更方便<br>左下角摇杆移动 · 拖动屏幕转头</div>
-</div>
+<!-- ★★★ 2026-10-15：「建议竖屏游玩」提示已按用户要求【连根删除】（HTML+CSS+JS）。
+     它原来只在竖屏时弹 4 秒 —— 而用户本来就在竖屏，纯属废话。
+     横屏视野偏窄改由 updateCameraFov() 自适应解决，不需要这条提示。
+     要恢复：git 历史里搜 `#rotatehint`。 -->
 
 <!-- ★ 背景音乐：生命流 - 塞壬唱片-MSR,BaoUner（原 FLAC 19MB → MP3 5.2MB）
      preload=metadata：只下载文件头，点「进入」后才开始拉流（避免首屏就下载 5MB） -->
@@ -489,6 +602,19 @@ body.shake > *{animation:shake .075s infinite !important}
     <span><b>鼠标</b> 转头</span>
     <span><b>Esc</b> 退出</span>
   </div>
+  <!-- ★★★ 2026-10-15 加载进度（用户需求）
+       ─────────────────────────────────────────────────────────────────────
+       用户原话："由于服务器架设在 github 上，有部分网络直连可能较慢（如校园网、广电），
+       可不可以加进度条，即对于该房间已下载多少资源、还剩多少未下载、下载速度如何。"
+       ⇒ 这里只是【容器】；数字由 updateLoadUI() 填（见下面的加载进度那段 JS）。
+       ★ 它在 HTML 里就存在（不依赖 JS）⇒ 页面一解析出来就能显示，
+         所以"模块还在下载"的那一段也不会是黑屏。 -->
+  <div class="loading" id="loading">
+    <div class="ld-room" id="ldRoom">正在载入…</div>
+    <div class="ld-bar"><i id="ldFill"></i></div>
+    <div class="ld-info" id="ldInfo">正在加载程序…</div>
+    <div class="ld-warn" id="ldWarn" style="display:none"></div>
+  </div>
   <!-- ★ 启动错误显示（出错时才会出现） -->
   <div id="bootError"></div>
   <!-- ★ 性能提示 -->
@@ -502,6 +628,27 @@ body.shake > *{animation:shake .075s infinite !important}
     <div class="pn-warn" id="hwWarn" style="display:none"></div>
   </div>
 </div>
+
+<!-- ★★★ 2026-10-15 极早的加载态（**必须放在 #start 之后、module 之前**）
+     ─────────────────────────────────────────────────────────────────────────
+     为什么要有这一段：慢网下"模块还没下载完"那一段（lib/ 十几个 js，gzip 后约 350 KB）
+     也要等好几秒，而那会儿 module 还没执行、什么都做不了。
+     这里只是一段普通 script，HTML 一解析到就运行 ⇒ 立刻把加载态打开，用户【从第一眼】
+     就看到"正在载入"，而不是先看到开始页再跳、更不是黑屏。
+     ★ 判据必须和下面 module 里的 IIFE 一致：从走廊进来的（?theme=）+ 已经进过一次
+       （localStorage.dorm_hub_entered === '1'）。不一致就会出现"闪一下开始页"。
+     ★ 用 try/catch 全包：localStorage 在隐私模式/被禁时会抛，那段失败也不能影响后面。 -->
+<script>
+try {
+  var _hasTheme = !!new URLSearchParams(location.search).get('theme');
+  var _seen = false;
+  try { _seen = localStorage.getItem('dorm_hub_entered') === '1'; } catch (e) {}
+  if (_hasTheme && _seen){
+    var _s = document.getElementById('start');
+    if (_s){ _s.classList.add('loading-on', 'autoenter'); }
+  }
+} catch (e) {}
+</script>
 
 <script type="importmap">
 { "imports": {
@@ -545,8 +692,26 @@ function showFatal(msg, detail){
 addEventListener('error', e => {
   showFatal('启动出错：' + (e.message || '未知'), (e.filename || '') + ':' + (e.lineno || ''));
 });
+/* ★★★ 2026-10-15 用户反馈问题 2："手机端有概率出现 promise 未处理的报错，刷新后正常"
+   ─────────────────────────────────────────────────────────────────────────
+   根因 = 【有 promise 没接 catch】，而这里这个全局兜底把它升级成了一条可见报错。
+   ⇒ 两头一起改：
+     ① 源头（本轮已修两处）：`walk.html` 的 document.exitFullscreen()、
+        `hub.html` enterCorridor 里的 requestPointerLock() —— 两个都返回 Promise，
+        在手机上会被浏览器拒（不支持 / 文档没聚焦 / 已有请求在飞）⇒ 冒到这里。
+     ② 兜底降级：**只在"开始页还在"的时候才显示到界面上**。
+        进了游戏之后再来一条无关紧要的 rejection（音频自动播放、全屏、指针锁都会被拒），
+        不该在界面上吓用户一跳；那种情况只打 console 供排查。
+   ★ 另外把 reason 打全（message + stack 第二行），下次真出问题能一眼定位到是哪一行，
+     而不是只看到一句"异步出错：未知"。 */
 addEventListener('unhandledrejection', e => {
-  showFatal('异步出错：' + ((e.reason && e.reason.message) || e.reason || '未知'));
+  const r = e && e.reason;
+  const msg = (r && (r.message || r.name)) || String(r || '未知');
+  const where = (r && r.stack) ? String(r.stack).split('\n')[1] || '' : '';
+  console.error('[未处理的 Promise]', msg, where.trim(), r);
+  // 开始页已经被移除 = 用户已经在玩了 → 只记日志，不弹错
+  if (!document.getElementById('start')) return;
+  showFatal('异步出错：' + msg, where.trim());
 });
 
 // ═══════════════════════════════════════════════════ 基础
@@ -1724,29 +1889,19 @@ let SKIP_START_PAGE = false;
     console.log('%c★ 首次从走廊进入：显示进入界面（之后不再弹）', 'color:#5fd8e8');
     return;
   }
-  // 已经进过一次 → 自动跳过 #start
-  SKIP_START_PAGE = true;         // ★ 告诉下面 GLB 加载回调：这次可以跳过开始页
-  console.log('%c★ 已访问过：自动进入（不再弹界面）', 'color:#5fd8e8');
-  const tryEnter = (n) => {
-    // ⚠️⚠️ 修正 2026-10-11：`typeof x !== 'undefined'` 对【处于 TDZ 的 let/const】
-    //     是【无效】的 —— typeof 本身就会抛 ReferenceError。
-    //     loaded 是 let（声明在 GLB 加载段），所以必须用 try/catch 兜住。
-    let okLoad = false, okFn = false;
-    try { okLoad = (loaded === true); } catch(e){}
-    try { okFn = (typeof enterGame === 'function'); } catch(e){}
-    if (okFn && okLoad){ enterGame(); return; }
-    if (n > 200){
-      console.warn('自动进入超时，退回显示 #start');
-      const el = document.getElementById('start');
-      if (el) el.style.display = '';
-      return;
-    }
-    setTimeout(() => tryEnter(n + 1), 50);
-  };
-  // 先把 #start 藏起来（避免自动进入前闪一下界面）；超时会还原
-  const _s = document.getElementById('start');
-  if (_s) _s.style.display = 'none';
-  setTimeout(() => tryEnter(0), 60);
+  // 已经进过一次 → 自动跳过开始页
+  /* ★★★ 2026-10-15 重写这一段（成因见下面 §"加载进度"那段长注释）：
+     ① 删掉原来的 `tryEnter(n)` 轮询（200 × 50ms）。它是【第二套】进入机制 ——
+        GLB 的 onLoad 回调末尾本来就有一条 "if (FROM_HUB && SKIP_START_PAGE) → enterGame()"。
+        两套机制打架在这个文件里是有旧账的（见上面 §"两套互相打架的逻辑"）。
+        ★ 而且轮询的判据只是 `loaded === true`，而 `loaded = true` 是在 onLoad 回调
+          【中间】设的 ⇒ 它可能在回调还没跑完时就进游戏
+          （applyQuality / findSpawn / 博士状态恢复都还没做）。删掉是净收益。
+     ② 删掉 `#start.style.display = 'none'` —— **那就是"黑屏 + HUD"的成因**。
+        改成切到 .autoenter 纯加载态：仍然盖着屏幕，但显示房间名 + 进度条 + 速度。
+        真正的切换在下面 `startLoadUI(SKIP_START_PAGE ? 'auto' : 'intro')`。 */
+  SKIP_START_PAGE = true;         // ★ 告诉 GLB 加载回调：这次跳过开始页，直接进
+  console.log('%c★ 已访问过：自动进入（显示加载进度，不再弹界面）', 'color:#5fd8e8');
 })();
 
 /* ★★ 2026-10-11：把泛光参数（面板按 7 调的那个）应用到 UnrealBloomPass
@@ -2041,7 +2196,11 @@ try {
 
 /* ★ 左上角标题跟着主题走（原来写死 CLOSURE ROOM，进影音室/教室也是错的） */
 const ROOM_TITLE = {
-  clmsRoom: "PORT LOUNGE",
+  /* ★ 2026-10-15 顺手修一个一直没人注意的 bug：这一条原来写的是【字符串】，
+     而下面 setBrandTitle 读的是 `t[0]` / `t[1]` —— 对字符串取下标得到的是
+     **单个字符**，所以港都会客室的标题一直显示成 "P" + "O"（= "PORT LOUNGE" 的前两个字母）。
+     统一成数组，和其它房间一致。 */
+  clmsRoom:     ['PORT LOUNGE',         'FIRST PERSON'],
   messengerCottage: ['MESSENGER COTTAGE', 'FIRST PERSON'],
   closureRoom:  ['CLOSURE ROOM',        'FIRST PERSON'],
   rabbitCinema: ['RABBIT CINEMA',       'FIRST PERSON'],
@@ -2058,6 +2217,116 @@ const ROOM_TITLE = {
   el.innerHTML = t[0] + '<em>' + t[1] + '</em>';
 })();
 console.log('%c★ 载入场景：' + GLB_URL, 'color:#5fd8e8;font-weight:bold');
+
+/* ═══════════════════════════════════════════════════ ★★★ 加载进度（2026-10-15 用户需求）
+   用户原话（问题 3）：
+     "由于服务器架设在 github 上，有部分网络直连可能较慢（如校园网、广电），
+      可不可以加进度条，即对于该房间已下载多少资源、还剩多少未下载、下载速度如何。
+      且我发现加载慢时有概率进入一段时间的黑屏，进入黑屏后等待加载彻底完成后就会恢复正常，
+      如果加载长时间未完成则会又进入加载页面。"
+   ─────────────────────────────────────────────────────────────────────────
+   ★★ "黑屏"已定位，就是这条路：**从走廊自动进房间**时，旧代码在 IIFE 里直接
+      `#start.style.display = 'none'`（原注释："避免自动进入前闪一下界面"），
+      于是 GLB 还在下载的那十几秒里，屏幕上只剩【HUD（摇杆/按钮/信赖条）+ 纯黑】——
+      正是用户截图里的样子。而 10 秒（200 × 50ms）还没下完就把 #start 又放回来，
+      也正好对上"长时间未完成则会又进入加载页面"。
+   ⇒ 修法两条：
+      ① **不藏 #start，改成切到 .autoenter 纯加载态**（房间名 + 进度条 + 速度 + 剩余）。
+      ② **删掉那个 200 次轮询**：GLB 的 onLoad 回调里本来就有一条"自动进入"，轮询是
+         重复的第二套机制；更糟的是它只要 `loaded === true` 就进，而 `loaded = true` 是在
+         onLoad 回调【中间】设的 ⇒ 可能在回调还没跑完（applyQuality / findSpawn /
+         博士状态恢复都还没做）时就进游戏。两条路打架是这个文件的旧账，别再添第二套。
+   ★ 速度用【最近 1.5 秒的滑动窗口】，不是"总字节 ÷ 总时间"—— 后者在网速突变时
+     给的是迟钝的平均值，看不出"现在是快还是慢"。
+   ★ `total` 为 0 怎么办：服务器没给 Content-Length 时 three.js 就报 0，
+     那就只显示"已下载多少 + 速度"，**不编造百分比**。
+   ★ 进度只统计【房间 GLB 这一个文件】—— 它占这次等待的绝大部分（2~3 MB，
+     而 lib/ 那些 js 在模块阶段就下完了、第二次访问还走缓存）。
+     所以文案写的是"正在下载 · <房间名>"，别写成"全部资源"误导人。 */
+const LOADUI = {
+  box:   document.getElementById('start'),
+  room:  document.getElementById('ldRoom'),
+  fill:  document.getElementById('ldFill'),
+  info:  document.getElementById('ldInfo'),
+  warn:  document.getElementById('ldWarn'),
+  loaded: 0, total: 0, lastAt: 0, samples: [], timer: 0,
+};
+function loadRoomLabel(){
+  const hit = ROOMS.find((r) => r.theme === THEME);
+  if (hit && hit.name) return hit.name;
+  const t = ROOM_TITLE[THEME];
+  if (t) return Array.isArray(t) ? t[0] : t;
+  return '宿舍';
+}
+function fmtMB(b){ return (b / 1048576).toFixed(b < 10485760 ? 2 : 1) + ' MB'; }
+function fmtSec(s){
+  if (!isFinite(s) || s <= 0) return '—';
+  if (s < 1) return '不到 1 秒';
+  if (s < 60) return Math.round(s) + ' 秒';
+  return Math.floor(s / 60) + ' 分 ' + Math.round(s % 60) + ' 秒';
+}
+/** mode: 'auto' = 自动进入（收起介绍，只留进度）· 'intro' = 开始页 + 进度条 · '' = 关闭 */
+function setStartLoading(mode){
+  const b = LOADUI.box; if (!b) return;
+  b.classList.toggle('loading-on', mode === 'auto' || mode === 'intro');
+  b.classList.toggle('autoenter',  mode === 'auto');
+}
+function updateLoadUI(){
+  const L = LOADUI;
+  if (!L.info) return;
+  const now = performance.now();
+  L.samples.push([now, L.loaded]);
+  while (L.samples.length > 2 && now - L.samples[0][0] > 1500) L.samples.shift();
+  let speed = 0;
+  if (L.samples.length >= 2){
+    const a = L.samples[0], b = L.samples[L.samples.length - 1];
+    const dt = (b[0] - a[0]) / 1000;
+    if (dt > 0.15) speed = Math.max(0, (b[1] - a[1]) / dt);
+  }
+  const hasTotal = L.total > 0;
+  const pct = hasTotal ? Math.min(1, L.loaded / L.total) : 0;
+  if (L.fill) L.fill.style.width = (hasTotal ? (pct * 100).toFixed(1) : '0') + '%';
+  const parts = [];
+  /* ★ 还没收到第一个字节时（= 模块/连接阶段，慢网下这一段也有好几秒）
+     不要写"已下载 0.00 MB"—— 那看着像卡住了。写清楚在干什么。 */
+  if (!L.loaded && !hasTotal){
+    parts.push('正在加载程序…（首次访问要下 three.js，之后走缓存）');
+  } else {
+    if (hasTotal) parts.push('已下载 <b>' + fmtMB(L.loaded) + ' / ' + fmtMB(L.total) + '</b>（' +
+                             Math.round(pct * 100) + '%）');
+    else          parts.push('已下载 <b>' + fmtMB(L.loaded) + '</b>');
+    if (speed > 1024) parts.push('<b>' + (speed / 1048576).toFixed(2) + ' MB/s</b>');
+    if (hasTotal && speed > 1024 && pct < 1) parts.push('约剩 <b>' + fmtSec((L.total - L.loaded) / speed) + '</b>');
+    if (pct >= 1) parts.push('下载完成 · 正在准备场景…');
+  }
+  L.info.innerHTML = parts.join(' · ');
+  if (L.warn){
+    const idle = L.lastAt ? (now - L.lastAt) / 1000 : 0;
+    if (idle > 15){
+      L.warn.style.display = '';
+      L.warn.textContent = '⚠ 已 ' + Math.round(idle) + ' 秒没有新数据 —— 网络可能被限速或断开。' +
+        '请让页面保持在前台（切到后台浏览器会暂停下载），或换个网络再试。';
+    } else {
+      L.warn.style.display = 'none';
+    }
+  }
+}
+function startLoadUI(mode){
+  const L = LOADUI;
+  setStartLoading(mode);
+  if (L.room) L.room.textContent = '正在下载 · ' + loadRoomLabel();
+  if (L.lastAt) return;                     // 已经在跑，别重复起定时器
+  L.lastAt = performance.now();
+  updateLoadUI();
+  L.timer = setInterval(updateLoadUI, 500);  // 定时刷新：网速掉下来时数字要跟着掉
+}
+function stopLoadUI(){
+  if (LOADUI.timer){ clearInterval(LOADUI.timer); LOADUI.timer = 0; }
+}
+/* ★ 真正启动：自动进入那条路 = 'auto'（收起介绍，只留进度块）；
+   第一次来的那条路 = 'intro'（开始页照常，按钮上方多一条进度）。
+   ★ 判断依据就是 IIFE 设好的 SKIP_START_PAGE —— 单一数据源，别在这里重算条件。 */
+startLoadUI(SKIP_START_PAGE ? 'auto' : 'intro');
 
 new GLTFLoader().load(GLB_URL, gltf => {
   const root = gltf.scene;
@@ -2223,11 +2492,32 @@ new GLTFLoader().load(GLB_URL, gltf => {
     btn.textContent = '点击进入';
     btn.classList.remove('waiting');
   }
+  /* ★ 2026-10-15：第一次来的那条路 —— 下载完了就把进度条收起来。
+     按钮已经变成「点击进入」，再挂一条 100% 的"正在准备场景…"只会让人以为还在转。
+     （自动进入那条路不用管：#start 马上会被 enterGame() 整个移除。）
+     ★ stopLoadUI() 顺手把 500ms 的刷新定时器停掉，别让它空转。 */
+  if (!SKIP_START_PAGE){ setStartLoading(''); stopLoadUI(); }
   checkHardwareAccel();          // ★ 顺手检查硬件加速，有问题就在开始页警告
-}, undefined, err => {
+}, (ev) => {
+  /* ★ 2026-10-15：进度回调（原来这里是 undefined —— 所以用户完全看不到下载进度）。
+     three.js 的 FileLoader 会流式读取并用 Content-Length 算出 total；
+     服务器没给 Content-Length 时 total = 0，那时只报"已下载多少"。 */
+  if (ev){
+    if (typeof ev.loaded === 'number') LOADUI.loaded = ev.loaded;
+    if (ev.total) LOADUI.total = ev.total;
+    LOADUI.lastAt = performance.now();
+    updateLoadUI();
+  }
+}, err => {
   console.error(err);
+  stopLoadUI();
+  if (LOADUI.warn){
+    LOADUI.warn.style.display = '';
+    LOADUI.warn.textContent = '✗ 本房间资源下载失败：' + ((err && err.message) || err) +
+      '　→ 请检查网络后刷新重试（校园网 / 广电直连 GitHub 有时会被限速或拦截）。';
+  }
   const btn = document.getElementById('startbtn');
-  if (btn){ btn.textContent = '模型载入失败'; btn.classList.add('waiting'); }
+  if (btn){ btn.textContent = '模型载入失败 · 刷新重试'; btn.classList.add('waiting'); }
 });
 
 /* ★ 硬件加速检测 → 在开始页给出警告 */
@@ -2656,7 +2946,7 @@ function enterGame(){
   lock();
   startEl.classList.add('done');
   setTimeout(()=>startEl.remove(), 600);
-  showRotateHint();                    // ★ 手机端提示屏幕方向
+  stopLoadUI();                        // ★ 2026-10-15：进游戏了就别再刷进度条定时器
   if (isTouch) requestImmersive();     // ★ 手机端自动进全屏（桌面端不抢用户的全屏）
   console.log('%c▶ 进入第一人称', 'color:#5fd8e8;font-weight:bold');
 }
@@ -2683,47 +2973,50 @@ function requestImmersive(){
   } catch (e) {}
 }
 function exitImmersive(){
+  /* ★★★ 2026-10-15 修（用户反馈问题 2："手机端有概率出现 promise 未处理的报错"）：
+     `exitFullscreen()` 返回的是 **Promise**，而原来这里【没有接】——
+     它在"文档没聚焦 / 已有一个退出请求在飞 / 权限状态刚变"时会 reject，
+     冒到全局就被我们的 unhandledrejection 兜住 → 用户看到一条"异步出错"。
+     ⇒ 补上 .catch（和 requestImmersive 里那条对称）。 */
   try {
-    if (document.exitFullscreen && document.fullscreenElement) document.exitFullscreen();
-    else if (document.webkitExitFullscreen && document.webkitFullscreenElement) document.webkitExitFullscreen();
+    let p = null;
+    if (document.exitFullscreen && document.fullscreenElement) p = document.exitFullscreen();
+    else if (document.webkitExitFullscreen && document.webkitFullscreenElement) p = document.webkitExitFullscreen();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
   } catch (e) {}
 }
+
+/* ═══════════════════════════════════════════════════ ★ 全屏按钮（2026-10-15 用户问题 4）
+   用户原话："说是可以从顶部向下触摸退出全屏模式，但是手机端从顶部向下触摸会呼出手机
+   自带的功能菜单，应该直接放一个全屏的按钮在设置上方。"
+   ⇒ 按钮本体见 HTML 的 #fsbtn 与 CSS（bottom:284，正好在「设置」上方）。
+     这里只负责：点一下 = 全屏 ⇄ 退出全屏，并把按钮高亮同步到真实状态。
+   ★ 为什么高亮要在 `fullscreenchange` 里同步：用户也可能用【系统手势】退出全屏，
+     那时按钮状态不跟着变，就会显示错的提示（按下去和实际状态反着来）。 */
+(function initFullscreenBtn(){
+  const b = document.getElementById('fsbtn');
+  if (!b) return;
+  const sync = () => b.classList.toggle('on', isImmersive());
+  b.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();                 // 别让点击穿到画布（那边会去 lock 指针）
+    if (isImmersive()) exitImmersive(); else requestImmersive();
+  });
+  b.addEventListener('contextmenu', (e) => e.preventDefault());
+  for (const evName of ['fullscreenchange', 'webkitfullscreenchange']) addEventListener(evName, sync);
+  sync();
+})();
 function isImmersive(){
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
 
 /* ═══════════════════════════════════════════════════ 手机端屏幕方向
-   ★ 之前的 bug：orientationchange 时调 updateRotateHint(true) 会重新加 .on，
-     但没重设定时器 → 竖屏时提示永远不消失
-   → 现在统一由 refreshRotateHint() 处理"显示 + 定时隐藏"两件事 */
-const isPhone = matchMedia('(pointer: coarse)').matches &&
-                Math.min(innerWidth, innerHeight) < 820;
-let rotateTimer = 0;
-
-function refreshRotateHint(){
-  const el = document.getElementById('rotatehint');
-  if (!el || !isPhone) return;
-  clearTimeout(rotateTimer);
-
-  const portrait = innerHeight >= innerWidth;
-  const sub = document.getElementById('rhsub');
-
-  if (portrait){
-    // 竖屏：提示一下，4 秒后自动消失
-    el.classList.remove('turn');
-    if (sub) sub.innerHTML = '单手操作更方便<br>左下角摇杆移动 · 拖动屏幕转头';
-    el.classList.add('on');
-    rotateTimer = setTimeout(()=>el.classList.remove('on'), 4000);
-  } else {
-    /* ★ 2026-10-14 用户："建议竖屏游玩提示删掉吧，也许有人就喜欢横屏游玩呢"
-       ⇒ 横屏时【不再】提示「请把手机转成竖直」，直接把提示收掉。
-         横屏视野偏窄的问题不靠"劝用户转屏"解决，而是靠下面 updateCameraFov() 的
-         FOV 自适应（按宽高比放大垂直 FOV，保证水平视野够用）。 */
-    el.classList.remove('turn', 'on');
-  }
-}
-
-function showRotateHint(){ refreshRotateHint(); }
+   ★★★ 2026-10-15：整个「建议竖屏游玩」提示（#rotatehint）已按用户要求删除，
+     连同 refreshRotateHint / showRotateHint / rotateTimer / isPhone 一起清掉。
+     ★ 历史（别再踩）：这里曾经有个 bug —— orientationchange 时调 updateRotateHint(true)
+       会重新加 .on，但没重设定时器 → 竖屏时提示永远不消失。
+       现在没这个功能了，这段教训只作记录。
+     ★ 横屏视野偏窄仍然由下面 updateCameraFov() 处理（那段【保留】，是正经解法）。 */
 
 /* ★ 相机 FOV 随宽高比自适应
    竖屏时把垂直 FOV 放大，保证水平视野不至于太窄 */
@@ -2745,7 +3038,7 @@ updateCameraFov();
 
 // 注：resize 由末尾的主监听器统一处理（它会设 aspect 再调 updateCameraFov）
 addEventListener('orientationchange', () => {
-  setTimeout(()=>{ updateCameraFov(); refreshRotateHint(); }, 120);
+  setTimeout(()=>{ updateCameraFov(); }, 120);
 });
 
 document.getElementById('startbtn').addEventListener('click', e => {
@@ -3414,7 +3707,9 @@ function triggerEgg(){
   // ★ 存下当前视角，演完要转回来
   eggRestore.yaw   = player.yaw;
   eggRestore.pitch = player.pitch;
-  if (document.pointerLockElement) document.exitPointerLock();
+  /* ★ 2026-10-15：补 try/catch —— 本文件别处都这样包着（见 1376 / 4045 / 4434），
+     就这一处是裸的。exitPointerLock 目前不返回 Promise，但规范在收紧，包着零成本。 */
+  try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
   eggImg.src = 'assets/doctor_face.webp?' + Date.now();
 
   // ★★ 分两种演出：
@@ -4153,6 +4448,8 @@ function toggleFurniInfo(){
 const furniInfoEl = document.getElementById('furniInfo');
 const furniNameEl = furniInfoEl ? furniInfoEl.querySelector('.n') : null;
 const furniDescEl = furniInfoEl ? furniInfoEl.querySelector('.d') : null;
+/* ★ 2026-10-16：描述被截断时露出的那行提示（判据见 updateFurniInfo 里的溢出检查） */
+const furniMoreEl = document.getElementById('furniMore');
 
 function furniIdOfTable(id){ return !!(FURNI_TEXT && id && FURNI_TEXT[id]); }
 
@@ -4303,6 +4600,21 @@ function updateFurniInfo(dt){
       if (furniNameEl) furniNameEl.textContent = t[0] || '';
       if (furniDescEl) furniDescEl.textContent = t[1] || '';
       furniInfoEl.classList.add('on');
+      /* ★★★ 2026-10-16 溢出兜底（用户提的方案）
+         ─────────────────────────────────────────────────────────────────
+         `.d` 是 `overflow:hidden` —— 放不下的行会被【静默吃掉】，用户只看到话没说完。
+         这里读 scrollHeight/clientHeight 判断有没有被截：有就露出一行提示
+         「描述过长 · 横屏查看更完整」。
+         ★ 读 scrollHeight 会强制一次同步布局，但这段只在【显示的家具换了】时跑
+           （`want !== _furniShown` 的里面），不是每帧 —— 不用担心性能。
+         ★ 提示语写【横屏】而不是【横屏全屏】：全屏只去掉浏览器工具栏（约 10% 高度），
+           真正让字放得下的是转屏（横屏时框宽 ×2.2，行数直接砍半还多）。
+         ★★ 实测：修掉宽度 bug 之后，全库 125 条描述最长 101 字、需要 ~4 行，
+           而上限是 6 行 ⇒ **目前一条都不会触发这条提示**。它是给"以后加的更长描述"兜底的。 */
+      if (furniDescEl && furniMoreEl){
+        furniInfoEl.classList.toggle('more',
+          furniDescEl.scrollHeight > furniDescEl.clientHeight + 1);
+      }
     } else {
       furniInfoEl.classList.remove('on');
     }

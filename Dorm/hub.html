@@ -95,6 +95,11 @@
   @media (pointer: coarse), (max-width:820px){
     #keyhelp{display:none}
 
+    /* ★★★ 2026-10-15 用户反馈（问题 5）："手机端加载页面不应该提示电脑端的按键设置"
+       ⇒ 开始页那排 `W A S D 移动 / Shift 疾走 / 鼠标 环视 / E 进门 / Esc 松鼠标`
+         **整块在手机端隐藏**（宿舍 walk.html 那边同样处理，两边保持一致）。 */
+    #start .keys{display:none}
+
     /* 触摸操作提示（几秒后淡出） */
     #touchhelp{display:flex;position:fixed;left:50%;top:48px;transform:translateX(-50%);
       z-index:23;gap:13px;font-size:10.5px;color:#7d90a6;letter-spacing:.08em;
@@ -217,7 +222,27 @@ function showFatal(msg, detail){
   const l = document.getElementById('loading'); if (l) l.style.display = 'none';
 }
 window.addEventListener('error', e => showFatal(e.message || '未知脚本错误'));
-window.addEventListener('unhandledrejection', e => showFatal('Promise 未处理', String(e.reason)));
+/* ★★★ 2026-10-15 用户反馈问题 2："手机端有概率出现 promise 未处理的报错"
+   ─────────────────────────────────────────────────────────────────────────
+   ★ 他看到的**很可能就是这一条** —— 他说的是"promise 未处理的报错"，
+     而这里的文案正好是「Promise 未处理」，措辞一模一样。
+   ⇒ 两头一起修（和 walk.html 那边保持同样的做法）：
+     ① **源头**：本文件 `enterCorridor()` 里那句 `requestPointerLock()` 原来只有
+        try/catch —— 而它返回的是 Promise，reject 时 try/catch 抓不到，
+        手机上又【必然】被拒（触摸设备不支持指针锁定）⇒ 就冒到这里来了。已补 .catch。
+     ② **兜底降级**：这条改成【只在还没进走廊时】才显示。
+        进了走廊之后再来一条无关紧要的 rejection（音频自动播放 / 全屏 / 指针锁
+        都会被浏览器拒）不该糊用户一屏错误；那种情况只打 console 供排查。
+   ★ `running` 就是本文件的"已进入"标志（enterCorridor 里置 true）。
+     用 try/catch 读它是为了躲 TDZ（它声明在本行之后；模块求值期间若有 rejection 会抛）。 */
+window.addEventListener('unhandledrejection', e => {
+  const r = e && e.reason;
+  const msg = (r && (r.message || r.name)) || String(r || '未知');
+  console.error('[未处理的 Promise]', msg, r);
+  let inGame = false;
+  try { inGame = (running === true); } catch (err) {}
+  if (!inGame) showFatal('Promise 未处理', msg);
+});
 
 // ══════════════════════════════════════════════════ 走廊参数
 // Blender 坐标 → glTF：  (x,y,z) → (x, z, -y)
@@ -821,7 +846,18 @@ function enterCorridor(fromUser){
   running = true;
   if (fromUser){
     startBgm(true);                            // ★ 音频必须在用户手势里解锁
-    try { renderer.domElement.requestPointerLock(); } catch (e) {}
+    /* ★★★ 2026-10-15 修（用户反馈问题 2："手机端有概率出现 promise 未处理的报错"）
+       ─────────────────────────────────────────────────────────────────────
+       这行原来【只有 try/catch】—— 但 `requestPointerLock()` 返回的是 **Promise**，
+       它 reject 时 try/catch 是抓不到的，会冒到 window 的 `unhandledrejection`，
+       被 walk/hub 的全局兜底显示成一条"异步出错"。
+       ★ 手机上这条【必然】被拒（触摸设备不支持指针锁定）⇒ 这就是那条报错的来源。
+       ★ 本文件另一处（下面 894 行的"点击画面重新锁定"）早就补了 .catch，
+         唯独这里漏了 —— 而这里恰好是【手机端点「进入」必经】的那一条。 */
+    try {
+      const r = renderer.domElement.requestPointerLock();
+      if (r && typeof r.catch === 'function') r.catch(() => {});
+    } catch (e) { /* 静默：触摸设备锁不了是正常的 */ }
   }
 }
 
