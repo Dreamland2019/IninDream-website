@@ -1929,7 +1929,10 @@ const FROM_HUB = !!THEME_Q;
    ★ 以后加新的 unlit 房间：这里加一行 + GLB 用 `unlit` 参数导出即可。 */
 const UNLIT_THEMES = new Set([
   'rabbitCinema', 'clmsRoom', 'messengerCottage', 'YuKitchen',
-  'basicRoom',              // 会客室（第 7 间 · unlit 试点，2026-10-11 已上线）
+  'basicRoom',              // 会客室
+  'velvet',            // ★ 2026-10-14 新增：蓝丝绒房间（走 Tab 面板进，走廊不加门）
+  'taiko',            // ★ 2026-10-14 新增：“祭典的四拍子太鼓”（走 Tab 面板进，走廊不加门）
+  'amiya',            // ★ 2026-10-13 新增：阿米娅的寰宇记忆（走 Tab 面板进，走廊不加门）（第 7 间 · unlit 试点，2026-10-11 已上线）
   'dessertShop',            // ★ 2026-10-15 新增：圣芭菲甜点店（走 Tab 面板进，走廊不加门）
   // ★★ 2026-10-12 用户实测后【撤出】的两间（已换回 `rooms\_rig\` 的旧 GLB + rig 打光）：
   //    · closureRoom —— 它是【最早一批】产物，家具是整体网格（分件信息不在文件里）；
@@ -2436,6 +2439,9 @@ const ROOM_TITLE = {
   rhodesKitchen:['RHODES KITCHEN',      'FIRST PERSON'],
   YuKitchen:    ['YU KITCHEN',          'FIRST PERSON'],
   basicRoom:    ['RECEPTION ROOM',      'FIRST PERSON'],
+  velvet:  ['VELVET',            'FIRST PERSON'],
+  taiko:  ['TAIKO',              'FIRST PERSON'],
+  amiya:  ['AMIYA',              'FIRST PERSON'],
   dessertShop:  ['DESSERT SHOP',        'FIRST PERSON'],
   YuKitchen_unlit: ['YU KITCHEN · UNLIT', 'A/B 对照版'],
 };

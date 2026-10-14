@@ -1,18 +1,24 @@
 {
-  "_what": "泛光强度数据（每间一个 strength）—— 由 walk.html 启动时 fetch 并覆盖内置默认值",
-  "_why": "用户 2026-10-16：『从今往后新宿舍导出光照数据时只导出泛光强度数据，而且本地网页中按 Y 应该直接导出一个数据文件，方便整批做完我人工修改泛光数据后自动化读取用以发布。』",
-  "_how": "本地服务器（node serve.js @8790）里进任意房间调到满意 → 按 Y → 本文件会被自动覆盖（同时浏览器也会下载一份 bloom_tune.json）。线上是静态站，按 Y 只会下载文件，手工放到 网页原型\\assets\\ 即可。",
-  "_note": "★ 这里【只放泛光】。其他光照通道（环境/主/补/轮廓/点光/自发光/色调映射）仍走 walk.html 的 TUNE_BUILTIN，用 Shift+Y 导出全量。",
-  "_legend": "bloom.<主题> = UnrealBloomPass 的 strength。threshold 默认 0.80，需要时给某个主题写成 {\"strength\":0.16,\"threshold\":0.8} 也行。",
-  "bloom": {
-    "rabbitCinema": 0.32,
-    "clmsRoom": 0.20,
-    "messengerCottage": 0.27,
-    "YuKitchen": 0.27,
-    "basicRoom": 0.20,
-    "dessertShop": 0.22,
-    "closureRoom": 0.42,
-    "classroom": 0.42,
-    "rhodesKitchen": 0.42
-  }
+ "_what": "泛光强度数据（按 Y 导出）—— ★ 直接覆盖 网页原型\\assets\\bloom_tune.json 即可生效并发布",
+ "_time": "2026/10/13 21:30:24",
+ "_page": "http://127.0.0.1:8790/walk.html?theme=dessertShop",
+ "_legend": "bloom.<主题> = 泛光强度（UnrealBloomPass.strength）；阈值默认 0.80，需要时把某个主题写成 {\"strength\":0.16,\"threshold\":0.8} 也支持。",
+ "_scene": {
+  "当前房间": "dessertShop"
+ },
+ "bloom": {
+  "YuKitchen": 0.27,
+  "YuKitchen_unlit": 0.42,
+  "basicRoom": 0.2,
+  "amiya": 0.2,
+  "taiko": 0.2,
+  "velvet": 0.2,
+  "classroom": 0.42,
+  "clmsRoom": 0.2,
+  "closureRoom": 0.42,
+  "dessertShop": 0.07,
+  "messengerCottage": 0.27,
+  "rabbitCinema": 0.32,
+  "rhodesKitchen": 0.42
+ }
 }

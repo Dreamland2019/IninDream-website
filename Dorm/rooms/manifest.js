@@ -24,6 +24,30 @@
  *   hasRig   `rooms\_rig\<theme>.glb` 有没有旧光照版 —— 决定 `&mode=rig`
  *            能不能带过去。★★ 带错会拼出 404 的 URL（本项目踩过）。
  *   terminal （可选）这间房里有没有"主题终端"（目前只有会客室）
+ *
+ * ★★★ kind / family（2026-10-13 加，**只加数据、UI 还没做**）
+ *   用途 = 将来把「选择房间」菜单分两大类：
+ *     · `kind:'function'` = **功能类房间** —— 基建里的功能房（控制中枢 / 发电站 /
+ *       制造站 / 回收站 …）+ **会客室族**
+ *     · `kind:'dorm'`     = **主题宿舍**
+ *   family（可选）= 同族标识，供「在房间内切换主题」找兄弟。
+ *     会客室族 = `'meeting'`，四套：basicRoom(1001) / taiko(1002) / amiya(1003) / velvet(1004)
+ *     （主题宿舍不写这个字段）
+ *
+ *   ★★★ 归属判据（用户 2026-10-13 亲口定，**别用 tag 猜**）：
+ *     **会客室在游戏里就是一个功能房间**（跟制造站同类），只是它是"能换家具"的那种
+ *     —— 游戏早期会客室根本没有换家具系统，是后来更新才加的。
+ *     ⇒ 所以**用 tag 归类不准确**（比如 `clmsRoom` 也叫「会客室」但它是主题宿舍）。
+ *     真正的判据是【**房间尺寸** / 房型】：
+ *       · **主题宿舍**：尺寸**全部相同**（房型 `s_room_dormitory_6x2`，34×10 格）
+ *       · **功能房**：另有**几种不同的房型尺寸**（会客室 = `room_meeting_8x2`，46×16 格；
+ *         其余功能房（发电站/制造站…）也各有自己的尺寸，**项目还没做、房型也还没去找**）
+ *     ⇒ 做分类 UI 时，`kind` 应当**按房型给**（见 `3D渲染\import_theme.py` 的 `ROOM_PROFILES`），
+ *       **不要**按 tag / 名字里的"会客室"字样。
+ *
+ *   ★ 现状备忘：**manifest 里其它 9 间还没有 `kind` 字段** —— 做分类菜单时统一回填。
+ *     四套会客室**全部归「功能类」**；其中**非默认家具**的会客室加个备注
+ *     （默认那套 = `basicRoom`，其余 amiya / taiko / velvet 都是"非默认"）。
  * ═══════════════════════════════════════════════════════════════════════════
  */
 export const ROOMS = [
@@ -50,6 +74,34 @@ export const ROOMS = [
      · 预览图：`arts\shop\furngroup\dessertshop_2026\dessertShop_2026_1.png`（商店宣传卡，480×296） */
   { theme: 'dessertShop', name: '圣芭菲甜点店', tag: '甜点店', inHub: false, hasRig: false,
     desc: '位于伊卡莱西亚区，备受本地人与游客欢迎的甜点店。附近的人常会来到这里度过一段悠闲时光。不仅周末，工作日也是如此——应该说，尤其是在工作日。' },
+
+  /* ★★ 2026-10-13 新增：阿米娅的寰宇记忆（furniM_set_amiya）—— inHub:false（走廊门位固定 6 个，新房间走 Tab 面板）
+     · 预览图：spritepack\building_diy_theme_ui_h1_0\furniM_set_amiya.png（会客室族没有商店宣传卡，走官方主题卡）
+     · hasRig:false —— 没做 rooms\_rig 旧光照回退版
+     · kind:'function' —— 功能类房间。**归属判据见文件顶部「★kind 判据」注释**
+     · family:'meeting' —— 会客室族；将来「会客室内切换主题」靠它找兄弟主题
+       四套同族：basicRoom(1001) / taiko(1002) / amiya(1003) / velvet(1004)
+     · ★ 备注：这是**非默认家具**的会客室（默认那套 = basicRoom） */
+  { theme: 'amiya', name: '阿米娅的寰宇记忆', tag: '阿米娅', inHub: false, hasRig: false,
+    kind: 'function', family: 'meeting',
+    desc: '复现阿米娅生日晚宴会场布置的房间。无论见证了多少宇宙中的故事，无论经历了多少天地间的浮沉，她都一定会穿过时空来到此处，守护朴实而纯真的希望。在她生日的这一天，为她，为大家的阿米娅，送上最诚挚的祝福吧。' },
+
+  /* ★★ 2026-10-14 新增：“祭典的四拍子太鼓”（furniM_set_taiko）—— inHub:false（走廊门位固定 6 个，新房间走 Tab 面板）
+     · 预览图：spritepack\building_diy_theme_ui_h1_0\furniM_set_taiko.png（会客室族没有商店宣传卡，走官方主题卡）
+     · hasRig:false —— 没做 rooms\_rig 旧光照回退版
+     · kind:'function'　family:'meeting' —— 会客室族；「会客室内切换主题」靠它找兄弟主题
+     · ★ 备注：这是**非默认家具**的会客室（默认那套 = basicRoom） */
+  { theme: 'taiko', name: '“祭典的四拍子太鼓”', tag: '祭典的四拍', inHub: false, hasRig: false,
+    kind: 'function', family: 'meeting',
+    desc: '以节奏动人的祭典太鼓为主题布置的房间。无论你对音乐节奏的感知能力如何，只要走进来就会不由自主地跟上太鼓的拍子，与鼓点一起迎接欢快的时光。' },
+
+  /* ★★ 2026-10-14 新增：蓝丝绒房间（furniM_set_velvet）—— inHub:false（走廊门位固定 6 个，新房间走 Tab 面板）
+     · 预览图：spritepack\building_diy_theme_ui_h1_0\furniM_set_velvet.png（会客室族没有商店宣传卡，走官方主题卡）
+     · hasRig:false —— 没做 rooms\_rig 旧光照回退版
+     · kind:'function'　family:'meeting' —— 会客室族；「会客室内切换主题」靠它找兄弟主题 */
+  { theme: 'velvet', name: '蓝丝绒房间', tag: '蓝丝绒', inHub: false, hasRig: false,
+    kind: 'function', family: 'meeting',
+    desc: '以潜意识和回忆为基底，自然延展而成的房间。蓝丝绒主题搭配拉特兰式雕塑，自发光元件打造独特照明风格，不只是空间，更是一种场域。欢迎来到蓝丝绒房间，请安然入座，梳理思绪，在此处探寻精神中深藏的另一面。' },
 
   /* ★ 会客室 = 第 7 间，是网站的初始场地。
        inHub:false —— 走廊尽头那扇走的是 hub.html 里单独的 END_DOOR，
