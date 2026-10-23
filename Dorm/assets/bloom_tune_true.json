@@ -1,0 +1,12 @@
+{
+ "_what": "(a) 方案真值：HGMobileBloom intensity=0.5 / threshold=0.5（81 个组件的众数）。",
+ "_legend": "?postfx=a 时本文件覆盖 bloom_tune.json；默认仍读你手调的 bloom_tune.json，两套并存。",
+ "_tested": ["pepesroom", "basicRoom", "clmsRoom", "rhineLab", "darkForest"],
+ "bloom": {
+  "pepesroom": {"strength": 0.5, "threshold": 0.5},
+  "basicRoom": {"strength": 0.5, "threshold": 0.5},
+  "clmsRoom":  {"strength": 0.5, "threshold": 0.5},
+  "rhineLab":  {"strength": 0.5, "threshold": 0.5},
+  "darkForest":{"strength": 0.5, "threshold": 0.5}
+ }
+}

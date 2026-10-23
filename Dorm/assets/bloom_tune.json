@@ -1,24 +1,263 @@
 {
- "_what": "泛光强度数据（按 Y 导出）—— ★ 直接覆盖 网页原型\\assets\\bloom_tune.json 即可生效并发布",
- "_time": "2026/10/13 21:30:24",
- "_page": "http://127.0.0.1:8790/walk.html?theme=dessertShop",
- "_legend": "bloom.<主题> = 泛光强度（UnrealBloomPass.strength）；阈值默认 0.80，需要时把某个主题写成 {\"strength\":0.16,\"threshold\":0.8} 也支持。",
+ "_what": "泛光数据（按 Y 导出，强度 + 按主题阈值）—— ★ 直接覆盖 网页原型\\assets\\bloom_tune.json 即可生效并发布",
+ "_time": "2026/10/22 23:09:21",
+ "_page": "http://127.0.0.1:8790/walk.html?theme=recycle",
+ "_legend": "bloom.<主题> = 泛光强度（UnrealBloomPass.strength）；阈值 = 0.80 时写裸数字，阈值不同则写 {\"strength\":0.16,\"threshold\":0.55}。",
  "_scene": {
-  "当前房间": "dessertShop"
+  "当前房间": "recycle"
  },
  "bloom": {
+  "Airship": 0.22,
+  "Azuredream": 0.22,
+  "BSsafehouse": 0.22,
+  "HunterInstitute": 0.22,
+  "KFC": 0.22,
+  "LAbbey": 0.22,
+  "MemoryCloister": {
+   "strength": 0.22,
+   "threshold": 1
+  },
+  "NHL": {
+   "strength": 0.17,
+   "threshold": 0.84
+  },
+  "R6": 0.22,
+  "RhodesRabbit": 0.22,
+  "SargonFair": 0.22,
+  "ScarMarket": 0.22,
+  "TempleFair": {
+   "strength": 0.12,
+   "threshold": 0.88
+  },
+  "TianshiMansion": 0.32,
   "YuKitchen": 0.27,
   "YuKitchen_unlit": 0.42,
-  "basicRoom": 0.2,
+  "abyssal": 0.22,
+  "activity": 0.12,
   "amiya": 0.2,
-  "taiko": 0.2,
-  "velvet": 0.2,
+  "amuselounge": 0.12,
+  "aphrissaRoom": 0.22,
+  "arcadeHall": 0.22,
+  "artdeco": 0.22,
+  "artmuseum": 0.12,
+  "basicRoom": {
+   "strength": 0.2,
+   "threshold": 0.88
+  },
+  "bauhaus": 0.22,
+  "beach": 0.12,
+  "beerhouse": 0.22,
+  "bolivar": 0.22,
+  "bookshop": 0.22,
+  "boxing": 0.22,
+  "cabin": 0.22,
+  "cafe": 0.22,
+  "camp": 0.22,
+  "carnival": 0.22,
+  "castle": 0.22,
+  "citizengarden": {
+   "strength": 0.22,
+   "threshold": 0.84
+  },
   "classroom": 0.42,
-  "clmsRoom": 0.2,
+  "clmsRoom": {
+   "strength": 0.2,
+   "threshold": 0.28
+  },
   "closureRoom": 0.42,
+  "cloudRestaurant": 0.22,
+  "coastCottage": {
+   "strength": 0.27,
+   "threshold": 0.94
+  },
+  "college": 0.22,
+  "community": 0.22,
+  "concertHall": 0.22,
+  "control": 0.22,
+  "countryside": 0.17,
+  "court": 0.22,
+  "cultureroom": {
+   "strength": 0.17,
+   "threshold": 0.88
+  },
+  "darkForest": 0.22,
   "dessertShop": 0.07,
+  "dormW": {
+   "strength": 0.27,
+   "threshold": 0.96
+  },
+  "dreamCastle": 0.22,
+  "durin": 0.22,
+  "eastern": 0.22,
+  "elite": {
+   "strength": 0.22,
+   "threshold": 0.84
+  },
+  "eliteLounge": 0.22,
+  "fNearl": 0.22,
+  "gangster": 0.22,
+  "gardenFantasy": 0.22,
+  "goldBoat": 0.12,
+  "guitar": 0.22,
+  "gunworkshop": {
+   "strength": 0.22,
+   "threshold": 1
+  },
+  "higashiYard": 0.22,
+  "hire": 0.22,
+  "hodrerStudy": 0.22,
+  "icu": 0.22,
+  "idealCity": {
+   "strength": 0.17,
+   "threshold": 0.86
+  },
+  "inkArt": {
+   "strength": 0.22,
+   "threshold": 0.92
+  },
+  "kaltsroom": {
+   "strength": 0.12,
+   "threshold": 0.88
+  },
+  "kazimierz": {
+   "strength": 0.22,
+   "threshold": 0.98
+  },
+  "kitchen": {
+   "strength": 0.22,
+   "threshold": 0.9
+  },
+  "knights": {
+   "strength": 0.22,
+   "threshold": 0.9
+  },
+  "laundry": {
+   "strength": 0.22,
+   "threshold": 0.9
+  },
+  "lightArt": 0.22,
+  "lightFood": 0.22,
+  "magicAcademy": 0.22,
+  "manufacture": 0.22,
+  "martialClub": 0.22,
   "messengerCottage": 0.27,
+  "midAutumn": 0.22,
+  "mindsanctum": 0.22,
+  "minosMed": {
+   "strength": 0.22,
+   "threshold": 0.9
+  },
+  "mis": 0.22,
+  "molKitchen": {
+   "strength": 0.22,
+   "threshold": 0.9
+  },
+  "msVillage": 0.22,
+  "musicalStore": 0.22,
+  "niansroom": 0.22,
+  "nightView": {
+   "strength": 0.32,
+   "threshold": 0.96
+  },
+  "observation": 0.22,
+  "odenShop": 0.22,
+  "office": 0.22,
+  "outdoor": 0.22,
+  "penguin": 0.22,
+  "pepesroom": 0.3,
+  "perfumer": 0.22,
+  "photoStudio": 0.22,
+  "pizza": 0.22,
+  "pizzeria": {
+   "strength": 0.22,
+   "threshold": 1
+  },
+  "postOffice": 0.22,
+  "power": 0.22,
+  "prison": 0.22,
   "rabbitCinema": 0.32,
-  "rhodesKitchen": 0.42
+  "rabbitTown": 0.22,
+  "reception": 0.22,
+  "receptionRoom": {
+   "strength": 0.22,
+   "threshold": 0.98
+  },
+  "recycle": 0.22,
+  "restaurant": 0.22,
+  "rhineLab": {
+   "strength": 0.22,
+   "threshold": 0.98
+  },
+  "rhodesKitchen": 0.42,
+  "rococo": {
+   "strength": 0.25,
+   "threshold": 0.98
+  },
+  "s1_01": 0.22,
+  "s1_02": 0.22,
+  "s2_01": 0.22,
+  "s2_02": 0.22,
+  "safetyZone": 0.22,
+  "samiRoom": 0.22,
+  "shipRoom": {
+   "strength": 0.22,
+   "threshold": 0.94
+  },
+  "shuttle": 0.22,
+  "skadisp": 0.22,
+  "snowVenue": {
+   "strength": 0.22,
+   "threshold": 0.96
+  },
+  "specimen": 0.22,
+  "spirit": {
+   "strength": 0.27,
+   "threshold": 0.5
+  },
+  "springfeast": 0.22,
+  "stage": {
+   "strength": 0.22,
+   "threshold": 0.84
+  },
+  "taiko": 0.22,
+  "tailorShop": 0.22,
+  "tarahouse": 0.22,
+  "teaCanteen": {
+   "strength": 0.22,
+   "threshold": 0.94
+  },
+  "teaHouse": {
+   "strength": 0.22,
+   "threshold": 0.96
+  },
+  "tradeLounge": 0.22,
+  "trading": 0.22,
+  "trainStation": {
+   "strength": 0.22,
+   "threshold": 0.84
+  },
+  "training": 0.22,
+  "ursusRoom": 0.22,
+  "vcWarRoom": 0.22,
+  "velvet": 0.2,
+  "videoStudio": 0.22,
+  "village": {
+   "strength": 0.22,
+   "threshold": 0.92
+  },
+  "villagemanor": {
+   "strength": 0.22,
+   "threshold": 0.92
+  },
+  "volcaRoom": 0.22,
+  "warehouse": 0.22,
+  "westCoast": 0.22,
+  "winterHouse": {
+   "strength": 0.22,
+   "threshold": 0.96
+  },
+  "wooden": 0.22,
+  "workshop": 0.22,
+  "yanPrivateSchool": 0.22
  }
 }

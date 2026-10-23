@@ -711,7 +711,17 @@ function openHubRoomPanel(){
   showRoomPanel({
     title: '房 间 选 择',
     // 走廊自己不是"房间"，所以列全部房间（含会客室）
-    rooms: ROOMS.filter(r => r.theme).map(r => ({ theme: r.theme, name: r.name, desc: r.desc })),
+    /* ★★★ 2026-10-14：`kind` 必须一起带过去 —— 面板的两段分组只认它（见 rooms/panel.js）。
+       ★★★ 2026-10-23：`sortId` 同理 —— 面板在「家具主题」段内按它降序排（越新越前）。
+       这里是白名单式映射，漏字段会静默出错（分组丢了 / 顺序退化成 manifest 原顺序）：
+       ★ 以后 manifest 新增"面板要用的字段"，这里和 walk.html 的 ROOM_MENU 都要加。 */
+    rooms: ROOMS.filter(r => r.theme).map(r => ({ theme: r.theme, name: r.name,
+                                                  desc: r.desc, tag: r.tag || '',
+                                                  kind: r.kind, sortId: r.sortId,
+                                                  /* ★★★ 2026-10-23 修：`family`/`defaultFurni`
+                                                     漏传 ⇒ 面板的「（会客室）」后缀从来不生效。
+                                                     见 walk.html 的 ROOM_MENU 同款注释。 */
+                                                  family: r.family, defaultFurni: r.defaultFurni })),
     onPick: (theme) => {
       // ★ 走的是和 tryEnter() 完全一样的 URL 规则（含 mode 转发），别自己拼第二套
       let url = './walk.html?theme=' + encodeURIComponent(theme) + '&from=hub';

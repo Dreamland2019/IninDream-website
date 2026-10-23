@@ -62,6 +62,68 @@ canvas{display:block;outline:none}
 #keyhelp .note{font-size:9.5px;color:var(--accent2);letter-spacing:.06em;
   border-top:1px solid var(--line);padding-top:6px;margin-top:1px;line-height:1.6}
 
+/* ═══ ★★★ 2026-10-23：按键说明改成【玩家可读】 + 分组 + 调试折叠 ═══════════
+   用户要求：「右侧那排按键说明是给开发者看的，玩家看不懂」→ 改写；
+   「分组（移动 / 视角 / 界面 / 调试）」「调试类按键默认收起或折叠」。
+   ★ 只动文案与排版，键位逻辑在下面的 keydown 里，一个字没改。 */
+#keyhelp .kh-title{display:flex;align-items:center;gap:7px}
+#keyhelp .kh-sub{color:#4d6c85;font-size:8.5px;letter-spacing:.18em}
+#keyhelp .kh-fold{margin-left:auto;all:unset;cursor:pointer;color:#7d97ae;
+  font-size:9.5px;letter-spacing:.1em;padding:1px 5px;border:1px solid var(--line);
+  border-radius:3px;line-height:1.5;transition:color .16s,border-color .16s}
+#keyhelp .kh-fold:hover{color:var(--accent);border-color:rgba(95,216,232,.5)}
+#keyhelp .kh-grp{font-size:9.5px;letter-spacing:.2em;color:#5f88a6;
+  margin:3px 0 -3px;padding-top:3px;border-top:1px dashed rgba(75,127,168,.22)}
+#keyhelp .kh-title + .kh-grp{border-top:0;padding-top:0;margin-top:0}
+#keyhelp .kh-dbg{display:none;flex-direction:column;gap:7px}
+#keyhelp .kh-dbg.on{display:flex}
+
+/* ═══ ★★★ 2026-10-23：功能房「研究中」提示（用户要求：给提示但【不挡视线】） ═════
+   · #roomNotice = 顶部居中的一条提示，进房间出现，10 秒自动淡出，点 × 立刻收起
+   · #roomBadge  = 左上角常驻小角标，淡出后仍在（随时能确认这间还在做）
+   只对 manifest 里 kind:'function' 的 8 间基建功能房出现（见 IS_FUNCTION_ROOM）。 */
+#roomNotice{position:fixed;left:50%;top:62px;transform:translateX(-50%);z-index:26;
+  display:flex;align-items:center;gap:10px;max-width:min(560px,92vw);
+  padding:9px 12px;border:1px solid rgba(240,195,74,.45);border-radius:5px;
+  background:rgba(22,17,8,.93);color:#f3e2b6;font-size:12px;line-height:1.65;
+  box-shadow:0 8px 26px rgba(0,0,0,.55);
+  opacity:0;pointer-events:none;transition:opacity .35s ease}
+#roomNotice.on{opacity:1;pointer-events:auto}
+#roomNotice .rn-ico{flex:0 0 auto;color:#f0c34a;font-size:14px;line-height:1}
+#roomNotice .rn-tx{display:flex;flex-direction:column;gap:1px}
+#roomNotice .rn-tx b{color:#ffd88a;font-weight:600;letter-spacing:.04em}
+#roomNotice .rn-tx span{color:#cbb994;font-size:11px}
+#roomNotice .rn-x{all:unset;flex:0 0 auto;cursor:pointer;color:#8d7d5c;
+  font-size:15px;line-height:1;padding:2px 4px;border-radius:3px}
+#roomNotice .rn-x:hover{color:#ffd88a;background:rgba(240,195,74,.14)}
+#roomBadge{position:fixed;left:20px;top:50px;z-index:25;display:none;
+  padding:2px 7px;border:1px solid rgba(240,195,74,.42);border-radius:3px;
+  background:rgba(22,17,8,.82);color:#f0c34a;font-size:10px;letter-spacing:.12em;
+  white-space:nowrap;pointer-events:none}
+#roomBadge.on{display:block}
+
+/* ═══ ★★★ 2026-10-23：调试可视化读数（F8） ═══════════════════════════════════
+   ★ pointer-events:none —— 它只是"打印"，绝不能挡住鼠标锁定/点击画面。
+   ★ 放左下角：右下角是手机按钮列、底部中间是家具信息条，左下角桌面端是空的。 */
+#dbgHud{position:fixed;left:14px;bottom:14px;z-index:24;display:none;
+  max-width:min(440px,72vw);padding:8px 11px;border:1px solid rgba(95,216,232,.4);
+  border-radius:4px;background:rgba(6,11,16,.92);color:#9fe8ff;
+  font:11px/1.65 ui-monospace,Consolas,"Cascadia Mono",monospace;
+  white-space:pre-wrap;pointer-events:none;box-shadow:0 6px 22px rgba(0,0,0,.5)}
+#dbgHud.on{display:block}
+#dbgHud b{color:#ffd88a;font-weight:600}
+#dbgHud .ok{color:#7ee0a0}
+#dbgHud .no{color:#ff8a7a}
+#dbgHud .dim{color:#6d879e}
+@media (pointer: coarse), (max-width:820px){
+  #dbgHud{left:10px;bottom:180px;max-width:min(360px,86vw);font-size:10px}
+}
+@media (pointer: coarse), (max-width:820px){
+  #roomNotice{top:86px;padding:8px 10px;font-size:11.5px}
+  #roomNotice .rn-tx span{font-size:10.5px}
+  #roomBadge{left:12px;top:44px;font-size:9.5px}
+}
+
 /* ── 底部：信赖条 ── */
 #bottom{bottom:0;left:0;right:0;padding:0 20px 18px;
   display:flex;flex-direction:column;gap:10px;align-items:center}
@@ -170,6 +232,10 @@ canvas{display:block;outline:none}
 #furniInfo.on{opacity:1}
 #furniInfo .n{display:block;font-size:13.5px;font-weight:600;letter-spacing:.08em;
   color:#8fd8ff;margin-bottom:2px}
+/* ★★★ 2026-10-23（用户要求）：尺寸 / 类型这一行 —— 变等宽字体、更淡，不抢名字和描述 */
+#furniInfo .m{display:block;font-size:10.5px;letter-spacing:.04em;color:#79a8c4;
+  margin-bottom:3px;font-family:ui-monospace,Consolas,"Cascadia Mono",monospace}
+#furniInfo .m:empty{display:none}
 #furniInfo .d{display:block;font-size:12.5px;line-height:1.72;color:#cfe0f2;
   white-space:pre-line;max-height:6em;overflow:hidden}
 /* ★ 2026-10-16：描述仍被截断时显示的一行提示（用户提的方案，做成"兜底"）。
@@ -562,27 +628,69 @@ body.shake > *{animation:shake .075s infinite !important}
 
 <div id="cross"></div>
 
+<!-- ═══ ★★★ 2026-10-23：功能房「研究中」提示（用户要求） ═══════════════════════
+     背景：8 间基建功能房（回收站 / 制造站 / 办公室 / 加工站 / 训练室 / 贸易站 /
+           发电站 / 控制中枢）只有静态模型，机械臂 / 传送带这些动态效果还没还原，
+           控制中枢更只有一块背景板。用户要「给一个不挡视线的提示条 / 角标」。
+     判据 = rooms/manifest.js 里这间的 `kind === 'function'`（别另起一份名单）。
+     交互：进房出现 → 10 秒后自动淡出 → 角标常驻；点 × 立刻收起。
+     ★ 这是 DOM 而不是 canvas 里的东西 —— 不参与 3D、不影响射线 / 碰撞。 -->
+<div id="roomNotice" role="status" aria-live="polite">
+  <span class="rn-ico">⚠</span>
+  <span class="rn-tx"><b>该房间仍在研究中</b><span>机械臂 / 传送带等动态效果尚未还原，这里先开放静态场景</span></span>
+  <button class="rn-x" id="roomNoticeX" type="button" title="关闭提示" aria-label="关闭提示">×</button>
+</div>
+<div id="roomBadge" title="该房间仍在研究中：动态效果未还原">研究中</div>
+
+<!-- ═══ ★★★ 2026-10-23：调试可视化的读数（F8 开关，见文件后面 DBG / updateDebugView） ═══
+     用户 2026-10-19 需求：「按键显示自己视线指向的射线和家具的判断边框」
+     —— 它同时是定位两个既有 bug 的工具：① 指向家具不显示文案 ② 碰撞体积不对。
+     内容的最后一行会直接打出「首个命中是谁 / 有没有 furniId」，一眼就能证伪。 -->
+<div id="dbgHud"></div>
+
 <div class="hud" id="topbar">
   <div class="brand"><span class="dot"></span><h1 id="brandTitle">CLOSURE ROOM<em>FIRST PERSON</em></h1></div>
 
-  <!-- ★ 右上角按键提示 -->
+  <!-- ★★★ 2026-10-23 用户要求：按键说明改成【玩家能读的说法】+ 分组
+       （移动 / 视角 / 界面 / 调试）+ 调试类默认折叠。
+       ★ 只改文案与排版，键位逻辑一个字没动（见下面的 keydown）。
+       ★ 调试组默认收起：右上角这块地方很值钱，玩家绝大多数时间用不到调试键；
+         折叠状态记在 localStorage（`dorm_kh_debug`），调试的人不用每次点开。
+       ★ `,` `.` = 上一间 / 下一间（2026-10-23 新加，`[` `]` 被"视线高度"占用了）。 -->
   <div id="keyhelp">
-    <div class="kh-title">操作 / CONTROLS</div>
-    <div class="row"><span class="ks"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>移动</span></div>
-    <div class="row new"><span class="ks"><kbd>C</kbd></span><span>COS杜林</span></div>
-    <div class="row"><span class="ks"><kbd>Shift</kbd></span><span>快走</span></div>
-    <div class="row"><span class="ks"><kbd>鼠标</kbd></span><span>转头</span></div>
-    <div class="row new"><span class="ks"><kbd>[</kbd><kbd>]</kbd></span><span>视线高度（可调人物身高）</span></div>
-    <div class="row new"><span class="ks"><kbd>Tab</kbd></span><span>房间列表（任何房间都能按）</span></div>
-    <div class="row"><span class="ks"><kbd>Q</kbd></span><span>画质 高/中/低</span></div>
-    <div class="row new"><span class="ks"><kbd>Shift</kbd>+<kbd>Q</kbd></span><span>帧率上限 不限（默认）· 1/2屏刷 · 1/3屏刷</span></div>
-    <div class="row new"><span class="ks"><kbd>G</kbd></span><span>无视碰撞（穿家具）</span></div>
-    <div class="row new"><span class="ks"><kbd>I</kbd></span><span>家具介绍 开/关</span></div>
-    <div class="row new"><span class="ks">👁</span><span>准星对准家具 → 看名字和描述</span></div>
+    <div class="kh-title">操作<span class="kh-sub">CONTROLS</span>
+      <button class="kh-fold" id="khFold" type="button" aria-expanded="false"
+        aria-controls="khDebug" title="展开 / 收起调试按键">调试 ▸</button>
+    </div>
+
+    <div class="kh-grp">移 动</div>
+    <div class="row"><span class="ks"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>走动</span></div>
+    <div class="row"><span class="ks"><kbd>Shift</kbd></span><span>快步走</span></div>
+    <div class="row new"><span class="ks"><kbd>C</kbd></span><span>蹲下 / 站起（COS杜林）</span></div>
+
+    <div class="kh-grp">视 角</div>
+    <div class="row"><span class="ks"><kbd>鼠标</kbd></span><span>转头看四周</span></div>
+    <div class="row new"><span class="ks"><kbd>[</kbd><kbd>]</kbd></span><span>调视线高低（相当于身高）</span></div>
+    <div class="row new"><span class="ks">👁</span><span>看着家具 → 显示名字和介绍</span></div>
+
+    <div class="kh-grp">界 面</div>
+    <div class="row new"><span class="ks"><kbd>Tab</kbd></span><span>房间列表（在任何房间都能开）</span></div>
+    <div class="row new"><span class="ks"><kbd>,</kbd><kbd>.</kbd></span><span>上一间 / 下一间</span></div>
+    <div class="row new"><span class="ks"><kbd>I</kbd></span><span>家具介绍 开 / 关</span></div>
     <div class="row"><span class="ks"><kbd>M</kbd></span><span>静音 / 取消静音</span></div>
-    <div class="row"><span class="ks"><kbd>Esc</kbd></span><span>松开鼠标</span></div>
-    <div class="row"><span class="ks"><kbd>F</kbd></span><span>性能面板</span></div>
-<div class="row"><span class="ks"><kbd>B</kbd></span><span>泛光(开/关)</span></div>
+    <div class="row"><span class="ks"><kbd>Esc</kbd></span><span>松开鼠标（再点一下画面继续走）</span></div>
+
+    <div class="kh-dbg" id="khDebug">
+      <div class="kh-grp">调 试</div>
+      <div class="row"><span class="ks"><kbd>Q</kbd></span><span>画质 高 / 中 / 低</span></div>
+      <div class="row"><span class="ks"><kbd>Shift</kbd>+<kbd>Q</kbd></span><span>帧率上限（不限 / 1/2 / 1/3）</span></div>
+      <div class="row"><span class="ks"><kbd>F</kbd></span><span>性能面板</span></div>
+      <div class="row"><span class="ks"><kbd>B</kbd></span><span>泛光 开 / 关</span></div>
+      <div class="row"><span class="ks"><kbd>V</kbd></span><span>后处理：手调 / 真值</span></div>
+      <div class="row new"><span class="ks"><kbd>G</kbd></span><span>穿透走动（无视碰撞）</span></div>
+      <div class="row new"><span class="ks"><kbd>F8</kbd></span><span>碰撞盒 + 视线射线可视化</span></div>
+      <div class="row"><span class="ks"><kbd>R</kbd></span><span>回到出生点</span></div>
+    </div>
   </div>
 </div>
 
@@ -596,7 +704,7 @@ body.shake > *{animation:shake .075s infinite !important}
 
 <div id="stick"><i></i></div>
 <!-- ★ 家具信息条（2026-10-13）：准星对准家具时显示名字 + 官方描述，见 updateFurniInfo() -->
-<div id="furniInfo"><b class="n"></b><span class="d"></span><i class="more" id="furniMore">▸ 描述过长 · 横屏查看更完整</i></div>
+<div id="furniInfo"><b class="n"></b><span class="m"></span><span class="d"></span><i class="more" id="furniMore">▸ 描述过长 · 横屏查看更完整</i></div>
 
 <!-- ★ 手机端：蹲下按钮 + 触摸提示 -->
 <button id="crouchbtn" title="切换蹲下"><span class="cb-ico">🧎</span>COS杜林</button>
@@ -739,6 +847,7 @@ import { EffectComposer } from './lib/postprocessing/EffectComposer.js';
 import { RenderPass } from './lib/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './lib/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from './lib/postprocessing/OutputPass.js';
+import { ShaderPass } from './lib/postprocessing/ShaderPass.js';
 // ★★★ 2026-10-13：房间清单改成【单一数据源】—— 加房间只改 rooms/manifest.js
 import { ROOMS } from './rooms/manifest.js';
 // ★★★ 2026-10-13：房间选择面板抽成【共享模块】—— 走廊 hub.html 用的是同一份
@@ -1064,6 +1173,50 @@ const TUNE_KEY = 'dorm_light_tune';
      · base  整体亮度倍率
    ⚠️ 以后要更新：让用户在调好的那台机器上再按一次 Y，把新的 `cur` 覆盖到这里。 */
 const TUNE_BUILTIN = {
+  BSsafehouse: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:3.00}, bloom:{K:80,i:0.22}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  KFC: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:3.50}, bloom:{K:80,i:0.22}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  MemoryCloister: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:2.00}, bloom:{K:100,i:0.22}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  NHL: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:0.20}, bloom:{K:84,i:0.17}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  ScarMarket: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.22}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  TempleFair: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:88,i:0.12}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  TianshiMansion: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:4.05}, bloom:{K:80,i:0.32}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  YuKitchen: {
+    amb:{K:7000,i:2.00}, key:{K:7000,i:2.00}, fill:{K:5600,i:0.70}, rim:{K:5800,i:0.22},
+    pt:{K:0,i:0.25}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.27}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  amiya: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.20}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  basicRoom: {
+    amb:{K:6600,i:0.30}, key:{K:6600,i:0}, fill:{K:6600,i:0}, rim:{K:6600,i:0},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:88,i:0.20}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
+  classroom: {
+    amb:{K:6100,i:2.15}, key:{K:6600,i:1.90}, fill:{K:5700,i:0.72}, rim:{K:5600,i:0.24},
+    pt:{K:5000,i:0}, emi:{K:6500,i:0.30}, bloom:{K:80,i:0.42}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
   clmsRoom: {
     amb:{K:5800,i:0.40}, key:{K:6600,i:1.35}, fill:{K:5100,i:0.70}, rim:{K:6600,i:0.10},
     pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:28,i:0.20}, tm:{K:0,i:1.05}, base:{K:6500,i:1.00},
@@ -1072,34 +1225,41 @@ const TUNE_BUILTIN = {
     amb:{K:7600,i:2.442}, key:{K:6600,i:0}, fill:{K:6600,i:1.15}, rim:{K:6500,i:1.00},
     pt:{K:0,i:1.00}, emi:{K:6500,i:0.60}, bloom:{K:80,i:0.42}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
   },
-  rabbitCinema: {
-    amb:{K:5050,i:1.85}, key:{K:6550,i:2.15}, fill:{K:5900,i:0.68}, rim:{K:5800,i:0.22},
-    pt:{K:0,i:1.00}, emi:{K:6500,i:0.15}, bloom:{K:80,i:0.32}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
-  },
-  classroom: {
-    amb:{K:6100,i:2.15}, key:{K:6600,i:1.90}, fill:{K:5700,i:0.72}, rim:{K:5600,i:0.24},
-    pt:{K:5000,i:0}, emi:{K:6500,i:0.30}, bloom:{K:80,i:0.42}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  dessertShop: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.07}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
   },
   messengerCottage: {
     amb:{K:6000,i:1.30}, key:{K:6600,i:2.05}, fill:{K:5600,i:0.70}, rim:{K:5800,i:0.22},
     pt:{K:0,i:1.00}, emi:{K:6500,i:0.35}, bloom:{K:80,i:0.27}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
   },
+  rabbitCinema: {
+    amb:{K:5050,i:1.85}, key:{K:6550,i:2.15}, fill:{K:5900,i:0.68}, rim:{K:5800,i:0.22},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:0.15}, bloom:{K:80,i:0.32}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  },
   rhodesKitchen: {
     amb:{K:6000,i:1.50}, key:{K:6600,i:2.00}, fill:{K:5600,i:0.70}, rim:{K:5800,i:0.22},
     pt:{K:4700,i:0.955}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.42}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
   },
-  YuKitchen: {
-    amb:{K:7000,i:2.00}, key:{K:7000,i:2.00}, fill:{K:5600,i:0.70}, rim:{K:5800,i:0.22},
-    pt:{K:0,i:0.25}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.27}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
+  spirit: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
+    pt:{K:0,i:1.00}, emi:{K:6500,i:3.00}, bloom:{K:50,i:0.27}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
   },
-  basicRoom: {
-    amb:{K:6600,i:0.30}, key:{K:6600,i:0}, fill:{K:6600,i:0}, rim:{K:6600,i:0},
+  velvet: {
+    amb:{K:7600,i:3.142}, key:{K:6600,i:1.90}, fill:{K:6600,i:1.15}, rim:{K:6600,i:0.25},
     pt:{K:0,i:1.00}, emi:{K:6500,i:1.00}, bloom:{K:80,i:0.20}, tm:{K:0,i:1.00}, base:{K:6500,i:1.00},
   },
 };
 
 let LIGHT_TUNE = {};
 try { LIGHT_TUNE = JSON.parse(localStorage.getItem(TUNE_KEY) || '{}') || {}; } catch(e){ LIGHT_TUNE = {}; }
+/* ★★★ 2026-10-21：`?tune=reset` 清掉本机调参存档（验证 assets/bloom_tune.json 真值用）。
+   历史：面板调参会写 localStorage[dorm_light_tune]，它会逐通道覆盖内置/外置值，
+   导致改完 bloom_tune.json 后刷新页面"看起来没变化"。 */
+if (/[?&]tune=reset\b/.test(location.search)){
+  LIGHT_TUNE = {};
+  try { localStorage.removeItem(TUNE_KEY); } catch (e) {}
+}
 /* ★ 合并：内置值当【底】，本机 localStorage 的记录逐通道覆盖它。
    （逐通道 = Object.assign 一层足够，因为每个通道是 {K,i} 这样一个扁平对象；
      用户本机只调过某几个通道时，其余通道仍然吃内置值。） */
@@ -1213,33 +1373,95 @@ function collectEmissiveMats(){
          线上（静态站）：同一个 json 直接**下载**，手工放到 assets/ 即可
    ★ fetch 失败（文件不存在 / 离线 / 老浏览器）→ 静默用默认值，**绝不影响启动**。
    ⚠️ 本块必须定义在 `bloomDefaults()` 【之前】（它要用），否则 TDZ —— 本项目已踩过两次。 */
-let BLOOM_TUNE = {};                 // { 主题: strength }
-let BLOOM_TUNE_TH = {};              // { 主题: threshold }（可选）
-(function loadBloomTune(){
+/* ★★★ 2026-10-21：两套后处理参数【运行时按键 P 切换】，不用刷新、不用改 URL：
+   · 手调版（默认）→ assets/bloom_tune.json（你手调的强度/阈值，不加 vignette）
+   · 真值版       → assets/bloom_tune_true.json（HGMobileBloom 0.5/0.5）+ vignette 0.45/0.2
+   ?postfx=a 仍可用作"启动即真值版"；?tune=reset 清的是 localStorage 调参存档，与这两份文件无关。 */
+const POSTFX_A = /[?&]postfx=a\b/i.test(location.search);
+let POSTFX_MODE = POSTFX_A ? 'true' : 'tuned';   // 'tuned' 手调 | 'true' 真值
+const _fileBloomApplied = new Set();   // 本次会话已用外置表覆盖过 bloom 的主题（面板手调后不再覆盖）
+let BLOOM_TUNE = {};                 // 手调 { 主题: strength }
+let BLOOM_TUNE_TH = {};              // 手调 { 主题: threshold }
+let BLOOM_TUNE_TRUE = {};            // 真值 { 主题: strength }
+function _loadBloomFile(url, onOk){
   try {
-    fetch('./assets/bloom_tune.json', { cache: 'no-cache' })
+    fetch(url, { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         const b = (j && (j.bloom || j)) || null;
         if (!b || typeof b !== 'object') return;
+        const out = {}, outTh = {};
         for (const k of Object.keys(b)){
           const v = b[k];
-          if (typeof v === 'number' && isFinite(v)){ BLOOM_TUNE[k] = v; }
+          if (typeof v === 'number' && isFinite(v)){ out[k] = v; }
           else if (v && typeof v.strength === 'number'){
-            BLOOM_TUNE[k] = v.strength;
-            if (typeof v.threshold === 'number') BLOOM_TUNE_TH[k] = v.threshold;
+            out[k] = v.strength;
+            if (typeof v.threshold === 'number') outTh[k] = v.threshold;
           }
         }
-        // 启动早期 fetch 还没回来时用的是内置默认值 → 到货了就立刻纠正正在跑的那颗
+        if (onOk) onOk(out, outTh);
+        // 到货后立刻纠正正在跑的那颗
         try {
-          if (typeof bloomPass !== 'undefined' && bloomPass){
-            const th = (typeof THEME === 'string' && THEME) ? THEME : 'basicRoom';
-            if (BLOOM_TUNE[th] !== undefined) bloomPass.strength = BLOOM_TUNE[th];
-            if (BLOOM_TUNE_TH[th] !== undefined) bloomPass.threshold = BLOOM_TUNE_TH[th];
-          }
+          if (typeof bloomPass !== 'undefined' && bloomPass) applyBloomTune(THEME);
         } catch (e) {}
-        console.log('%c★ 泛光数据已载入 assets/bloom_tune.json：%d 间', 'color:#9fe8ff',
-                    Object.keys(BLOOM_TUNE).length);
+      })
+      .catch(() => {});
+  } catch (e) {}
+}
+(function loadBloomTune(){
+  _loadBloomFile('./assets/bloom_tune.json', (o, th) => {
+    BLOOM_TUNE = o; BLOOM_TUNE_TH = th;
+    console.log('%c★ 泛光数据已载入 assets/bloom_tune.json：%d 间', 'color:#9fe8ff', Object.keys(o).length);
+  });
+  _loadBloomFile('./assets/bloom_tune_true.json', (o) => {
+    BLOOM_TUNE_TRUE = o;
+    console.log('%c★ 泛光真值已载入 assets/bloom_tune_true.json：%d 间（按 P 切换）', 'color:#9fe8ff', Object.keys(o).length);
+  });
+})();
+
+/* ★★★ 2026-10-21 加：Vignette 真值（游戏 sceneeffectprofile.ab 的 Vignette 组件）
+   Unity PostProcessing 的 Vignette：intensity≈0.45 / smoothness=0.2 / rounded=0（95 个组件的主流值）。
+   用 ShaderPass 在 bloom 之后、OutputPass 之前做乘性暗角（线性空间，乘性不变量）。 */
+const FKVignetteShader = {
+  uniforms: {
+    tDiffuse:    { value: null },
+    uIntensity:  { value: 0.0 },     // 0 = 关闭（只有 postfx_tune.json 里写到的主题才开）
+    uSmoothness: { value: 0.2 },
+  },
+  vertexShader: /* glsl */`
+    varying vec2 vUv;
+    void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tDiffuse;
+    uniform float uIntensity;
+    uniform float uSmoothness;
+    varying vec2 vUv;
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec2 d = vUv - 0.5;
+      float r = length(d) * 1.41421356;
+      float v = smoothstep(0.5, 0.5 + max(uSmoothness, 0.02) * 1.5, r);
+      c.rgb *= (1.0 - uIntensity * v);
+      gl_FragColor = c;
+    }`,
+};
+
+/* ★ 后处理真值（vignette 按主题）：assets/postfx_tune.json */
+let VIGNETTE_TUNE = {};
+(function loadPostfxTune(){
+  if (!POSTFX_A) return;   // ★ 默认（手调版）不加暗角；只有 ?postfx=a 才启用
+  try {
+    fetch('./assets/postfx_tune.json', { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        const v = (j && j.vignette) || null;
+        if (!v || typeof v !== 'object') return;
+        VIGNETTE_TUNE = v;
+        try {
+          if (typeof vignettePass !== 'undefined' && vignettePass) applyBloomTune(THEME);
+        } catch (e) {}
+        console.log('%c★ 后处理真值已载入 assets/postfx_tune.json（vignette %d 间）',
+          'color:#9fe8ff', Object.keys(v).length);
       })
       .catch(() => {});
   } catch (e) {}
@@ -1378,6 +1600,27 @@ function tuneOf(theme){
   if (!LIGHT_TUNE[theme].base){
     LIGHT_TUNE[theme].base = { K: 6500, i: UNLIT_BASE_GAIN };
   }
+  /* ★★★ 2026-10-21：外置 bloom 真值【优先】——
+     否则浏览器 localStorage 里上一次调参存档（比如 bloom 0.22）会把
+     assets/bloom_tune.json 的新值覆盖掉，用户刷新页面看不出任何变化。
+     ★ 两套表按 POSTFX_MODE 切换（默认手调；P 键切真值）。
+     ★ 现场微调：URL 加 `?bloom=0.35`（强度 0~2）或 `?bth=0.62`（阈值 0~1），
+       覆盖当前主题的外置值 —— 两套参数都能用，不用改文件、也不用按 7 进面板。 */
+  const _bt_tbl = (POSTFX_MODE === 'true') ? BLOOM_TUNE_TRUE : BLOOM_TUNE;
+  if (_bt_tbl[theme] !== undefined && !_fileBloomApplied.has(theme)){
+    let _bs = _bt_tbl[theme];
+    let _bt = (POSTFX_MODE === 'tuned' && BLOOM_TUNE_TH[theme] !== undefined) ? BLOOM_TUNE_TH[theme] : 0.80;
+    try {
+      const _q = new URLSearchParams(location.search);
+      const _b = parseFloat(_q.get('bloom'));
+      const _t = parseFloat(_q.get('bth'));
+      if (isFinite(_b)) _bs = Math.max(0, Math.min(3, _b));
+      if (isFinite(_t)) _bt = Math.max(0, Math.min(1, _t));
+    } catch (e) {}
+    LIGHT_TUNE[theme].bloom = { K: Math.round(_bt * 100), i: _bs };
+    // ★ 只应用一次：之后面板 Shift+↑↓ 调的值不会被文件盖掉（本次会话内）
+    _fileBloomApplied.add(theme);
+  }
   return LIGHT_TUNE[theme];
 }
 function saveTune(){ try { localStorage.setItem(TUNE_KEY, JSON.stringify(LIGHT_TUNE)); } catch(e){} }
@@ -1444,10 +1687,23 @@ function showTunePanel(){
   }
   out += '\n1-9 选通道   Shift+↑↓ 强度/曝光   Shift+←→ 色温/阈值/模式   0 复位';
   out += '\n★ Y 导出全部房间参数（复制给 AI 固化）';
+  /* ★★★ 2026-10-18 加：把"本房间有哪些加色片、调哪个通道"直接写在面板上。
+     用户 2026-10-18 问"灯的材质和普通件差在哪、能不能在面板里调" —— 答案要在面板里看得见：
+       · 加色片（Particles/Additive）= 黑底全透、亮部往上加光，不是普通贴图
+       · 通道 6「自发光」= 只乘它们的 RGB（不动 alpha）
+       · 通道 7「泛光」  = 阈值/强度，阈值低到贡献亮度以下它才会洇光 */
+  const _addMats = (function(){
+    try { return (UNLIT_MATS || []).filter(m => m && m.userData && m.userData.fk_additive); }
+    catch (e) { return []; }
+  })();
+  if (_addMats.length){
+    out += '\n★ 本房间加色发光片 ' + _addMats.length + ' 个（黑底全透、亮部加光，不是普通贴图）';
+    out += '\n   通道 6「自发光」调它们亮度  通道 7「泛光」调阈值/强度';
+  }
   if (CH[tuneCh] && CH[tuneCh].isPoint && !POINT_LIGHTS.length){
     out += '\n⚠ 本房间 GLB 里没有点光（目前只有餐厅导了）';
   }
-  if (CH[tuneCh] && CH[tuneCh].isEmissive && !EMISSIVE_MATS.length){
+  if (CH[tuneCh] && CH[tuneCh].isEmissive && !EMISSIVE_MATS.length && !_addMats.length){
     out += '\n⚠ 本房间没有自发光材质';
   }
   el.textContent = out;
@@ -1489,9 +1745,15 @@ function tuneKey(e){
   //   原来 ↑↓←→ 直接调灯光，但移动那边读的是 keys[e.code]，preventDefault 挡不住 → 边走边调，很别扭。
   if (kl >= '1' && kl <= '9'){ tuneCh = parseInt(kl, 10) - 1; }   // 7=泛光 8=色调映射 9=整体亮度（unlit）
   else if (e.shiftKey && k === 'ArrowUp'){
-    // ★ 各通道的强度上限不同：自发光/整体亮度 3× / 色调映射曝光 3 / 泛光 2.0 / 点光(倍率) 8× / 其它 6
-    const cap = (isEmi || ch.isUnlitBase) ? 3.0 : (isTM ? 3.0 : (isBloom ? 2.0 : (isPt ? 8.0 : 6)));
-    t[c].i = Math.min(cap, t[c].i + 0.05);
+    /* ★ 各通道的强度上限不同：自发光 8× / 整体亮度 3× / 色调映射曝光 3 / 泛光 2.0 / 点光(倍率) 8× / 其它 6
+       ★★★ 2026-10-18 改：自发光上限 3.0 → **8.0**。
+         用户实测定稿：spirit 的加色件要 **3.0×** 才"比较还原"，而原上限正好 3.0（顶格调不动）——
+         说明 3.0 是"刚好不够"的边界。抬到 8.0 后留给后续主题足够余量；
+         （点光倍率本来也是 8.0，两个通道保持同一尺度。） */
+    const cap = isEmi ? 8.0
+              : (ch.isUnlitBase ? 3.0
+                : (isTM ? 3.0 : (isBloom ? 2.0 : (isPt ? 8.0 : 6))));
+    t[c].i = Math.min(cap, t[c].i + (isEmi ? 0.10 : 0.05));
   }
   else if (e.shiftKey && k === 'ArrowDown'){ t[c].i = Math.max(isTM ? 0.10 : 0, t[c].i - 0.05); }
   // 色温只对"有颜色"的通道有意义（自发光跳过；泛光的 K 是阈值、色调映射的 K 是模式下标）
@@ -1508,6 +1770,7 @@ function tuneKey(e){
     else              t[c].K = Math.min(12000, t[c].K + 50);
   }
   else if (k === '0'){
+    _fileBloomApplied.delete(tuneTheme);   // ★ 让外置表重新生效（复位 = 回到文件值）
     delete LIGHT_TUNE[tuneTheme]; saveTune(); tuneApply();
     say('灯光已复位'); return true;
   }
@@ -1622,14 +1885,18 @@ function hex6(n){ return '#' + (n >>> 0).toString(16).padStart(6, '0'); }
 /* 组装导出数据：每个房间都带【你调过的值 cur】+【walk.html 里的默认值 rig】 */
 function tuneExportPayload(){
   const rooms = {};
-  for (const th of Object.keys(ROOM_RIG)){
+  /* ★★★ 2026-10-18 加：把 `ROOM_TITLE` 里所有已登记房间也纳入（批量新宿舍只登记在那里）。
+     以前只遍历 `ROOM_RIG` → 新房间（KFC/NHL/spirit…）在 Shift+Y 的导出里**完全消失**。 */
+  const _ths = new Set(Object.keys(ROOM_RIG));
+  try { for (const th of Object.keys(ROOM_TITLE)) _ths.add(th); } catch (e) {}
+  for (const th of _ths){
     // ★ 用【原始副本】而不是 ROOM_RIG —— 后者已被 applyRig() 原地覆盖过（见 ROOM_RIG_ORIG 注释）
     const rig = (ROOM_RIG_ORIG[th] || ROOM_RIG[th]);
     // ★ 走 tuneOf() 而不是直接读 —— 保证旧存档（比如 pt 的旧语义）已经迁移过
     const t = LIGHT_TUNE[th] ? tuneOf(th) : null;
     // tuned:true = 这个房间你在面板里调过（localStorage 里有记录）
     const rec = { tuned: !!t };
-    rec.rig = {                                  // 写死在 walk.html 里的默认值（对照用）
+    if (rig) rec.rig = {                         // 写死在 walk.html 里的默认值（对照用）
       amb:  [hex6(rig.amb[0]),  rig.amb[1]],
       key:  [hex6(rig.key[0]),  rig.key[1],  rig.key[2]],
       fill: [hex6(rig.fill[0]), rig.fill[1], rig.fill[2]],
@@ -1656,26 +1923,41 @@ function tuneExportPayload(){
 
 /* ★★★ 2026-10-16 加：按 Y 导出的【只含泛光强度】的数据 —— 格式与
    `网页原型\assets\bloom_tune.json` 完全一致 ⇒ **直接覆盖它就能生效、就能发布**。
-   取值优先级：① 你在 L 面板里调过的（localStorage）→ ② 外置数据 → ③ 内置默认。 */
+   取值优先级：① 你在 L 面板里调过的（localStorage）→ ② 外置数据 → ③ 内置默认。
+   ★★★ 2026-10-18 改：**阈值也一起导出**（用户 2026-10-18 要求"独立泛光阈值"）。
+     现在面板 7 通道调出来的 threshold 不再丢失：
+       - 阈值 = 0.80（默认）→ 仍写裸数字（旧格式，向后兼容）
+       - 阈值 ≠ 0.80        → 写成 {"strength": …, "threshold": …}（加载端早已支持对象格式）
+     ★ 为什么要按主题独立阈值：spirit 的加色件亮度只有 0.18~0.55，默认 0.80 永远触发不到；
+       而同一份数据拿到别的房间，0.80 才是对的 —— 所以阈值必须能逐房间存。 */
 function bloomExportPayload(){
   const themes = new Set();
   try { for (const th of Object.keys(ROOM_RIG)) themes.add(th); } catch (e) {}
+  /* ★★★ 2026-10-18 加：把 **ROOM_TITLE 里所有已登记房间**也纳入导出范围。
+     为什么：`ROOM_RIG` 只有老房间，而批量新导的宿舍（KFC/LAbbey/R6/ScarMarket…）
+     只登记在 `ROOM_TITLE` 里 ⇒ 以前按 Y 导出的 json **根本不包含它们**，
+     用户在新房间里调好的泛光值会丢。 */
+  try { for (const th of Object.keys(ROOM_TITLE)) themes.add(th); } catch (e) {}
   ['classroom','closureRoom','rabbitCinema','clmsRoom','messengerCottage','YuKitchen',
-   'rhodesKitchen','basicRoom','dessertShop'].forEach((t) => themes.add(t));
+   'rhodesKitchen','basicRoom','dessertShop','spirit'].forEach((t) => themes.add(t));
   const bloom = {};
   for (const th of [...themes].sort()){
-    let v = null;
+    let v = null, thv = null;
     const t = LIGHT_TUNE[th];
-    if (t && t.bloom && typeof t.bloom.i === 'number') v = +t.bloom.i.toFixed(3);
+    if (t && t.bloom && typeof t.bloom.i === 'number'){
+      v = +t.bloom.i.toFixed(3);
+      if (typeof t.bloom.K === 'number') thv = +(t.bloom.K / 100).toFixed(3);
+    }
     if (v === null) v = (BLOOM_TUNE[th] !== undefined) ? BLOOM_TUNE[th] : defaultBloomFor(th);
-    bloom[th] = v;
+    if (thv === null) thv = (BLOOM_TUNE_TH[th] !== undefined) ? BLOOM_TUNE_TH[th] : 0.80;
+    bloom[th] = (Math.abs(thv - 0.80) < 1e-6) ? v : { strength: v, threshold: thv };
   }
   return {
-    _what: '泛光强度数据（按 Y 导出）—— ★ 直接覆盖 网页原型\\assets\\bloom_tune.json 即可生效并发布',
+    _what: '泛光数据（按 Y 导出，强度 + 按主题阈值）—— ★ 直接覆盖 网页原型\\assets\\bloom_tune.json 即可生效并发布',
     _time: new Date().toLocaleString(),
     _page: location.href,
-    _legend: 'bloom.<主题> = 泛光强度（UnrealBloomPass.strength）；阈值默认 0.80，' +
-             '需要时把某个主题写成 {"strength":0.16,"threshold":0.8} 也支持。',
+    _legend: 'bloom.<主题> = 泛光强度（UnrealBloomPass.strength）；' +
+             '阈值 = 0.80 时写裸数字，阈值不同则写 {"strength":0.16,"threshold":0.55}。',
     _scene: { 当前房间: (typeof THEME === 'string' && THEME) || '(默认会客厅)' },
     bloom: bloom,
   };
@@ -1930,6 +2212,141 @@ const FROM_HUB = !!THEME_Q;
 const UNLIT_THEMES = new Set([
   'rabbitCinema', 'clmsRoom', 'messengerCottage', 'YuKitchen',
   'basicRoom',              // 会客室
+  'recycle',                // ★ 2026-10-22 新增：回收站（功能房，非主题套组）
+  'manufacture',            // ★ 2026-10-22 新增：制造站（功能房）
+  'hire',                   // ★ 2026-10-22 新增：办公室（功能房）
+  'workshop',               // ★ 2026-10-22 新增：加工站（功能房）
+  'training',               // ★ 2026-10-22 新增：训练室（功能房）
+  'control',                // ★ 2026-10-22 新增：控制中枢（功能房）
+  'trading',                // ★ 2026-10-22 新增：贸易站（功能房，先静态）
+  'power',                  // ★ 2026-10-22 新增：发电站（功能房，先静态）
+  's2_02',            // ★ 2026-10-21 新增：仿龙门式休息室（走 Tab 面板进，走廊不加门）
+  's2_01',            // ★ 2026-10-21 新增：近卫局休息室（走 Tab 面板进，走廊不加门）
+  's1_02',            // ★ 2026-10-21 新增：边线/橘色简约家居（走 Tab 面板进，走廊不加门）
+  's1_01',            // ★ 2026-10-21 新增：边线/纯色简约家居（走 Tab 面板进，走廊不加门）
+  'westCoast',            // ★ 2026-10-20 新增：多索雷斯私人水疗室（走 Tab 面板进，走廊不加门）
+  'yanPrivateSchool',            // ★ 2026-10-20 新增：黛青山房（走 Tab 面板进，走廊不加门）
+  'wooden',            // ★ 2026-10-20 新增：萨米乡野别墅（走 Tab 面板进，走廊不加门）
+  'winterHouse',            // ★ 2026-10-20 新增：谢拉格游客体验中心（走 Tab 面板进，走廊不加门）
+  'warehouse',            // ★ 2026-10-20 新增：货运仓库（走 Tab 面板进，走廊不加门）
+  'volcaRoom',            // ★ 2026-10-20 新增：“求索者之梦”科考小屋（走 Tab 面板进，走廊不加门）
+  'villagemanor',            // ★ 2026-10-20 新增：“玫瑰河畔安全屋”（走 Tab 面板进，走廊不加门）
+  'village',            // ★ 2026-10-20 新增：凝思庭（走 Tab 面板进，走廊不加门）
+  'videoStudio',            // ★ 2026-10-20 新增：蓝卡坞摄影棚（走 Tab 面板进，走廊不加门）
+  'vcWarRoom',            // ★ 2026-10-20 新增：风暴突击队作战室（走 Tab 面板进，走廊不加门）
+  'ursusRoom',            // ★ 2026-10-20 新增：乌萨斯学生自治团活动处（走 Tab 面板进，走廊不加门）
+  'trainStation',            // ★ 2026-10-20 新增：伦蒂尼姆火车站台（走 Tab 面板进，走廊不加门）
+  'tradeLounge',            // ★ 2026-10-20 新增：喀兰贸易接待室（走 Tab 面板进，走廊不加门）
+  'teaHouse',            // ★ 2026-10-20 新增：山城茶馆（走 Tab 面板进，走廊不加门）
+  'teaCanteen',            // ★ 2026-10-20 新增：祥苑冰室（走 Tab 面板进，走廊不加门）
+  'tarahouse',            // ★ 2026-10-20 新增：“纳斯尔纱之夜”（走 Tab 面板进，走廊不加门）
+  'tailorShop',            // ★ 2026-10-20 新增：老叙拉古裁缝店（走 Tab 面板进，走廊不加门）
+  'stage',            // ★ 2026-10-20 新增：谢拉格风情旅店（走 Tab 面板进，走廊不加门）
+  'springfeast',            // ★ 2026-10-20 新增：鼎丰楼茶室（走 Tab 面板进，走廊不加门）
+  'specimen',            // ★ 2026-10-20 新增：幻想生物纪实（走 Tab 面板进，走廊不加门）
+  'snowVenue',            // ★ 2026-10-20 新增：“冷冽节奏”体验馆（走 Tab 面板进，走廊不加门）
+  'skadisp',            // ★ 2026-10-20 新增：“大海的后嗣们”（走 Tab 面板进，走廊不加门）
+  'shuttle',            // ★ 2026-10-20 新增：“驰骋荒野运载车”（走 Tab 面板进，走廊不加门）
+  'shipRoom',            // ★ 2026-10-20 新增：“宝宝摇篮”号船舱（走 Tab 面板进，走廊不加门）
+  'samiRoom',            // ★ 2026-10-20 新增：萨米印象（走 Tab 面板进，走廊不加门）
+  'safetyZone',            // ★ 2026-10-20 新增：气密防化安全舱（走 Tab 面板进，走廊不加门）
+  'rococo',            // ★ 2026-10-20 新增：兰赛拉尔宴会厅（走 Tab 面板进，走廊不加门）
+  'rhineLab',            // ★ 2026-10-20 新增：莱茵实验培养舱（走 Tab 面板进，走廊不加门）
+  'restaurant',            // ★ 2026-10-20 新增：龙门食坊（走 Tab 面板进，走廊不加门）
+  'receptionRoom',            // ★ 2026-10-20 新增：天镜阁会客堂（走 Tab 面板进，走廊不加门）
+  'reception',            // ★ 2026-10-20 新增：龙门风情茶室（走 Tab 面板进，走廊不加门）
+  'rabbitTown',            // ★ 2026-10-20 新增：大涌泉镇欢迎你！（走 Tab 面板进，走廊不加门）
+  'prison',            // ★ 2026-10-20 新增：曼斯菲尔德囚室（走 Tab 面板进，走廊不加门）
+  'postOffice',            // ★ 2026-10-20 新增：雪山小邮局（走 Tab 面板进，走廊不加门）
+  'pizzeria',            // ★ 2026-10-20 新增：威尔德披萨餐厅（走 Tab 面板进，走廊不加门）
+  'pizza',            // ★ 2026-10-20 新增：快捷连锁披萨店（走 Tab 面板进，走廊不加门）
+  'photoStudio',            // ★ 2026-10-20 新增：摄影爱好者影棚（走 Tab 面板进，走廊不加门）
+  'perfumer',            // ★ 2026-10-19 新增：莱娜的憩所（走 Tab 面板进，走廊不加门）
+  'pepesroom',            // ★ 2026-10-19 新增：“沙洲下”奢华客房（走 Tab 面板进，走廊不加门）
+  'penguin',            // ★ 2026-10-19 新增：企鹅物流安全屋（走 Tab 面板进，走廊不加门）
+  'outdoor',            // ★ 2026-10-19 新增：海滨印象（走 Tab 面板进，走廊不加门）
+  'office',            // ★ 2026-10-19 新增：罗德岛人事办公室（走 Tab 面板进，走廊不加门）
+  'odenShop',            // ★ 2026-10-19 新增：食事处·御影（走 Tab 面板进，走廊不加门）
+  'observation',            // ★ 2026-10-19 新增：天灾观测研究站（走 Tab 面板进，走廊不加门）
+  'nightView',            // ★ 2026-10-19 新增：莱塔尼亚之夜（走 Tab 面板进，走廊不加门）
+  'niansroom',            // ★ 2026-10-19 新增：“岁岁平安”活动厅（走 Tab 面板进，走廊不加门）
+  'musicalStore',            // ★ 2026-10-19 新增：秋日乐器行（走 Tab 面板进，走廊不加门）
+  'msVillage',            // ★ 2026-10-19 新增：“移山庙”（走 Tab 面板进，走廊不加门）
+  'molKitchen',            // ★ 2026-10-19 新增：料理研究中心（走 Tab 面板进，走廊不加门）
+  'mis',            // ★ 2026-10-19 新增：乐器维修工坊（走 Tab 面板进，走廊不加门）
+  'minosMed',            // ★ 2026-10-19 新增：雅赛努斯的新生诗篇（走 Tab 面板进，走廊不加门）
+  'mindsanctum',            // ★ 2026-10-19 新增：心像空间（走 Tab 面板进，走廊不加门）
+  'midAutumn',            // ★ 2026-10-19 新增：炎式厅堂（走 Tab 面板进，走廊不加门）
+  'martialClub',            // ★ 2026-10-19 新增：玉门医馆（走 Tab 面板进，走廊不加门）
+  'magicAcademy',            // ★ 2026-10-19 新增：路德维格大学讲演厅（走 Tab 面板进，走廊不加门）
+  'lightFood',            // ★ 2026-10-19 新增：健康快餐店（走 Tab 面板进，走廊不加门）
+  'lightArt',            // ★ 2026-10-19 新增：卡拉顿花草灯艺屋（走 Tab 面板进，走廊不加门）
+  'laundry',            // ★ 2026-10-19 新增：罗德岛洗衣间（走 Tab 面板进，走廊不加门）
+  'knights',            // ★ 2026-10-19 新增：红松骑士团休息室（走 Tab 面板进，走廊不加门）
+  'kitchen',            // ★ 2026-10-19 新增：白色旷野（走 Tab 面板进，走廊不加门）
+  'kazimierz',            // ★ 2026-10-19 新增：卡西米尔直播间（走 Tab 面板进，走廊不加门）
+  'kaltsroom',            // ★ 2026-10-19 新增：“趁呼吸逗留”（走 Tab 面板进，走廊不加门）
+  'inkArt',            // ★ 2026-10-19 新增：丹青阁（走 Tab 面板进，走廊不加门）
+  'idealCity',            // ★ 2026-10-19 新增：大水坑快活体验屋（走 Tab 面板进，走廊不加门）
+  'icu',            // ★ 2026-10-19 新增：急救专家组办公室（走 Tab 面板进，走廊不加门）
+  'hodrerStudy',            // ★ 2026-10-19 新增：佣兵们的落脚处（走 Tab 面板进，走廊不加门）
+  'higashiYard',            // ★ 2026-10-19 新增：东国夏日宅邸（走 Tab 面板进，走廊不加门）
+  'gunworkshop',            // ★ 2026-10-19 新增：潘格尼尼的铳械工坊（走 Tab 面板进，走廊不加门）
+  'guitar',            // ★ 2026-10-19 新增：罗德岛现代音乐排练室（走 Tab 面板进，走廊不加门）
+  'goldBoat',            // ★ 2026-10-19 新增：愚人号会客室（走 Tab 面板进，走廊不加门）
+  'gardenFantasy',            // ★ 2026-10-19 新增：界园印象（走 Tab 面板进，走廊不加门）
+  'gangster',            // ★ 2026-10-19 新增：“叙拉古往事”（走 Tab 面板进，走廊不加门）
+  'fNearl',            // ★ 2026-10-19 新增：仿临光家客厅（走 Tab 面板进，走廊不加门）
+  'eliteLounge',            // ★ 2026-10-19 新增：精英干员休息室（走 Tab 面板进，走廊不加门）
+  'elite',            // ★ 2026-10-19 新增：罗德岛工作间（走 Tab 面板进，走廊不加门）
+  'eastern',            // ★ 2026-10-19 新增：红叶旅舍（走 Tab 面板进，走廊不加门）
+  'durin',            // ★ 2026-10-19 新增：糖果仙子的宴会厅（走 Tab 面板进，走廊不加门）
+  'dreamCastle',            // ★ 2026-10-18 新增：异变梦城堡大厅（走 Tab 面板进，走廊不加门）
+  'dormW',            // ★ 2026-10-18 新增：萨卡兹佣兵休息室（走 Tab 面板进，走廊不加门）
+  'darkForest',            // ★ 2026-10-18 新增：黑流印象（走 Tab 面板进，走廊不加门）
+  'cultureroom',            // ★ 2026-10-18 新增：莱茵科技生态园（走 Tab 面板进，走廊不加门）
+  'court',            // ★ 2026-10-18 新增：叙拉古正义法院（走 Tab 面板进，走廊不加门）
+  'countryside',            // ★ 2026-10-18 新增：苇草的小屋（走 Tab 面板进，走廊不加门）
+  'concertHall',            // ★ 2026-10-18 新增：夕照区印象音乐室（走 Tab 面板进，走廊不加门）
+  'community',            // ★ 2026-10-18 新增：乌萨斯学生活动室（走 Tab 面板进，走廊不加门）
+  'college',            // ★ 2026-10-18 新增：维多利亚近卫学院宿舍（走 Tab 面板进，走廊不加门）
+  'coastCottage',            // ★ 2026-10-18 新增：“纯白火山”之旅（走 Tab 面板进，走廊不加门）
+  'cloudRestaurant',            // ★ 2026-10-18 新增：天空生活体验舱（走 Tab 面板进，走廊不加门）
+  'citizengarden',            // ★ 2026-10-18 新增：哈迈米纳特花园（走 Tab 面板进，走廊不加门）
+  'chen',            // ★ 2026-10-18 新增：陈的办公室（走 Tab 面板进，走廊不加门）
+  'castle',            // ★ 2026-10-18 新增：“古堡印象”（走 Tab 面板进，走廊不加门）
+  'carnival',            // ★ 2026-10-18 新增：超级狂欢座驾舱室（走 Tab 面板进，走廊不加门）
+  'camp',            // ★ 2026-10-18 新增：茨沃涅克乡野营地（走 Tab 面板进，走廊不加门）
+  'cafe',            // ★ 2026-10-18 新增：哥伦比亚咖啡馆（走 Tab 面板进，走廊不加门）
+  'boxing',            // ★ 2026-10-18 新增：格拉斯哥帮拳馆（走 Tab 面板进，走廊不加门）
+  'bookshop',            // ★ 2026-10-18 新增：侦探的书房（走 Tab 面板进，走廊不加门）
+  'bolivar',            // ★ 2026-10-18 新增：部落风情旅舍（走 Tab 面板进，走廊不加门）
+  'beerhouse',            // ★ 2026-10-18 新增：七城风情餐厅（走 Tab 面板进，走廊不加门）
+  'beach',            // ★ 2026-10-18 新增：汐斯塔沙滩小屋（走 Tab 面板进，走廊不加门）
+  'bauhaus',            // ★ 2026-10-18 新增：沃尔特风潮居室（走 Tab 面板进，走廊不加门）
+  'artmuseum',            // ★ 2026-10-18 新增：克里斯达尔展厅（走 Tab 面板进，走廊不加门）
+  'artdeco',            // ★ 2026-10-18 新增：哥伦比亚摩登酒店（走 Tab 面板进，走廊不加门）
+  'arcadeHall',            // ★ 2026-10-18 新增：前卫街机厅（走 Tab 面板进，走廊不加门）
+  'aphrissaRoom',            // ★ 2026-10-18 新增：源石应用实验室（走 Tab 面板进，走廊不加门）
+  'amuselounge',            // ★ 2026-10-18 新增：幽蓝午夜自助式清吧（走 Tab 面板进，走廊不加门）
+  'activity',            // ★ 2026-10-18 新增：黄澄澄游戏室（走 Tab 面板进，走廊不加门）
+  'abyssal',            // ★ 2026-10-18 新增：伊比利亚度假村（走 Tab 面板进，走廊不加门）
+  'TianshiMansion',            // ★ 2026-10-18 新增：大荒天师苑（走 Tab 面板进，走廊不加门）
+  'TempleFair',            // ★ 2026-10-18 新增：神农祭庙会（走 Tab 面板进，走廊不加门）
+  'ScarMarket',            // ★ 2026-10-18 新增：“疤痕商场的回忆”（走 Tab 面板进，走廊不加门）
+  'SargonFair',            // ★ 2026-10-18 新增：阿尔萨兰旅行营帐（走 Tab 面板进，走廊不加门）
+  'RhodesRabbit',            // ★ 2026-10-18 新增：“兔兔大派对”宴会厅（走 Tab 面板进，走廊不加门）
+  'R6',            // ★ 2026-10-18 新增：特种装备展览室（走 Tab 面板进，走廊不加门）
+  'NHL',            // ★ 2026-10-18 新增：拉特兰公证所休息室（走 Tab 面板进，走廊不加门）
+  'MemoryCloister',            // ★ 2026-10-18 新增：魂灵印象（走 Tab 面板进，走廊不加门）
+  'LAbbey',            // ★ 2026-10-18 新增：安布罗修休息室（走 Tab 面板进，走廊不加门）
+  'KFC',            // ★ 2026-10-18 新增：人气快餐店肯德基（走 Tab 面板进，走廊不加门）
+  'HunterInstitute',            // ★ 2026-10-18 新增：深海猎人实验室（走 Tab 面板进，走廊不加门）
+  'BSsafehouse',            // ★ 2026-10-14 新增：黑钢国际安全屋（走 Tab 面板进，走廊不加门）
+  'Azuredream',            // ★ 2026-10-14 新增：泡影国起居室（走 Tab 面板进，走廊不加门）
+  'Airship',            // ★ 2026-10-14 新增：飞空艇风格宿舍（走 Tab 面板进，走廊不加门）
+  'spirit',            // ★ 2026-10-14 新增：魂灵秘会（走 Tab 面板进，走廊不加门）
+  'cabin',            // ★ 2026-10-14 新增：12号生命循环舱（走 Tab 面板进，走廊不加门）
   'velvet',            // ★ 2026-10-14 新增：蓝丝绒房间（走 Tab 面板进，走廊不加门）
   'taiko',            // ★ 2026-10-14 新增：“祭典的四拍子太鼓”（走 Tab 面板进，走廊不加门）
   'amiya',            // ★ 2026-10-13 新增：阿米娅的寰宇记忆（走 Tab 面板进，走廊不加门）（第 7 间 · unlit 试点，2026-10-11 已上线）
@@ -2139,6 +2556,21 @@ let SKIP_START_PAGE = false;
    ⚠️ bloomPass 声明在本文件【后面】(let)，所以本函数可能在它之前被调用（TDZ）——
       这正是今天踩过两次的坑，必须 try/catch 兜住。 */
 function applyBloomTune(theme){
+  /* ★ 2026-10-21：Vignette 真值（sceneeffectprofile.ab）—— 独立于 bloom 应用，
+     因为很多主题没有 bloom 覆写、但可能有暗角。 */
+  try {
+    const vp = vignettePass;
+    if (vp){
+      const vt = (POSTFX_MODE === 'true' && typeof VIGNETTE_TUNE !== 'undefined') ? VIGNETTE_TUNE[theme] : null;
+      if (vt){
+        vp.enabled = true;
+        vp.uniforms.uIntensity.value = Math.max(0, Math.min(1, Number(vt.intensity) || 0));
+        vp.uniforms.uSmoothness.value = Math.max(0.02, Math.min(1, Number(vt.smoothness) || 0.2));
+      } else {
+        vp.enabled = false;
+      }
+    }
+  } catch (e) {}
   let bp = null;
   try { bp = bloomPass; } catch (e) { return; }   // TDZ：还没创建，创建后还会再调一次
   if (!bp) return;
@@ -2310,12 +2742,524 @@ const boxes = [];          // 碰撞盒 {min:{x,z}, max:{x,z}, name}
 let loaded = false;
 const matCache = new Map();     // ★ 材质复用（同参数的只建一个）
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-14：水体流动效果（喷泉）—— 复刻 shader `Torappu/Furni/Fx Dissolve`
+   ───────────────────────────────────────────────────────────────────────────
+   用户需求：「**尽量还原游戏内的效果**」。
+
+   ★ 机制（实测确认，不是猜的 —— 见 `3D渲染\待办-家具动态效果-水与流动.md` §一/§八）：
+     水**不是**动画驱动的：该 AB 里 AnimationClip=0 / Animator=0；
+     5 个水件全程 `m_IsActive=true` 同时渲染；靠 shader 读 `_Time` **自走 UV**。
+     ⇒ 所以网页端**不需要** AnimationMixer，只要一个每帧推进 `uTime` 的 ShaderMaterial。
+
+   ★ 为什么必须用 ShaderMaterial（不能"改 map.offset"糊过去）：
+     流动感 = ① 主贴图 UV 滚动 **+ ② 两层 dissolve**（`mask_12` / `TX_mask_02`）。
+     第 ② 项是**关键**：5 件共用同一张 `TX_mask_02`，但**各自静态 offset 不同**
+     （0.20 / −0.11 / 0.00 / 0.05 / 0.05）⇒ 同一遮罩被错开采样 ⇒ 相位错开 ⇒ "翻涌"。
+     只改 `map.offset` 只能表达 ①，表达不了 ② ⇒ 那只是方案 B（约 40% 还原度）。
+     现在做的是**方案 B+（约 90%）**。
+
+   ★ 参数从哪来：GLB 材质的 `extras.fk_water`（导出器 `patch_water_extras()` 写入，
+     源头是 `import_theme.py` 的 `WATER_PROPS` 实测表）。
+     ★★ 所以**调参不用手改这一坨 JS** —— 改 `WATER_PROPS` 重导，或临时用 `?ws=` 试速度。
+
+   ★ 已确认【全关】、因此**故意没实现**的参数（省掉一大半工作量）：
+     `_UseGradient`(全0 → 渐变/`_MainColor2` 不用做)、`_Pow`(全1 → 等于不做 pow)、
+     `_EdgeColor`(全 (0,0,0,0) → 边缘色不生效)、`_Disturb*`(全 0 → 扭曲关闭)、
+     `_UVTween.zw` 与 `_UVTween_02`(全 0 → **两层 dissolve 的 UV 都不滚动**，
+     只靠逐件静态 offset 错相位)。
+   ═══════════════════════════════════════════════════════════════════════════ */
+const FK_WATER_MATS = [];        // 建好的水材质（每帧推进 uTime 用）
+const FK_WATER_TEXS = [];        // 水用到的贴图（收进 allTextures 一起管 mipmap/aniso）
+let   FK_WATER_UPTIME = 0;       // 累计"水的时间"（秒）
+
+/** 速度倍率 —— ★★ 这就是那个"待定项"的旋钮。
+ *  `_UVTween.xy` 到底是【每秒位移】还是【总位移】在编译后的 GPU 程序里**看不出来**
+ *  （shader 是 baked 字节码，没有 HLSL 源码），所以先按【每秒】用。
+ *  用户对着游戏比快慢：`?theme=amiya&ws=0.5` 现场试，找到合适的值再固化到
+ *  `import_theme.py` 的 `WATER_PROPS`（改那里的 `uvtween` 即可，重导一次就行）。 */
+const FK_WATER_SPEED = (() => {
+  const v = parseFloat(_Q.get('ws'));
+  return (isFinite(v) && v >= 0) ? v : 1.0;
+})();
+
+/** 水材质升序编号 —— 与导出器的 `WEB_water_<tag>` 命名对齐（1 起，0 = 没有 tag 的那个） */
+let _fkWaterSeq = 0;
+
+/** 1×1 白贴图 —— 遮罩缺失时的兜底（smoothstep(x, x+w, 1.0) = 1 ⇒ 该层不过滤，等于关闭） */
+let _FK_WHITE_TEX = null;
+function fkWhiteTex(){
+  if (_FK_WHITE_TEX) return _FK_WHITE_TEX;
+  const d = new Uint8Array([255, 255, 255, 255]);
+  _FK_WHITE_TEX = new THREE.DataTexture(d, 1, 1, THREE.RGBAFormat);
+  _FK_WHITE_TEX.needsUpdate = true;
+  return _FK_WHITE_TEX;
+}
+
+/** data URI（导出器把遮罩原始 PNG 内嵌在 extras 里）→ 贴图；非 URI 或失败则返回 null */
+function fkLoadTex(src, repeat){
+  if (!src) return null;
+  if (typeof src !== 'string' || src.indexOf('data:') !== 0) return null;
+  const t = new THREE.TextureLoader().load(src);
+  t.colorSpace = THREE.NoColorSpace;          // ★ 遮罩是**数据**不是颜色 —— 别做 sRGB→线性
+  t.wrapS = t.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.generateMipmaps = true;
+  FK_WATER_TEXS.push(t);
+  return t;
+}
+
+/* ── 片元着色器：`Fx Dissolve` 的【生效子集】──────────────────────────────
+   ★ 写成 `ShaderMaterial` + `gl_FragColor`（three r160 的 ShaderMaterial 兼容写法）。
+   ★ 结尾那句 `#include <colorspace_fragment>` **必须留** —— 它和 three 内置材质
+     走同一条颜色管线：本项目渲染到 EffectComposer 的 render target 时
+     `outputColorSpace = LinearSRGBColorSpace` ⇒ 该 chunk 是恒等操作（真正的
+     线性→sRGB 由管线末尾的 OutputPass 完成）。留着是为了"渲染路径变了也不跑偏"。 */
+const FK_WATER_VERT = /* glsl */`
+varying vec2 vUv;
+void main(){
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const FK_WATER_FRAG = /* glsl */`
+uniform sampler2D uMainTex;
+uniform sampler2D uMask01;
+uniform sampler2D uMask02;
+uniform vec4  uMainColor;
+uniform vec2  uUVTween;      // 主贴图 UV 偏移（滚动量）
+uniform vec4  uMainTexST;    // (tiling.x, tiling.y, offset.x, offset.y)
+uniform vec2  uDissolveOff02; // ★ 第二层 dissolve 的相位偏移（"翻涌"的来源）
+uniform vec2  uAmount;       // (Amount_01, Amount_02)
+uniform vec2  uBorder;       // (BorderWidth_01, BorderWidth_02)
+uniform float uTime;
+uniform float uRipple;       // ★ 2026-10-20：1 = 荡漾（不滚动，正弦波纹扰动 UV）
+uniform float uDistortStrength; // ★ 2026-10-21：_DistortStrength（涟漪法线扰动幅度）
+uniform float uDistortSpeedX;   // ★ 2026-10-21：_DistortSpeedX（涟漪相位速度）
+uniform float uRefIntensity;    // ★ 2026-10-21：_RefIntenisty（UV 偏移系数）
+uniform sampler2D uCaustics; // ★ 2026-10-20：焦散图（波光粼粼）
+uniform float uCausticsOn;   // 1 = 有焦散图（只有水面 shader 的主题才有）
+varying vec2 vUv;
+
+void main(){
+  // ① 主贴图：tiling/offset（Unity 的 _MainTex_ST 语义）——
+  //    ★★★ 2026-10-20 分两种模式（用户实测：「荡漾的水不是滚动效果」）：
+  //      · uRipple=0（阿米娅喷泉等已验收的水）：保持原来的 UV 滚动；
+  //      · uRipple=1（pepesroom 的水面）：**不整体滚动**，用两层正弦波纹缓慢扰动 UV，
+  //        水面看起来是"在轻轻起伏/荡漾"，而不是一张图从一边滑到另一边。
+  vec2 uv = vUv * uMainTexST.xy + uMainTexST.zw;
+  if (uRipple > 0.5) {
+    /* ★★★ 2026-10-21 真值（Furniture_Water 像素着色器 DXBC 反汇编，water_stage1.asm）：
+       顶点把相位传进 v0.zw：φ = (uv.x * 40) * _MainTex_ST.x + t * _DistortSpeedX
+       像素侧：
+         N.x += sin(φ)·cos(φ) · _DistortStrength      // = 0.5·sin(2φ)·DS
+         N.z += sin(φ) · _DistortStrength · 0.4
+         uv  += (N.x, N.z) · _RefIntenisty            // 0.55
+       ⇒ 是**法线级**的原地小波，不是整图滑动；之前那版（sin(vUv.y*9+…)·0.006）是猜的。 */
+    float phi = (vUv.x * 40.0) * uMainTexST.x + uMainTexST.z + uTime * uDistortSpeedX;
+    float sp = sin(phi), cp = cos(phi);
+    float nx = sp * cp * uDistortStrength;
+    float nz = sp * uDistortStrength * 0.4;
+    uv += vec2(nx, nz) * uRefIntensity;
+  } else {
+    uv += uUVTween * uTime;
+  }
+  vec4 c  = texture2D(uMainTex, uv) * uMainColor;
+
+  /* ★★ 2026-10-20 深夜加（用户实测「少了一层**波光粼粼**的纹理」）：
+     游戏水面 shader 有 _Caustics_Tex（焦散光斑），它是一层**加色**的光纹，
+     本身就是"水在动"的主要观感来源。这里用两层错相位、缓慢漂移的采样叠加：
+       · 一层正常速度、一层反向慢速 ⇒ 光斑互相错开，形成波光粼粼的流动感；
+       · 只在 ripple 模式（pepesroom 水面）启用，阿米娅的喷泉不受影响。 */
+  if (uRipple > 0.5 && uCausticsOn > 0.5) {
+    float ca = texture2D(uCaustics, vUv * 2.3 + vec2(uTime * 0.045, -uTime * 0.065)).r
+             + texture2D(uCaustics, vUv * 1.6 - vec2(uTime * 0.032, uTime * 0.048)).r;
+    ca *= 0.5;
+    c.rgb += vec3(0.55, 0.85, 1.0) * ca * 0.55;
+    c.a = min(1.0, c.a + ca * 0.20);
+  }
+
+  // ② 主 dissolve（mask_12）：UV 不滚动（实测 _UVTween.zw 全 0）
+  float d1 = texture2D(uMask01, vUv).r;
+  float a1 = smoothstep(uAmount.x, uAmount.x + uBorder.x, d1);
+
+  // ③ 第二层 dissolve（TX_mask_02）：**只错一个静态 offset**，UV 本身不滚
+  //    ★★ 5 件共用同一张遮罩、offset 各不相同 ⇒ 相位错开 ⇒ 这就是"在流动"的真正来源
+  float d2 = texture2D(uMask02, vUv + uDissolveOff02).r;
+  float a2 = smoothstep(uAmount.y, uAmount.y + uBorder.y, d2);
+
+  // ④ 合成。alpha = 贴图α × 层1 × 层2（公式来自参数语义 + 现场对照，见待办文档 §八·8.4）
+  gl_FragColor = vec4(c.rgb, c.a * a1 * a2);
+  #include <colorspace_fragment>
+}`;
+
+/** 用 GLB 材质 extras 里的实测参数建水材质
+ *  ★ 拿不到 `fk_water`（其它主题的水件）就返回 null ⇒ 退回原来的静态水材质，不会崩。 */
+function buildWaterMaterial(src){
+  const fk = (src.userData && src.userData.fk_water) || null;
+  if (!fk || !src.map) return null;        // 没有主贴图 = 没意义，退回静态
+  const map = src.map.clone();
+  /* ★★★ 关键：把 UV 变换【冻结成默认】(repeat=1/offset=0)。
+     因为 GLTFLoader 会把 glTF 的 `KHR_texture_transform` 写进 map.repeat/offset，
+     而 `ShaderMaterial` **不认**这两个属性 —— 而我们的 tiling/offset 是自己在
+     GLSL 里用 `uMainTexST` 算的。不重置就会变成"GLSL 里乘了一次 + three 完全没乘"，
+     结果只是"少乘一次"（不会重复乘），但仍与 `_MainTex_ST` 的实测值不符。 */
+  map.repeat.set(1, 1);
+  map.offset.set(0, 0);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;   // 游戏 _MainTex 是 Repeat（UV 要滚出 [0,1]）
+  map.minFilter = THREE.LinearMipmapLinearFilter; // 水面要平滑，别用 NearestFilter
+  map.magFilter = THREE.LinearFilter;
+  map.generateMipmaps = true;
+  map.colorSpace = THREE.SRGBColorSpace;          // ★ baseColorTexture 是颜色 → GPU 自动 sRGB→线性
+  FK_WATER_TEXS.push(map);
+
+  const m01 = fkLoadTex(fk.mask01Uri, false);
+  const m02 = fkLoadTex(fk.mask02Uri, false);
+  // ★ 2026-10-20：焦散波光层（只有 pepesroom 这类"水面 shader"才有 causticsUri）
+  const caus = fk.causticsUri ? fkLoadTex(fk.causticsUri, true) : null;
+
+  const st  = fk.mainTexST || [1, 1, 0, 0];
+  const col = fk.mainColor || [1, 1, 1, 1];
+  const tw  = fk.uvTween   || [0, 0];
+  const off = fk.dissolveOffset02 || [0, 0];
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uMainTex:      { value: map },
+      uMask01:       { value: m01 || fkWhiteTex() },
+      uMask02:       { value: m02 || fkWhiteTex() },
+      uMainColor:    { value: new THREE.Vector4(col[0], col[1], col[2], col[3]) },
+      // ★ 速度倍率只乘 uUVTween（时间本身不动 —— 这样改倍率不需要重置 uTime）
+      uUVTween:      { value: new THREE.Vector2(tw[0] * FK_WATER_SPEED, tw[1] * FK_WATER_SPEED) },
+      uMainTexST:    { value: new THREE.Vector4(st[0], st[1], st[2], st[3]) },
+      uDissolveOff02:{ value: new THREE.Vector2(off[0], off[1]) },
+      uAmount:       { value: new THREE.Vector2(fk.amount01 != null ? fk.amount01 : 0.05,
+                                                fk.amount02 != null ? fk.amount02 : 0.05) },
+      uBorder:       { value: new THREE.Vector2(fk.border01 != null ? fk.border01 : 0.153,
+                                                fk.border02 != null ? fk.border02 : 0.5) },
+      uTime:         { value: 0 },
+      // ★ 2026-10-20：1 = 荡漾模式（pepesroom 水面）；0 = 滚动模式（阿米娅喷泉等）
+      uRipple:       { value: fk.ripple ? 1.0 : 0.0 },
+      // ★ 2026-10-21：Furniture_Water 真值（DXBC 反汇编；缺省 = TX_water_02 实测值）
+      uDistortStrength: { value: fk.distortStrength != null ? fk.distortStrength : 0.01 },
+      uDistortSpeedX:   { value: fk.distortSpeedX != null ? fk.distortSpeedX : -2.5 },
+      uRefIntensity:    { value: fk.refIntensity != null ? fk.refIntensity : 0.55 },
+      uCaustics:     { value: caus || fkWhiteTex() },
+      uCausticsOn:   { value: caus ? 1.0 : 0.0 },
+    },
+    vertexShader:   FK_WATER_VERT,
+    fragmentShader: FK_WATER_FRAG,
+    transparent: true,
+    /* ★ 游戏实测 `_ZWrite=1` ⇒ 写深度；`_DstBlend=10` + `_SrcBlend=5` = 标准 alpha 混合
+       （three 的 NormalBlending 正好是 SrcAlpha / OneMinusSrcAlpha，不用改）。
+       ★ `_ZTest=4` = LEqual，等价深度测试（水在水盆里要能被盆沿挡住）。
+       ★ 不剔除反面：水是薄壳，正面/背面都得画（导出器已写 doubleSided）。 */
+    depthWrite: true,
+    depthTest: true,
+    side: THREE.DoubleSide,
+    blending: THREE.NormalBlending,
+    fog: false,
+  });
+  // ★ 名字带 FKwater，方便在控制台/调试面板一眼认出（也便于 applyUnlitGain 跳过它）
+  mat.name = 'FKwater_' + (++_fkWaterSeq) + '_' + (src.name || 'mat');
+  // ★ 每件都记下自己的参数 → 调速度时不用重导 GLB
+  mat.userData.fk_water = true;
+  mat.userData.fk_water_uvTween = [tw[0], tw[1]];
+  mat.userData.fk_water_amount  = [fk.amount01, fk.amount02];
+  mat.userData.fk_water_border  = [fk.border01, fk.border02];
+  mat.userData.fk_water_off02   = [off[0], off[1]];
+  mat.userData.fk_water_mainColor = [col[0], col[1], col[2], col[3]];
+  mat.userData.fk_water_hasMask = [!!m01, !!m02];
+  FK_WATER_MATS.push(mat);
+  return mat;
+}
+
+/** 每帧推进水的时间（由 tick() 调用；dt 是秒）—— 不写 `uTime = 绝对值` 是为了
+ *  将来做"暂停水流"时能停住而不跳变。 */
+function fkWaterAdvance(dt){
+  if (!FK_WATER_MATS.length) return;
+  FK_WATER_UPTIME += dt;
+  for (const m of FK_WATER_MATS) m.uniforms.uTime.value = FK_WATER_UPTIME;
+}
+
+/** 控制台自报（材质都建完之后调一次） */
+function fkWaterReport(){
+  if (!FK_WATER_MATS.length) return;
+  console.log('%c★ 水（喷泉）：%d 个 ShaderMaterial ｜ 速度倍率 ×%s ｜ 两层 dissolve：%s',
+    'color:#7fd8ff', FK_WATER_MATS.length, FK_WATER_SPEED.toFixed(2),
+    (FK_WATER_MATS[0].userData.fk_water_hasMask || []).every(Boolean) ? '就绪' : '★ 有遮罩缺失');
+  for (const m of FK_WATER_MATS){
+    const u = m.userData;
+    console.log('   %s  UVTween=%s  MainColor=%s  Amount=%s  Border=%s  Off02=%s',
+      m.name, JSON.stringify(u.fk_water_uvTween), JSON.stringify(u.fk_water_mainColor),
+      JSON.stringify(u.fk_water_amount), JSON.stringify(u.fk_water_border),
+      JSON.stringify(u.fk_water_off02));
+  }
+  console.log('   ★ 觉得比游戏快/慢：地址栏加 `?ws=0.5`（倍数）试出来，再固化到 ' +
+    'import_theme.py 的 WATER_PROPS');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-20：盆火（pepesroom pond_H_01/02）—— 动态紫火 ShaderMaterial
+   ───────────────────────────────────────────────────────────────────────────
+   用户实测报三条：「位置不对」/「火的材质其实也不对，应该是紫色的，但是现在黑白的」
+   /「它是有动态效果的，就像水一样」。
+
+   ★ 颜色来源（typetree 实测，不是猜的）：
+     主贴图 `TX_fire_R_00/01` 是**纯灰度噪声**（RGB 三通道完全相等）；
+     颜色来自 shader 的 `_ColorRamp` 槽 = `TX_Ramp_4.png`（128×1，紫 127,25,237 → 淡紫 231,223,246）。
+     ⇒ 网页端必须做「密度 → 色带查找」，不能把颜色烘进主贴图（那样滚动时颜色会跟着动错）。
+
+   ★ 动态来源：和水的结论一样 —— 该 AB 里 **AnimationClip = 0**，火焰靠 shader 读 `_Time`
+     自走 UV（`_Vertical=1` ⇒ 沿 V 方向）+ 噪声扰动。所以只需要一个每帧推进 `uTime` 的材质。
+
+   ★ 参数从哪来：GLB 材质的 `extras.fk_fire`（导出器 `patch_fire_extras()` 写入，
+     源头是 `import_theme.py` 的 `FIRE_PROPS` = typetree 实测值）。
+     ★ 色带 PNG 以 data URI 内嵌在 extras 里（GLB 自包含，同水遮罩的做法）。
+   ═══════════════════════════════════════════════════════════════════════════ */
+const FK_FIRE_MATS = [];        // 建好的火材质（每帧推进 uTime 用）
+const FK_FIRE_TEXS = [];        // 火用到的贴图（收进 allTextures 一起管 mipmap/aniso）
+let   FK_FIRE_UPTIME = 0;       // 累计"火的时间"（秒）
+
+/** 速度倍率 —— 地址栏 `?fs=1.5` 现场调（不用重导 GLB） */
+const FK_FIRE_SPEED = (() => {
+  const v = parseFloat(_Q.get('fs'));
+  return (isFinite(v) && v >= 0) ? v : 1.0;
+})();
+
+let _fkFireSeq = 0;
+
+const FK_FIRE_VERT = /* glsl */`
+varying vec2 vUv;
+void main(){
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+const FK_FIRE_FRAG = /* glsl */`
+/* ★★★ 2026-10-21 真值重写：从 [uc]shaders.ab 挖出 Furniture_Fire 的 DXBC 并反汇编
+   （见 交接-家具动态效果与Shader还原-通用解法.md / tools/_extract_shader_blob.py）。
+   ── 像素着色器逐行还原（参数名 ↔ cb 字节偏移已用 m_CommonParameters 核对）──
+     nz    = _NoiseSpeed * _Time.x        (Unity _Time.x = t/20)
+     n1    = tex(_NoiseTex , vUv*ST1.xy + ST1.zw - (0, frac(nz)))
+     n2    = tex(_NoiseTex2, vUv*ST2.xy + ST2.zw - (0, frac(nz)))
+     ramp  = smoothstep(saturate(vUv.y / _NoiseRamp.y))       // 底部 0、顶部满强度
+     mainUV= vUv - ( ramp*_NoiseIntensity2*(n2-0.5), ramp*_NoiseIntensity*n1 )
+     luma  = dot(main.rgb, (0.299,0.587,0.114))               // 主贴图 DXT1 无 alpha，
+                                                              // Unity 侧 alpha=luma，这里直接取 luma
+     uRamp = smoothstep(saturate(luma / _FireCenter))         // 色带横坐标（焰心）
+     rgb   = rampCol*_Color + uRamp*_FireBrightness*_BloomColor
+     t0    = smoothstep(saturate(luma / _AlphaIntensity))
+     t1    = smoothstep(saturate((t0*_FireIntensity - 0.1) / 0.9))
+     a     = max(t1, _BloomIntensity*(luma*_FireBrightness - t1) + t1)
+   ★ 关键：主贴图 UV 只被噪声**微扰**（不是滚动），噪声 UV 沿 V 方向按 frac 循环平移
+     —— 这就是录像里「原地轻跳、内部纹理极轻微地变」的来源。 */
+uniform sampler2D uDensity;   // _MainTex：TX_fire_R_0N（灰度火焰形状）
+uniform sampler2D uRamp;      // _ColorRamp：TX_Ramp_4
+uniform sampler2D uNoiseTex;  // _NoiseTex
+uniform sampler2D uNoiseTex2; // _NoiseTex2
+uniform float uTime;
+uniform float uSpeed;         // 全局速度倍率（?fs= 现场调）
+uniform vec4  uNoiseST;       // _NoiseTex_ST  (scale.xy, offset.zw)
+uniform vec4  uNoise2ST;      // _NoiseTex2_ST
+uniform vec2  uNoiseRamp;     // _NoiseRamp.xy（噪声强度沿 V 的渐变）
+uniform float uNoiseIntensity;   // _NoiseIntensity
+uniform float uNoiseIntensity2;  // _NoiseIntensity2
+uniform float uNoiseSpeed;       // _NoiseSpeed
+uniform float uCenter;           // _FireCenter
+uniform float uIntensity;        // _FireIntensity
+uniform float uBrightness;       // _FireBrightness
+uniform float uAlphaIntensity;   // _AlphaIntensity
+uniform float uBloomIntensity;   // _BloomIntensity
+uniform vec3  uBloomColor;       // _BloomColor
+varying vec2 vUv;
+
+float fkSmooth(float x){ x = clamp(x, 0.0, 1.0); return x * x * (3.0 - 2.0 * x); }
+// Unity 的 sRGB 贴图在 GPU 采样时自动线性化；自定义 shader 里手动做
+vec3 fkSrgbToLinear(vec3 c){
+  return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(vec3(0.04045), c));
+}
+
+void main(){
+  /* ★ 2026-10-21 方向修正（对照新录像 SnowShot_2026-10-21_21-17-19）：
+     three 的 vUv.y 是**向下**的（0 = 模型顶部，1 = 模型底部；见 _fk_setup_uv.js：
+     模型 yMax 处 uv.y=0.01、yMin 处 uv.y=0.99），而 Unity 的 V 是**向上**的。
+     之前直接拿 vUv.y 当 Unity 的 V 用 ⇒
+       · rampF 变成"底部满强度" ⇒ 火根被噪声推到亮区 ⇒ 底部亮块穿出盆沿；
+       · 噪声 -frac 的流向在屏幕上变成**向下流** ⇒ 用户看到"烧反了"。
+     现在统一在 Unity 的 V 向上空间算（vUp），最后再转回 three 的采样坐标。 */
+  float vUp = 1.0 - vUv.y;
+  float t = uTime * uSpeed;
+  float nz = uNoiseSpeed * (t / 20.0);
+  float nfrac = fract(nz);
+  // 噪声 UV（V 向上空间）：与 DXBC 一致
+  vec2 nuv1 = vec2(vUv.x, vUp) * uNoiseST.xy  + uNoiseST.zw  - vec2(0.0, nfrac);
+  vec2 nuv2 = vec2(vUv.x, vUp) * uNoise2ST.xy + uNoise2ST.zw - vec2(0.0, nfrac);
+  float n1 = texture2D(uNoiseTex,  nuv1).r;
+  float n2 = texture2D(uNoiseTex2, nuv2).r;
+  n1 = fkSrgbToLinear(vec3(n1)).r;
+  n2 = fkSrgbToLinear(vec3(n2)).r;
+
+  float rampF = fkSmooth(vUp / max(uNoiseRamp.y, 1e-4));
+  vec2 off = vec2(rampF * uNoiseIntensity2 * (n2 - 0.5),
+                  rampF * uNoiseIntensity * n1);
+  // 主贴图：Unity 的采样 UV 是 (u, vUp)，再转回 three（v = 1 - vUp）
+  vec2 mainV = vec2(vUv.x, vUp) - off;
+  vec4 main = texture2D(uDensity, vec2(mainV.x, 1.0 - mainV.y));
+  main.rgb = fkSrgbToLinear(main.rgb);
+  float luma = dot(main.rgb, vec3(0.299, 0.587, 0.114));
+
+  float rampX = fkSmooth(luma / max(uCenter, 1e-4));
+  vec3 rampCol = fkSrgbToLinear(texture2D(uRamp, vec2(rampX, 0.5)).rgb);
+
+  float t0 = fkSmooth(luma / max(uAlphaIntensity, 1e-4));
+  float t1 = fkSmooth((t0 * uIntensity - 0.1) / 0.9);
+  float a  = max(t1, uBloomIntensity * (luma * uBrightness - t1) + t1);
+
+  vec3 col = rampCol + rampX * uBrightness * uBloomColor;
+  gl_FragColor = vec4(col, a);
+  #include <colorspace_fragment>
+}`;
+
+/** 火专用贴图加载：优先 extras 内嵌 data URI，否则回落到 assets/fk_fire/ 的**游戏原图**
+ *  （噪声 TX_Noise_4 / TX_Noise_2 是 1024×1024 真值图，压成 512 WebP 约 15 KB） */
+const FK_FIRE_ASSET_BASE = 'assets/fk_fire/';
+function fkVec4(v, a, b, c, d){
+  return (Array.isArray(v) && v.length >= 2)
+    ? [Number(v[0]) || a, Number(v[1]) || b, Number(v[2]) || 0, Number(v[3]) || 0]
+    : [a, b, c, d];
+}
+function fkLoadFireTex(uri, fallbackName, repeat){
+  let t = null;
+  if (uri && typeof uri === 'string' && uri.indexOf('data:') === 0){
+    t = new THREE.TextureLoader().load(uri);
+  } else if (fallbackName){
+    t = new THREE.TextureLoader().load(FK_FIRE_ASSET_BASE + fallbackName);
+  }
+  if (!t) return null;
+  // ★ 手动做 sRGB→线性（见 frag 里的 fkSrgbToLinear）——Unity 的 sRGB 贴图采样即线性
+  t.colorSpace = THREE.NoColorSpace;
+  t.wrapS = t.wrapT = repeat ? THREE.RepeatWrapping : THREE.ClampToEdgeWrapping;
+  t.minFilter = THREE.LinearMipmapLinearFilter;
+  t.magFilter = THREE.LinearFilter;
+  t.generateMipmaps = true;
+  FK_FIRE_TEXS.push(t);
+  return t;
+}
+
+/** 用 GLB 材质 extras 里的实测参数建火材质
+ *  ★ 拿不到 `fk_fire` / 缺密度图 → 返回 null ⇒ 退回原来的静态材质，不会崩。 */
+function buildFireMaterial(src){
+  const fk = (src.userData && src.userData.fk_fire) || null;
+  if (!fk || !src.map) return null;
+  const map = src.map.clone();
+  map.repeat.set(1, 1);
+  map.offset.set(0, 0);
+  map.wrapS = map.wrapT = THREE.RepeatWrapping;   // 噪声扰动会让 UV 越界
+  map.minFilter = THREE.LinearMipmapLinearFilter;
+  map.magFilter = THREE.LinearFilter;
+  map.generateMipmaps = true;
+  map.colorSpace = THREE.NoColorSpace;   // 手动 sRGB→线性，和真值 shader 对齐
+  FK_FIRE_TEXS.push(map);
+
+  const ramp   = fkLoadFireTex(fk.rampUri, 'TX_Ramp_4.webp', false);
+  const noiseA = fkLoadFireTex(fk.noiseTexUri,  'TX_Noise_4.webp', true);
+  const noiseB = fkLoadFireTex(fk.noiseTex2Uri, 'TX_Noise_2.webp', true);
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uDensity:    { value: map },
+      uRamp:       { value: ramp || fkWhiteTex() },
+      uNoiseTex:   { value: noiseA || fkWhiteTex() },
+      uNoiseTex2:  { value: noiseB || fkWhiteTex() },
+      uTime:       { value: 0 },
+      uSpeed:      { value: FK_FIRE_SPEED },
+      uNoiseST:    { value: new THREE.Vector4(...fkVec4(fk.noiseST,  0.35, 0.20, 0.0, 0.0)) },
+      uNoise2ST:   { value: new THREE.Vector4(...fkVec4(fk.noise2ST, 0.80, 0.30, 0.0, 0.0)) },
+      uNoiseRamp:  { value: new THREE.Vector2(fk.noiseRampX != null ? fk.noiseRampX : 1.0,
+                                             fk.noiseRampY != null ? fk.noiseRampY : 1.0) },
+      uNoiseIntensity:  { value: fk.noise1 != null ? fk.noise1 : 0.35 },   // _NoiseIntensity
+      uNoiseIntensity2: { value: fk.noise2 != null ? fk.noise2 : 0.31 },   // _NoiseIntensity2
+      uNoiseSpeed:      { value: fk.noiseSpeed != null ? fk.noiseSpeed : 3.5 },
+      uCenter:          { value: fk.center != null ? fk.center : 1.9 },    // _FireCenter
+      uIntensity:       { value: fk.intensity != null ? fk.intensity : 2.0 },
+      uBrightness:      { value: fk.brightness != null ? fk.brightness : 1.5 },
+      uAlphaIntensity:  { value: fk.alphaIntensity != null ? fk.alphaIntensity : 1.0 },
+      uBloomIntensity:  { value: fk.bloomIntensity != null ? fk.bloomIntensity : 1.0 },
+      uBloomColor:      { value: new THREE.Color(
+                            fk.bloomColorR != null ? fk.bloomColorR : 0.9118,
+                            fk.bloomColorG != null ? fk.bloomColorG : 0.9092,
+                            fk.bloomColorB != null ? fk.bloomColorB : 0.8179) },
+    },
+    vertexShader:   FK_FIRE_VERT,
+    fragmentShader: FK_FIRE_FRAG,
+    transparent: true,
+    depthWrite: false,          // 火焰是薄片：不写深度，避免挡住后面的火/盆
+    depthTest: true,
+    side: THREE.DoubleSide,
+    blending: THREE.NormalBlending,
+    fog: false,
+  });
+  mat.name = 'FKfire_' + (++_fkFireSeq) + '_' + (src.name || 'mat');
+  mat.userData.fk_fire = true;
+  mat.userData.fk_fire_center = fk.center;
+  mat.userData.fk_fire_ramp = !!ramp;
+  FK_FIRE_MATS.push(mat);
+  return mat;
+}
+
+/** 每帧推进火的时间（由 tick() 调用） */
+function fkFireAdvance(dt){
+  if (!FK_FIRE_MATS.length) return;
+  FK_FIRE_UPTIME += dt;
+  for (const m of FK_FIRE_MATS) m.uniforms.uTime.value = FK_FIRE_UPTIME;
+}
+
+/** 控制台自报（材质都建完之后调一次） */
+function fkFireReport(){
+  if (!FK_FIRE_MATS.length) return;
+  console.log('%c★ 盆火：%d 个 ShaderMaterial ｜ 速度倍率 ×%s ｜ 色带 %s',
+    'color:#c99bff', FK_FIRE_MATS.length, FK_FIRE_SPEED.toFixed(2),
+    FK_FIRE_MATS.every(m => m.userData.fk_fire_ramp) ? '就绪' : '★ 有色带缺失');
+  for (const m of FK_FIRE_MATS){
+    const u = m.uniforms;
+    console.log('   %s  center=%s intensity=%s brightness=%s',
+      m.name, u.uCenter.value, u.uIntensity.value, u.uBrightness.value);
+  }
+  console.log('   ★ 觉得比游戏快/慢：地址栏加 `?fs=0.6`（倍数）试出来，再固化到 walk.html 的 uSpeed');
+}
+
 /* ★★★ 性能关键：把 glTF 的 PBR 材质换成 Lambert
    glTF 默认给 MeshStandardMaterial（PBR：Cook-Torrance BRDF + 能量守恒 + IBL）
    这套素材是【平涂风格】，完全不需要 PBR
    Lambert 只算漫反射 → 每个像素省掉一大半计算量
    仍然保留：贴图、自发光贴图、透明、双面 */
 function toLambert(src){
+  /* ★★★ 2026-10-20 加：盆火 → 动态紫火 ShaderMaterial，**必须放在最前面**
+     （比水还先判）。理由同水：火焰材质带 `KHR_materials_unlit`，GLTFLoader 会建
+     MeshBasicMaterial，下面 unlit 直通分支会把它当普通静态贴图放行 ⇒ 火不动、且是灰的。
+     ★ 判据用 `extras.fk_fire`（导出器写的），不是材质名。 */
+  if (src && src.userData && src.userData.fk_fire){
+    const fm = buildFireMaterial(src);
+    if (fm) return fm;
+    console.warn('★ 火材质 %s 带 fk_fire 但没建成 ShaderMaterial（可能缺密度图）→ 退回静态',
+      src.name);
+  }
+  /* ★★★ 2026-10-14 加：水体（喷泉）→ 建 ShaderMaterial，**且必须放在最前面**。
+     为什么最先判：水材质进 GLB 时带了 `KHR_materials_unlit` ⇒ GLTFLoader 会把它建成
+     MeshBasicMaterial ⇒ 下面那条"unlit 直通"分支会把它当普通 unlit 材质放行，
+     于是水面就只是一张静止的半透明贴图（用户要的是"流动"）。
+     ★ 判据用 `extras.fk_water`（导出器写的），**不是材质名** ——
+       名字会随命名规则漂移，extras 是数据契约。
+     ★ 建不出来（其它主题的水件没有 fk_water）→ buildWaterMaterial 返回 null，
+       照旧往下走原来的静态水路径，观感与改动前一致。 */
+  if (src && src.userData && src.userData.fk_water){
+    const wm = buildWaterMaterial(src);
+    if (wm) return wm;
+    console.warn('★ 水材质 %s 带 fk_water 但没建成 ShaderMaterial（可能缺主贴图）→ 退回静态水',
+      src.name);
+  }
   // ★★★ 2026-10-11 加：unlit 房间（会客室）直通
   //   游戏里这些房间【根本不打光】（实测：墙/地板 = Torappu/Unlit/Texture、
   //   家具 = Torappu/Unlit/TextureOutline*，主 pass lighting:false）——
@@ -2432,6 +3376,14 @@ const ROOM_TITLE = {
      **单个字符**，所以港都会客室的标题一直显示成 "P" + "O"（= "PORT LOUNGE" 的前两个字母）。
      统一成数组，和其它房间一致。 */
   clmsRoom:     ['PORT LOUNGE',         'FIRST PERSON'],
+  recycle:      ['RECYCLE STATION',     'FUNCTION'],
+  manufacture:  ['MANUFACTURE STATION', 'FUNCTION'],
+  hire:         ['OFFICE',              'FUNCTION'],
+  workshop:     ['WORKSHOP',            'FUNCTION'],
+  training:     ['TRAINING ROOM',       'FUNCTION'],
+  control:      ['CONTROL CENTER',      'FUNCTION'],
+  trading:      ['TRADING POST',        'FUNCTION'],
+  power:        ['POWER PLANT',         'FUNCTION'],
   messengerCottage: ['MESSENGER COTTAGE', 'FIRST PERSON'],
   closureRoom:  ['CLOSURE ROOM',        'FIRST PERSON'],
   rabbitCinema: ['RABBIT CINEMA',       'FIRST PERSON'],
@@ -2439,6 +3391,135 @@ const ROOM_TITLE = {
   rhodesKitchen:['RHODES KITCHEN',      'FIRST PERSON'],
   YuKitchen:    ['YU KITCHEN',          'FIRST PERSON'],
   basicRoom:    ['RECEPTION ROOM',      'FIRST PERSON'],
+  s2_02:  ['S2 02',              'FIRST PERSON'],
+  s2_01:  ['S2 01',              'FIRST PERSON'],
+  s1_02:  ['S1 02',              'FIRST PERSON'],
+  s1_01:  ['S1 01',              'FIRST PERSON'],
+  safetyZone:  ['SAFETY ZONE',   'FIRST PERSON'],
+  odenShop:  ['ODEN SHOP',       'FIRST PERSON'],
+  westCoast:  ['WEST COAST',     'FIRST PERSON'],
+  pepesroom:  ['PEPESROOM',      'FIRST PERSON'],
+  yanPrivateSchool:  ['YAN PRIVATE SCHOOL', 'FIRST PERSON'],
+  wooden:  ['WOODEN',            'FIRST PERSON'],
+  winterHouse:  ['WINTER HOUSE', 'FIRST PERSON'],
+  warehouse:  ['WAREHOUSE',      'FIRST PERSON'],
+  volcaRoom:  ['VOLCA ROOM',     'FIRST PERSON'],
+  villagemanor:  ['VILLAGEMANOR', 'FIRST PERSON'],
+  village:  ['VILLAGE',          'FIRST PERSON'],
+  videoStudio:  ['VIDEO STUDIO', 'FIRST PERSON'],
+  vcWarRoom:  ['VC WAR ROOM',    'FIRST PERSON'],
+  ursusRoom:  ['URSUS ROOM',     'FIRST PERSON'],
+  trainStation:  ['TRAIN STATION', 'FIRST PERSON'],
+  tradeLounge:  ['TRADE LOUNGE', 'FIRST PERSON'],
+  teaHouse:  ['TEA HOUSE',       'FIRST PERSON'],
+  teaCanteen:  ['TEA CANTEEN',   'FIRST PERSON'],
+  tarahouse:  ['TARAHOUSE',      'FIRST PERSON'],
+  tailorShop:  ['TAILOR SHOP',   'FIRST PERSON'],
+  stage:  ['STAGE',              'FIRST PERSON'],
+  springfeast:  ['SPRINGFEAST',  'FIRST PERSON'],
+  specimen:  ['SPECIMEN',        'FIRST PERSON'],
+  snowVenue:  ['SNOW VENUE',     'FIRST PERSON'],
+  skadisp:  ['SKADISP',          'FIRST PERSON'],
+  shuttle:  ['SHUTTLE',          'FIRST PERSON'],
+  shipRoom:  ['SHIP ROOM',       'FIRST PERSON'],
+  samiRoom:  ['SAMI ROOM',       'FIRST PERSON'],
+  safetyZone:  ['SAFETY ZONE',   'FIRST PERSON'],
+  rococo:  ['ROCOCO',            'FIRST PERSON'],
+  rhineLab:  ['RHINE LAB',       'FIRST PERSON'],
+  restaurant:  ['RESTAURANT',    'FIRST PERSON'],
+  receptionRoom:  ['RECEPTION ROOM', 'FIRST PERSON'],
+  reception:  ['RECEPTION',      'FIRST PERSON'],
+  rabbitTown:  ['RABBIT TOWN',   'FIRST PERSON'],
+  prison:  ['PRISON',            'FIRST PERSON'],
+  postOffice:  ['POST OFFICE',   'FIRST PERSON'],
+  pizzeria:  ['PIZZERIA',        'FIRST PERSON'],
+  pizza:  ['PIZZA',              'FIRST PERSON'],
+  photoStudio:  ['PHOTO STUDIO', 'FIRST PERSON'],
+  perfumer:  ['PERFUMER',        'FIRST PERSON'],
+  pepesroom:  ['PEPESROOM',      'FIRST PERSON'],
+  penguin:  ['PENGUIN',          'FIRST PERSON'],
+  outdoor:  ['OUTDOOR',          'FIRST PERSON'],
+  office:  ['OFFICE',            'FIRST PERSON'],
+  odenShop:  ['ODEN SHOP',       'FIRST PERSON'],
+  observation:  ['OBSERVATION',  'FIRST PERSON'],
+  nightView:  ['NIGHT VIEW',     'FIRST PERSON'],
+  niansroom:  ['NIANSROOM',      'FIRST PERSON'],
+  musicalStore:  ['MUSICAL STORE', 'FIRST PERSON'],
+  msVillage:  ['MS VILLAGE',     'FIRST PERSON'],
+  molKitchen:  ['MOL KITCHEN',   'FIRST PERSON'],
+  mis:  ['MIS',                  'FIRST PERSON'],
+  minosMed:  ['MINOS MED',       'FIRST PERSON'],
+  mindsanctum:  ['MINDSANCTUM',  'FIRST PERSON'],
+  midAutumn:  ['MID AUTUMN',     'FIRST PERSON'],
+  martialClub:  ['MARTIAL CLUB', 'FIRST PERSON'],
+  magicAcademy:  ['MAGIC ACADEMY', 'FIRST PERSON'],
+  lightFood:  ['LIGHT FOOD',     'FIRST PERSON'],
+  lightArt:  ['LIGHT ART',       'FIRST PERSON'],
+  laundry:  ['LAUNDRY',          'FIRST PERSON'],
+  knights:  ['KNIGHTS',          'FIRST PERSON'],
+  kitchen:  ['KITCHEN',          'FIRST PERSON'],
+  kazimierz:  ['KAZIMIERZ',      'FIRST PERSON'],
+  kaltsroom:  ['KALTSROOM',      'FIRST PERSON'],
+  inkArt:  ['INK ART',           'FIRST PERSON'],
+  idealCity:  ['IDEAL CITY',     'FIRST PERSON'],
+  icu:  ['ICU',                  'FIRST PERSON'],
+  hodrerStudy:  ['HODRER STUDY', 'FIRST PERSON'],
+  higashiYard:  ['HIGASHI YARD', 'FIRST PERSON'],
+  gunworkshop:  ['GUNWORKSHOP',  'FIRST PERSON'],
+  guitar:  ['GUITAR',            'FIRST PERSON'],
+  goldBoat:  ['GOLD BOAT',       'FIRST PERSON'],
+  gardenFantasy:  ['GARDEN FANTASY', 'FIRST PERSON'],
+  gangster:  ['GANGSTER',        'FIRST PERSON'],
+  fNearl:  ['F NEARL',           'FIRST PERSON'],
+  eliteLounge:  ['ELITE LOUNGE', 'FIRST PERSON'],
+  elite:  ['ELITE',              'FIRST PERSON'],
+  eastern:  ['EASTERN',          'FIRST PERSON'],
+  durin:  ['DURIN',              'FIRST PERSON'],
+  dreamCastle:  ['DREAM CASTLE', 'FIRST PERSON'],
+  dormW:  ['DORM W',             'FIRST PERSON'],
+  darkForest:  ['DARK FOREST',   'FIRST PERSON'],
+  cultureroom:  ['CULTUREROOM',  'FIRST PERSON'],
+  court:  ['COURT',              'FIRST PERSON'],
+  countryside:  ['COUNTRYSIDE',  'FIRST PERSON'],
+  concertHall:  ['CONCERT HALL', 'FIRST PERSON'],
+  community:  ['COMMUNITY',      'FIRST PERSON'],
+  college:  ['COLLEGE',          'FIRST PERSON'],
+  coastCottage:  ['COAST COTTAGE', 'FIRST PERSON'],
+  cloudRestaurant:  ['CLOUD RESTAURANT', 'FIRST PERSON'],
+  citizengarden:  ['CITIZENGARDEN', 'FIRST PERSON'],
+  castle:  ['CASTLE',            'FIRST PERSON'],
+  carnival:  ['CARNIVAL',        'FIRST PERSON'],
+  camp:  ['CAMP',                'FIRST PERSON'],
+  cafe:  ['CAFE',                'FIRST PERSON'],
+  boxing:  ['BOXING',            'FIRST PERSON'],
+  bookshop:  ['BOOKSHOP',        'FIRST PERSON'],
+  bolivar:  ['BOLIVAR',          'FIRST PERSON'],
+  beerhouse:  ['BEERHOUSE',      'FIRST PERSON'],
+  beach:  ['BEACH',              'FIRST PERSON'],
+  bauhaus:  ['BAUHAUS',          'FIRST PERSON'],
+  artmuseum:  ['ARTMUSEUM',      'FIRST PERSON'],
+  artdeco:  ['ARTDECO',          'FIRST PERSON'],
+  arcadeHall:  ['ARCADE HALL',   'FIRST PERSON'],
+  aphrissaRoom:  ['APHRISSA ROOM', 'FIRST PERSON'],
+  amuselounge:  ['AMUSELOUNGE',  'FIRST PERSON'],
+  activity:  ['ACTIVITY',        'FIRST PERSON'],
+  abyssal:  ['ABYSSAL',          'FIRST PERSON'],
+  TianshiMansion:  ['TIANSHI MANSION', 'FIRST PERSON'],
+  TempleFair:  ['TEMPLE FAIR',   'FIRST PERSON'],
+  ScarMarket:  ['SCAR MARKET',   'FIRST PERSON'],
+  SargonFair:  ['SARGON FAIR',   'FIRST PERSON'],
+  RhodesRabbit:  ['RHODES RABBIT', 'FIRST PERSON'],
+  R6:  ['R6',                    'FIRST PERSON'],
+  NHL:  ['NHL',                  'FIRST PERSON'],
+  MemoryCloister:  ['MEMORY CLOISTER', 'FIRST PERSON'],
+  LAbbey:  ['LABBEY',            'FIRST PERSON'],
+  KFC:  ['KFC',                  'FIRST PERSON'],
+  HunterInstitute:  ['HUNTER INSTITUTE', 'FIRST PERSON'],
+  BSsafehouse:  ['BSSAFEHOUSE',  'FIRST PERSON'],
+  Azuredream:  ['AZUREDREAM',    'FIRST PERSON'],
+  Airship:  ['AIRSHIP',          'FIRST PERSON'],
+  spirit:  ['SPIRIT',            'FIRST PERSON'],
+  cabin:  ['CABIN',              'FIRST PERSON'],
   velvet:  ['VELVET',            'FIRST PERSON'],
   taiko:  ['TAIKO',              'FIRST PERSON'],
   amiya:  ['AMIYA',              'FIRST PERSON'],
@@ -2612,7 +3693,11 @@ new GLTFLoader().load(GLB_URL, gltf => {
     if (maxX - minX < 0.02 || maxZ - minZ < 0.02) { skipped.push(o.name + '(内缩后太小)'); return; }
 
     boxes.push({ min:{ x:minX, z:minZ }, max:{ x:maxX, z:maxZ },
-                 y:[b.min.y, b.max.y], name:o.name });
+                 y:[b.min.y, b.max.y], name:o.name,
+                 /* ★ 2026-10-23：留一个 mesh 引用 —— 调试可视化要靠它把
+                    「准星命中的那件家具」和「它的碰撞盒」对上（`userData.fkFurni` 是后打的）。
+                    只读用途，别拿它改场景。 */
+                 mesh: o });
   });
   scene.add(root);
   loaded = true;
@@ -2626,6 +3711,15 @@ new GLTFLoader().load(GLB_URL, gltf => {
   //   （applyRig 原来在 L885 就跑过一次，那时点光/自发光还没加载）
   collectEmissiveMats();
   collectUnlitMats();          // ★ 2026-10-12：unlit 材质（含整体亮度）—— 材质在 toLambert 里就收好了
+  /* ★★★ 2026-10-14：水材质（喷泉）—— 贴图已由 buildWaterMaterial 自己设好
+     （repeat/Linear/mipmap，**故意不在这里盖成 NearestFilter**），
+     这里只做两件事：① 把水用的贴图交进 allTextures（统一管 aniso/释放）
+     ② 控制台自报一份参数，方便核对与调速度。 */
+  for (const t of FK_WATER_TEXS){ if (allTextures.indexOf(t) < 0) allTextures.push(t); }
+  fkWaterReport();
+  // ★ 2026-10-20：火材质贴图同样收进 allTextures，并自报参数
+  for (const t of FK_FIRE_TEXS){ if (allTextures.indexOf(t) < 0) allTextures.push(t); }
+  fkFireReport();
   /* ★★ 2026-10-12：A/B 原型开关（?alpha= / ?emit=）—— 材质都进 UNLIT_MATS 之后再应用。
      默认（不带参数）时这个函数直接 return，观感与之前**完全一致**。 */
   applyUnlitFixVariants();
@@ -2667,6 +3761,9 @@ new GLTFLoader().load(GLB_URL, gltf => {
   if (skipped.length) console.log('已忽略：', skipped.join(', '));
 
   findSpawn();
+  /* ★★★ 2026-10-23（用户要求）：从 ,/. 或房间面板切过来时，沿用上一间的位置/朝向。
+     ★ 定点相机模式（?cam=）优先，不去覆盖它。 */
+  if (!CAM_OVERRIDE) applyKeptPose();
 
   // ★★ 从走廊进来的【且不是第一次】：不弹开始页，直接进游戏
   //    ★ 2026-10-11 修正两处（原来这里是"每次都跳过"，把提示页彻底干掉了）：
@@ -2707,6 +3804,10 @@ new GLTFLoader().load(GLB_URL, gltf => {
   applyQuality(qualityIdx, true);
   console.log('出生点', player.pos.x.toFixed(2), player.pos.z.toFixed(2),
               '卡住?', hitsAny(player.pos.x, player.pos.z));
+
+  /* ★★★ 2026-10-23：功能房（kind:'function'）→ 进房给「研究中」提示。
+     放在这里 = 模型载入 + 出生点算完之后，不会盖在开始页 / 加载进度条上。 */
+  showRoomNotice();
 
   // ★ 恢复上次的博士状态（他记得你）
   //   注意：?reset 参数会在这之前清掉 localStorage，所以这里读到的就是重置后的状态
@@ -2816,6 +3917,50 @@ function cycleQuality(){
   applyQuality((qualityIdx + 1) % QUALITY.length);
 }
 
+/* ═══════════════════════════════════════════════════ ★★★ 切房间时沿用站位（2026-10-23，用户要求）
+   用户原话（提示词 §3.5）：「切换时保留玩家位置/朝向不要重置（或在同尺寸房间间保留）」。
+   ★ 为什么必须用 sessionStorage：切房间是【整页跳转】（walk.html?theme=…），
+     模块里的 player 状态会全部销毁，只能离场前写下来、落地后再读回来。
+   ★ 只在【同尺寸房间】之间沿用：139 套主题宿舍的房型完全相同（34×10 格），
+     而功能房尺寸各异 —— 差太多还硬塞会把人放进墙里/家具里（虽然会被推出来，但很怪）。
+   ★ 容差 0.6 m：房间边界是从 GLB 的 floor 包围盒自动识别的（见上面 FROM_HUB 那段），
+     同一房型也会有厘米级差异，别用严格相等。
+   ★ 落地位置还会被 BOUND 夹一次，并在第一帧由 resolveCollisions() 推离家具。 */
+const KEEP_POSE_KEY = 'dorm_switch_keep';
+function saveKeptPose(nextTheme){
+  try {
+    sessionStorage.setItem(KEEP_POSE_KEY, JSON.stringify({
+      to: nextTheme,
+      x: +player.pos.x.toFixed(3), z: +player.pos.z.toFixed(3),
+      yaw: +player.yaw.toFixed(4), pitch: +player.pitch.toFixed(4),
+      w: +(ROOM.x1 - ROOM.x0).toFixed(3), h: +(ROOM.z1 - ROOM.z0).toFixed(3),
+    }));
+  } catch (e) {}
+}
+function applyKeptPose(){
+  let keep = null;
+  try { keep = JSON.parse(sessionStorage.getItem(KEEP_POSE_KEY) || 'null'); } catch (e) {}
+  if (!keep) return false;
+  /* 无论用不用得上都清掉 —— 否则"手动刷新一次"会莫名其妙继承上一次的站位 */
+  try { sessionStorage.removeItem(KEEP_POSE_KEY); } catch (e) {}
+  if (keep.to && keep.to !== THEME) return false;
+  const w = ROOM.x1 - ROOM.x0, h = ROOM.z1 - ROOM.z0;
+  if (Math.abs(w - keep.w) > 0.6 || Math.abs(h - keep.h) > 0.6){
+    console.log('%c★ 房间尺寸不同（%s×%s vs %s×%s）→ 用默认出生点',
+      'color:#8298ac', w.toFixed(2), h.toFixed(2), keep.w, keep.h);
+    return false;
+  }
+  const x = Math.min(Math.max(Number(keep.x) || 0, BOUND.x0), BOUND.x1);
+  const z = Math.min(Math.max(Number(keep.z) || 0, BOUND.z0), BOUND.z1);
+  player.pos.set(x, EYE, z);
+  player.home.set(x, EYE, z);            // ★ R 键回位 = 切过来时的位置，不是房间默认出生点
+  player.yaw = Number(keep.yaw) || 0;
+  player.pitch = Number(keep.pitch) || 0;
+  console.log('%c★ 沿用上一间的站位：x=%s z=%s yaw=%s°', 'color:#5fd8e8',
+    x.toFixed(2), z.toFixed(2), Math.round(player.yaw * 180 / Math.PI));
+  return true;
+}
+
 /* 从房间前部中央开始，向四周找一个不卡住的位置 */
 function findSpawn(){
   const cands = [];
@@ -2923,6 +4068,13 @@ addEventListener('keydown', e => {
        I = 家具介绍（准星对准家具显示名字+描述）的显示开关 */
   if (e.code === 'KeyG' && !e.repeat) toggleNoclip();
   if (e.code === 'KeyI' && !e.repeat) toggleFurniInfo();
+  /* ★★★ 2026-10-23（用户要求）：`,` = 上一间 · `.` = 下一间（顺序 = 房间列表顺序）。
+     ★ 只在【已经进房】且【面板没开】时生效 —— 面板开着时这两个键留给搜索框/滚轮。
+     ★ `[` `]` 被「视线高度」占用了，所以用 , .（见提示词 §五 的备选方案）。 */
+  if ((e.code === 'Comma' || e.code === 'Period') && !e.repeat && loaded
+      && !isRoomPanelOpen() && !eggActive){
+    stepRoom(e.code === 'Period' ? 1 : -1);
+  }
   if (e.code === 'KeyM') toggleMute();          // 静音 / 取消静音
   if (e.code === 'KeyQ' && !e.repeat){
     // ★ 2026-10-13：Shift+Q = 帧率上限（和 Q 画质相邻，都属于"性能"这一类）
@@ -2949,12 +4101,30 @@ addEventListener('keydown', e => {
   }
   // ★ F 显示/隐藏性能面板
   if (e.code === 'KeyF' && !e.repeat) togglePerfPanel();
+  /* ★★★ 2026-10-23：F8 = 调试可视化（碰撞盒 + 视线射线，见文件后面 DBG 那段）。
+     ★ 为什么是 F8：`F3`（MC 里显示碰撞箱的同款）被浏览器占用，`F8` 在 Chrome/Edge
+       里没有被占用（F11 全屏 / F12 调试器）；手机端走「设置 → 调试可视化」。 */
+  if (e.code === 'F8' && !e.repeat) toggleDebugVisual();
   // ★ C 改成【切换】而不是按住（e.repeat 防止长按连发）
   if (e.code === 'KeyC' && !e.repeat) toggleCrouch();
   // ★ 视线高度自由调（不同主题门高不一样，自动定不可靠 → 交给用户，并且记住）
   if (e.code === 'BracketLeft' || e.code === 'Minus')  setEye(HEIGHT.base - 0.05);
   if (e.code === 'BracketRight' || e.code === 'Equal') setEye(HEIGHT.base + 0.05);
   if (e.code === 'Backslash') setEye(1.40, true);      // \ 键恢复默认
+  /* ★★★ 2026-10-21：V = 切换后处理参数（手调版 ↔ 真值版），运行时立即生效，不用刷新。
+     · 手调版：assets/bloom_tune.json（你按 Y 导出的强度/阈值），无暗角
+     · 真值版：assets/bloom_tune_true.json（HGMobileBloom 0.5/0.5）+ vignette 0.45/0.2
+     ★ 用 V 不用 P：P 在灯光面板里是"打印参数行"，会打架。
+     现场微调仍可用 ?bloom=0.35 / ?bth=0.62（对两套都生效）。 */
+  if (e.code === 'KeyV' && !e.repeat){
+    POSTFX_MODE = (POSTFX_MODE === 'true') ? 'tuned' : 'true';
+    _fileBloomApplied.delete(THEME);          // 让新表重新覆盖（含 URL ?bloom= 覆盖）
+    try { tuneOf(THEME); } catch (err) {}
+    applyBloomTune(THEME);
+    say(POSTFX_MODE === 'true'
+        ? '后处理：真值版（泛光 0.5/0.5 + 暗角）· 再按 V 切回手调'
+        : '后处理：手调版（bloom_tune.json，无暗角）· 再按 V 切真值');
+  }
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 
@@ -3420,6 +4590,55 @@ function hitsAny(x, z){
         z > b.min.z - RADIUS && z < b.max.z + RADIUS) return true;
   }
   return false;
+}
+
+/* ═══════════════════════════════════════════════════ ★★★ 圆-盒推挤（collision resolve，2026-10-23）
+   ─────────────────────────────────────────────────────────────────────────────
+   和 hitsAny() 的分工：
+     · hitsAny(x,z)        只回答"这个点能不能站" —— 给出生点搜索 / "卡住了吗"判定用
+     · resolveCollisions() 把已经压进家具里的玩家**推出来** —— 每帧移动后调一次
+   ★ 为什么从「分轴试探」换成「推挤」：
+     分轴法（先试 x 再试 z）斜着贴墙时会被吃掉一半速度，走起来一格一格地顿；
+     推挤法沿**最小穿透方向**把人顶出去 ⇒ 贴着墙/家具走会自然滑行。
+   ★ 算法：每个 AABB 求「圆心 → 盒子最近点」，距离 < RADIUS 就沿该方向补足穿透量；
+     圆心落在盒内（穿墙/传送那种罕见情况）→ 沿最小穿透轴弹出。最多迭代 4 次，
+     角落里同时压着两个盒子也能收敛。
+   ★ 为什么不做 OBB / 多盒分解：家具绝大多数是轴对齐盒子；L 形件的空白区会多算一点，
+     但结果是"站不进去"而不是"穿过去"，属于安全的一侧误差 —— F8 调试模式里一眼能看出来。
+   ★ 用户 2026-10-14 明确要求「不需要能走出房间」⇒ 边界始终硬夹，无视碰撞时也一样。 */
+function resolveCollisions(p){
+  if (!NOCLIP){
+    for (let iter = 0; iter < 4; iter++){
+      let touched = false;
+      for (const b of boxes){
+        const cx = Math.max(b.min.x, Math.min(p.x, b.max.x));
+        const cz = Math.max(b.min.z, Math.min(p.z, b.max.z));
+        const ox = p.x - cx, oz = p.z - cz;
+        const d2 = ox * ox + oz * oz;
+        if (d2 >= RADIUS * RADIUS) continue;              // 没重叠
+        if (d2 > 1e-10){
+          const d = Math.sqrt(d2);
+          const push = RADIUS - d + 0.002;
+          p.x += (ox / d) * push;
+          p.z += (oz / d) * push;
+        } else {
+          const l = p.x - b.min.x, r = b.max.x - p.x;
+          const bk = p.z - b.min.z, fr = b.max.z - p.z;
+          const m = Math.min(l, r, bk, fr);
+          if (m === l)       p.x = b.min.x - RADIUS - 0.002;
+          else if (m === r)  p.x = b.max.x + RADIUS + 0.002;
+          else if (m === bk) p.z = b.min.z - RADIUS - 0.002;
+          else               p.z = b.max.z + RADIUS + 0.002;
+        }
+        touched = true;
+      }
+      if (!touched) break;
+    }
+  }
+  if (p.x < BOUND.x0) p.x = BOUND.x0;
+  if (p.x > BOUND.x1) p.x = BOUND.x1;
+  if (p.z < BOUND.z0) p.z = BOUND.z0;
+  if (p.z > BOUND.z1) p.z = BOUND.z1;
 }
 
 // ═══════════════════════════════════════════════════ 信赖系统
@@ -4376,7 +5595,20 @@ function goHub(){
      走廊上有没有门是另一回事（manifest 的 inHub 字段管那个）。 */
 const ROOM_MENU = ROOMS
   .filter((r) => r.theme && r.theme !== THEME)
-  .map((r) => ({ theme: r.theme, name: r.name, tag: r.tag || '', desc: r.desc || '' }));
+  /* ★★★ 2026-10-14：`kind` 必须一起带过去！
+     面板的两段分组**只认这个字段**（见 rooms/panel.js）。
+     ★★★ 2026-10-23：`sortId` 同理 —— 面板在「家具主题」段内按它降序排
+     （游戏内上线时间，越新越前）。漏带 → 全部按 0 处理 → 顺序变成 manifest 原顺序（错的）。
+     这里是白名单式映射（不是展开 `...r`），漏一个字段就会静默出错 ——
+     ★ 所以以后 manifest 里新增"面板要用的字段"，**两个调用方
+       （这里 + hub.html 的 openHubRoomPanel）都要加**。 */
+  .map((r) => ({ theme: r.theme, name: r.name, tag: r.tag || '', desc: r.desc || '',
+                 kind: r.kind, sortId: r.sortId,
+                 /* ★★★ 2026-10-23 修：`family` / `defaultFurni` 一直漏在这儿！
+                    面板靠它俩给非默认家具的会客室加「（会客室）」后缀（用户 2026-10-14 要求：
+                    「蓝丝绒房间（会客室）」，默认那套不加）。漏传 ⇒ `isMeeting` 恒为 false ⇒
+                    后缀从来没出现过。白名单式映射的老坑，见上面注释。 */
+                 family: r.family, defaultFurni: r.defaultFurni }));
 
 const TERMINAL = {
   // ★★★ 用户 2026-10-13 拍板 = 'board'（留言板）
@@ -4607,11 +5839,41 @@ function closeRoomPanel(){ hideRoomPanel(); }
 
 /* ── 切房间：照抄 goHub() 那套"淡出 → 换页"，别自己发明 */
 let leavingRoom = false;
+
+/* ★★★ 2026-10-23（用户要求）：`,` / `.` = 上一间 / 下一间。
+   ─────────────────────────────────────────────────────────────────────────
+   顺序 = **房间列表的显示顺序**（家具主题按 sortId 降序 → 基建功能房按 manifest 顺序），
+   和「Tab 面板里看到的顺序」完全一致 —— 玩家不会觉得"跳得莫名其妙"。
+   ★ 为什么不用 `[` `]`：那两个键已经被「视线高度」占用了（见上面的 keydown）。 */
+const NAV_ORDER = (() => {
+  const list = ROOMS.filter((r) => r.theme);
+  const dorm = list.filter((r) => r.kind !== 'function')
+    .sort((a, b) => (Number(b.sortId) || 0) - (Number(a.sortId) || 0));
+  const fn = list.filter((r) => r.kind === 'function');
+  return dorm.concat(fn);
+})();
+function stepRoom(dir){
+  if (leavingRoom) return false;
+  const n = NAV_ORDER.length;
+  if (!n) return false;
+  let i = NAV_ORDER.findIndex((r) => r.theme === THEME);
+  if (i < 0) console.warn('★ 当前房间（%s）不在 manifest 里 → 从列表第一间开始', THEME);
+  const j = ((i + dir) % n + n) % n;
+  const t = NAV_ORDER[j];
+  if (!t || t.theme === THEME) return false;
+  say((dir > 0 ? '下一间：' : '上一间：') + t.name);
+  switchRoom(t.theme);
+  return true;
+}
+
 function switchRoom(theme){
   if (leavingRoom) return;
   if (!theme || theme === THEME){ closeRoomPanel(); return; }
   leavingRoom = true;
   closeRoomPanel();
+  /* ★ 2026-10-23（用户要求）：先把当前位姿存下来，落地后由 applyKeptPose() 读回
+     （整页跳转，模块状态会全丢，只能走 sessionStorage）。 */
+  saveKeptPose(theme);
   let fade = document.getElementById('fade');
   if (!fade){
     fade = document.createElement('div');
@@ -4704,10 +5966,70 @@ function toggleFurniInfo(){
 const furniInfoEl = document.getElementById('furniInfo');
 const furniNameEl = furniInfoEl ? furniInfoEl.querySelector('.n') : null;
 const furniDescEl = furniInfoEl ? furniInfoEl.querySelector('.d') : null;
+/* ★ 2026-10-23：尺寸 / 类型那一行（用户要求「补上尺寸/类型等字段」） */
+const furniMetaEl = furniInfoEl ? furniInfoEl.querySelector('.m') : null;
 /* ★ 2026-10-16：描述被截断时露出的那行提示（判据见 updateFurniInfo 里的溢出检查） */
 const furniMoreEl = document.getElementById('furniMore');
 
 function furniIdOfTable(id){ return !!(FURNI_TEXT && id && FURNI_TEXT[id]); }
+
+/* ═══════════════════════════════════════════════════ ★★★ 尺寸 / 类型 / 名字清洗（2026-10-23）
+   用户要求：「查 building_data.json 的 furnitures[<id>]，补上**尺寸/类型**等字段；
+               描述太长时截断；名称里带主题前缀的（`furni_xxx_bed_01`）显示中文名。」
+   ───────────────────────────────────────────────────────────────────────────
+   数据来源 = `assets\furni_text.json` 的第 3~7 位（由 `_fk_export_furni_text.cjs` 抄自
+   `building_data.json` → `customData.furnitures`）：
+       [名字, 描述, 宽, 深, 高, type, location]
+   ★ 尺寸单位是【游戏格】，1 格 = 0.22 m —— 由主题宿舍「34×10 格 = 7.48×2.20 m」反推
+     （见 manifest.js 顶部「房型」注释），不是估的。
+   ★ 兼容旧表：没有第 3 位时这一行整个不显示（所以忘了重跑导出脚本也不会崩）。 */
+const FURNI_TYPE_CN = {
+  DECORATION: '装饰', SEATING: '座椅', BEDDING: '床铺', CARPET: '地毯', WALLDECO: '墙饰',
+  CABINET: '柜子', TABLE: '桌子', FLOOR: '地板', WALLLAMP: '壁灯', WALLPAPER: '墙纸',
+  CEILING: '吊顶', CEILINGLAMP: '吊灯', FUNCTION: '功能家具', INTERACT: '可互动',
+};
+const FURNI_LOC_CN = {
+  FLOOR: '落地', CARPET: '地毯', WALL: '挂墙', POSTER: '贴墙', NONE: '', CEILING: '吊顶',
+  CEILINGDECAL: '吊顶贴花',
+};
+const FURNI_GRID_M = 0.22;      // 1 格 = 0.22 m
+const FURNI_DESC_MAX = 160;     // 描述截断长度（用户要求「描述太长时截断」）
+
+/** 家具名清洗：表里没名字 / 名字其实是 `furni_xxx_bed_01` 这种 ID 时【不要】把 ID 甩给玩家 */
+function furniDisplayName(name, id){
+  const n = String(name == null ? '' : name).trim();
+  if (!n) { console.warn('★ 家具没有中文名：', id); return '未命名家具'; }
+  if (/^furni/i.test(n) || (/^[A-Za-z0-9_$.\-]+$/.test(n) && n.indexOf('_') >= 0)){
+    console.warn('★ 家具名字还是 ID（不是中文名）：%s → %s', id, n);
+    return '未命名家具';
+  }
+  return n;
+}
+
+/** 「类型 · 位置 · 宽 × 深 × 高 m」—— 数据不全时自动省略对应段 */
+function furniMetaText(t){
+  const w = +t[2] || 0, d = +t[3] || 0, h = +t[4] || 0;
+  const type = FURNI_TYPE_CN[t[5]] || '';
+  const loc  = FURNI_LOC_CN[t[6]] || '';
+  const parts = [];
+  if (type) parts.push(type);
+  if (loc)  parts.push(loc);
+  if (w > 0 && d > 0 && h > 0){
+    const m = (v) => (v * FURNI_GRID_M).toFixed(2);
+    parts.push(m(w) + ' × ' + m(d) + ' × ' + m(h) + ' m');
+  } else if (w > 0 && d > 0){
+    const m = (v) => (v * FURNI_GRID_M).toFixed(2);
+    parts.push('占地 ' + m(w) + ' × ' + m(d) + ' m');
+  }
+  return parts.join(' · ');
+}
+
+/** 描述截断：超长就截到 FURNI_DESC_MAX 并加省略号（CSS 的 overflow 仍兜底） */
+function furniDescText(desc){
+  const s = String(desc == null ? '' : desc);
+  if (s.length <= FURNI_DESC_MAX) return s;
+  return s.slice(0, FURNI_DESC_MAX) + '…';
+}
 
 /** 后缀索引：`furni_classroom_bayWindow_01` → 同时登记 `classroom_bayWindow_01` / `bayWindow_01` */
 function buildFurniSuffixIndex(){
@@ -4839,7 +6161,15 @@ function updateFurniInfo(dt){
   camera.updateMatrixWorld();                     // ★ 必须手动更新（setFromCamera 读的是 matrixWorld）
   furniRay.setFromCamera(_furniNdc, camera);
   const hits = furniRay.intersectObjects(furniMeshes, false);
-  const hitNow = (hits.length && hits[0].object.userData.fkFurni) || null;
+  /* ★★ 2026-10-23：取【第一个带 furniId 的命中】，而不是死盯 `hits[0]`。
+     原写法一旦"前面挡着一片没打上 ID 的网格"就静默不显示 —— 正是用户反馈的
+     「有时指向家具不显示文案，要换个位置才行」的可能来源之一（F8 调试模式可直接验证：
+     屏幕左下会打出"首个命中是谁 / 有没有 furniId"）。
+     `furniMeshes` 里的元素理论上都带 fkFurni，这里只是把那层隐含前提去掉。 */
+  let hitNow = null;
+  for (const h of hits){
+    if (h.object.userData.fkFurni){ hitNow = h.object.userData.fkFurni; break; }
+  }
 
   /* ④ 防抖：连续对准 FURNI_HOLD_MS 毫秒才显示。
      ★★ 用 performance.now() 而不是累加 dt —— `dt` 被 Math.min(0.05,…) 截断过，
@@ -4853,8 +6183,10 @@ function updateFurniInfo(dt){
     _furniShown = want;
     if (want){
       const t = FURNI_TEXT[want] || ['', ''];
-      if (furniNameEl) furniNameEl.textContent = t[0] || '';
-      if (furniDescEl) furniDescEl.textContent = t[1] || '';
+      if (furniNameEl) furniNameEl.textContent = furniDisplayName(t[0], want);
+      /* ★ 2026-10-23：尺寸 / 类型（用户要求）。旧表没有第 3~7 位时返回 '' ⇒ 整行不显示。 */
+      if (furniMetaEl) furniMetaEl.textContent = furniMetaText(t);
+      if (furniDescEl) furniDescEl.textContent = furniDescText(t[1]);
       furniInfoEl.classList.add('on');
       /* ★★★ 2026-10-16 溢出兜底（用户提的方案）
          ─────────────────────────────────────────────────────────────────
@@ -4868,8 +6200,11 @@ function updateFurniInfo(dt){
          ★★ 实测：修掉宽度 bug 之后，全库 125 条描述最长 101 字、需要 ~4 行，
            而上限是 6 行 ⇒ **目前一条都不会触发这条提示**。它是给"以后加的更长描述"兜底的。 */
       if (furniDescEl && furniMoreEl){
+        /* ★ 2026-10-23：被 JS 截断（超过 FURNI_DESC_MAX）也算"放不下"，
+           否则截断后 CSS 恰好不溢出 → 提示不出现，用户以为描述就到这里。 */
+        const truncated = t[1] && String(t[1]).length > FURNI_DESC_MAX;
         furniInfoEl.classList.toggle('more',
-          furniDescEl.scrollHeight > furniDescEl.clientHeight + 1);
+          !!truncated || furniDescEl.scrollHeight > furniDescEl.clientHeight + 1);
       }
     } else {
       furniInfoEl.classList.remove('on');
@@ -4894,6 +6229,185 @@ fetch(FURNI_TEXT_URL)
     console.warn('家具文本表没载入 → 家具描述功能关闭：' + (e && e.message || e));
   });
 
+
+// ═══════════════════════════════════════════════════ ★★★ 调试可视化：碰撞盒 + 视线射线（2026-10-23）
+/* 用户 2026-10-19 的需求（原文见 `网页原型\待办-调试可视化-射线与碰撞盒.md`）：
+     「我想做个功能能按键显示自己视线指向的射线和家具的判断边框，
+       就像我的世界游戏按特定按键进入调试模式那样。」
+   ★ 它不是玩具 —— 要能定位两个既有 bug：
+     ① 指向家具有时不显示文案（要挪位置才行）
+     ② 部分家具碰撞体积不对（L 形 / 斜放 / 细长件被 AABB 多算或少算）
+   ───────────────────────────────────────────────────────────────────────────
+   实现要点（对应待办文档「五、实现建议」）：
+     · 独立 `THREE.Group` + **线框** + `depthTest:false` —— 被墙挡住也能看见
+       （MC 的碰撞箱就是穿透显示的，否则"框在哪 / 墙在哪"分不清）
+     · 颜色：碰撞盒 `#59d0ff`、当前视线命中件 `#f0c34a`、射线 `#ff5c5c`
+     · 全量框只在【第一次开启】时建一次；之后每帧只更新射线 + 命中件高亮
+       （关闭时 `visible = false`，不 add/remove，避免 GC 抖动）
+     · 屏幕左下角打印：命中件 ID / 距离 / 命中面法线 / **有没有 furniId**
+     · 键位 F8；手机端走「设置 → 调试可视化」
+   ★ 维护提醒：`boxes` 里现在多了个 `mesh` 引用（见收集碰撞盒那段），
+     就是给这里把"准星命中件"和"它的碰撞盒"对上用的。 */
+const DBG = {
+  on: false,
+  group: null,
+  hud: null,
+  lines: [],        // [{ line, mesh }] 每个碰撞盒一条线框（建一次）
+  ray: null, rayDot: null,
+  hitLines: [],     // 当前高亮中的线框
+  hitFurni: null,
+  last: null,
+  _sig: '',
+};
+const DBG_COLOR_BOX = 0x59d0ff;
+const DBG_COLOR_HIT = 0xf0c34a;
+const DBG_COLOR_RAY = 0xff5c5c;
+const DBG_RAY_LEN   = 3.0;      // 视线射线画多长（米）—— 房间才 3.5 m 进深，3 m 够看
+
+function dbgBuild(){
+  if (DBG.group) return;
+  const g = new THREE.Group();
+  g.name = 'FK_DEBUG_GROUP';
+  g.renderOrder = 900;
+
+  // ① 每个碰撞盒 = 一个线框盒（用真实 AABB 的 y 范围；太薄的给个最小高度好看见）
+  for (const b of boxes){
+    const w = Math.max(0.02, b.max.x - b.min.x);
+    const d = Math.max(0.02, b.max.z - b.min.z);
+    const y0 = (b.y && Number.isFinite(b.y[0])) ? b.y[0] : 0;
+    const y1 = (b.y && Number.isFinite(b.y[1])) ? b.y[1] : 1.2;
+    const h  = Math.max(0.10, Math.min(2.60, y1 - y0));
+    const mat = new THREE.LineBasicMaterial({
+      color: DBG_COLOR_BOX, transparent: true, opacity: 0.8,
+      depthTest: false, depthWrite: false, fog: false,
+    });
+    const seg = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w, h, d)), mat);
+    seg.position.set((b.min.x + b.max.x) / 2, y0 + h / 2, (b.min.z + b.max.z) / 2);
+    seg.renderOrder = 901;
+    seg.name = 'DBG_' + b.name;
+    seg.userData.mesh = b.mesh || null;          // ★ 高亮时要靠它做"这件家具 → 这些框"的映射
+    g.add(seg);
+    DBG.lines.push({ line: seg, mesh: b.mesh || null });
+  }
+
+  // ② 视线射线（相机位置 → 3 m 前方）+ 末端小球
+  const rg = new THREE.BufferGeometry();
+  rg.setAttribute('position', new THREE.Float32BufferAttribute(
+    [0, 0, 0, 0, 0, -DBG_RAY_LEN], 3));
+  DBG.ray = new THREE.Line(rg, new THREE.LineBasicMaterial({
+    color: DBG_COLOR_RAY, transparent: true, opacity: 0.95,
+    depthTest: false, depthWrite: false, fog: false,
+  }));
+  DBG.ray.renderOrder = 902;
+  DBG.ray.frustumCulled = false;
+  g.add(DBG.ray);
+
+  DBG.rayDot = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8),
+    new THREE.MeshBasicMaterial({ color: DBG_COLOR_RAY, depthTest: false, depthWrite: false, fog: false }));
+  DBG.rayDot.renderOrder = 903;
+  DBG.rayDot.frustumCulled = false;
+  g.add(DBG.rayDot);
+
+  g.visible = false;
+  scene.add(g);
+  DBG.group = g;
+  DBG.hud = document.getElementById('dbgHud');
+  console.log('%c★ 调试可视化已就绪：%d 个碰撞盒线框 + 视线射线（F8 开关）',
+    'color:#59d0ff', DBG.lines.length);
+}
+
+function _dbgClearHighlight(){
+  for (const it of DBG.hitLines){ it.line.material.color.setHex(DBG_COLOR_BOX); }
+  DBG.hitLines = [];
+  DBG.hitFurni = null;
+}
+
+function toggleDebugVisual(){
+  if (!DBG.group) dbgBuild();
+  DBG.on = !DBG.on;
+  if (DBG.group) DBG.group.visible = DBG.on;
+  const hud = DBG.hud || (DBG.hud = document.getElementById('dbgHud'));
+  if (hud) hud.classList.toggle('on', DBG.on);
+  if (!DBG.on){ _dbgClearHighlight(); DBG.last = null; DBG._sig = ''; }
+  say(DBG.on ? '调试可视化：开　碰撞盒 + 视线射线（F8 关闭）' : '调试可视化：关');
+  console.log('%c★ 调试可视化：%s', 'color:#59d0ff', DBG.on ? '开' : '关');
+}
+
+const _dbgDir = new THREE.Vector3();
+function updateDebugView(){
+  if (!DBG.on || !DBG.group) return;
+  camera.updateMatrixWorld();
+  const origin = camera.position;
+  camera.getWorldDirection(_dbgDir);
+  const end = origin.clone().addScaledVector(_dbgDir, DBG_RAY_LEN);
+
+  // ── ① 射线几何（每帧跟着相机走）
+  const pos = DBG.ray.geometry.attributes.position;
+  pos.setXYZ(0, origin.x, origin.y, origin.z);
+  pos.setXYZ(1, end.x, end.y, end.z);
+  pos.needsUpdate = true;
+  DBG.ray.geometry.computeBoundingSphere();
+
+  // ── ② 两层射线：
+  //      · 家具层（= 家具信息条用的那一层，决定"会不会显示描述"）
+  //      · 全场景（看有没有别的东西挡在前面、以及它有没有 furniId）
+  furniRay.setFromCamera(_furniNdc, camera);
+  const fHits = furniRay.intersectObjects(furniMeshes, false);
+  const wHits = furniRay.intersectObject(scene, true).filter((h) => {
+    let p = h.object;
+    while (p){ if (p === DBG.group) return false; p = p.parent; }
+    return true;
+  });
+  const f0 = fHits[0] || null;
+  const w0 = wHits[0] || null;
+
+  // ── ③ 末端小球：落在真实命中点（≤3 m）上，比固定在 3 m 处好读
+  const dDot = Math.min(DBG_RAY_LEN, w0 ? w0.distance : DBG_RAY_LEN);
+  DBG.rayDot.position.copy(origin).addScaledVector(_dbgDir, dDot);
+
+  // ── ④ 命中件高亮（只在这一件换掉/清空时动材质，不是每帧遍历 setColor）
+  const id = f0 && f0.object.userData.fkFurni;
+  if (id !== DBG.hitFurni){
+    _dbgClearHighlight();
+    if (id){
+      for (const it of DBG.lines){
+        if (it.mesh && it.mesh.userData && it.mesh.userData.fkFurni === id){
+          it.line.material.color.setHex(DBG_COLOR_HIT);
+          DBG.hitLines.push(it);
+        }
+      }
+      DBG.hitFurni = id;
+    }
+  }
+
+  // ── ⑤ 读数（内容没变就不碰 DOM）
+  const hud = DBG.hud || (DBG.hud = document.getElementById('dbgHud'));
+  if (!hud) return;
+  const fD = f0 ? f0.distance : -1;
+  const wD = w0 ? w0.distance : -1;
+  const sig = [id || '', fD.toFixed(2), w0 ? (w0.object.name || '') : '', wD.toFixed(2)].join('|');
+  if (sig === DBG._sig) return;
+  DBG._sig = sig;
+  const lines = [
+    '<b>调试可视化</b> <span class="dim">F8 关闭</span>',
+    '碰撞盒 ' + DBG.lines.length + ' 个 · 射线 ' + DBG_RAY_LEN.toFixed(1) + ' m · 可对准家具 ' + furniMeshes.length + ' 个',
+    id ? ('家具命中：<b>' + id + '</b>  ' + fD.toFixed(2) + ' m') : '<span class="no">家具命中：无</span>',
+  ];
+  if (w0){
+    const nm = String(w0.object.name || '(无名)').slice(0, 44);
+    lines.push('首个命中：' + nm + '  ' + wD.toFixed(2) + ' m　' +
+      (w0.object.userData && w0.object.userData.fkFurni
+        ? '<span class="ok">furniId ✓</span>'
+        : '<span class="no">furniId ✗</span>'));
+    if (w0.face && w0.face.normal){
+      const n = w0.face.normal;
+      lines.push('命中面法线：(' + n.x.toFixed(2) + ', ' + n.y.toFixed(2) + ', ' + n.z.toFixed(2) + ')');
+    }
+  } else {
+    lines.push('<span class="dim">首个命中：无（射线 3 m 内没有网格）</span>');
+  }
+  hud.innerHTML = lines.join('\n');
+}
 
 // ═══════════════════════════════════════════════════ ★★★ 手机端设置菜单
 /* 2026-10-13 用户需求（原话）：
@@ -4932,6 +6446,9 @@ const SET_ITEMS = [
      on = 博士事件【开着】（= 信赖没被冻结）。 */
   { label: '博士事件', type: 'toggle', on: () => !trust.frozen, tap: () => toggleFreeze() },
   { label: '无视碰撞', type: 'toggle', on: () => NOCLIP, tap: () => toggleNoclip() },
+  /* ★★★ 2026-10-23：调试可视化（= 键盘 F8）。手机端没有 F8，必须在这里给开关 ——
+     待办文档里写明「手机端必须能开」。 */
+  { label: '调试可视化', type: 'toggle', on: () => DBG.on, tap: () => toggleDebugVisual() },
   { label: '静音', type: 'toggle', on: () => !!bgm.paused, tap: () => toggleMute() },
   { label: '性能面板', type: 'toggle', on: () => perf.shown, tap: () => togglePerfPanel() },
   /* ★ 2026-10-14：沉浸模式（全屏）。只在触摸设备上自动进全屏，
@@ -5200,6 +6717,14 @@ function tick(now){
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
 
+  /* ★★★ 2026-10-14：推进水体时间（喷泉的 UV 滚动 / 两层 dissolve 全靠它）。
+     ★ 放在这里而不是放在 `if (loaded && ...)` 里 —— 面板开着、蛋开着、
+       人没在走的时候水都该继续流（游戏里它一直是动的）。
+     ★ dt 已经在上面按 0.05 封顶，所以"切标签页回来"不会让水瞬移一大截。 */
+  fkWaterAdvance(dt);
+  // ★ 2026-10-20：火同理（盆火靠 UV 滚动，不进 AnimationMixer）
+  fkFireAdvance(dt);
+
   /* ★ 2026-10-13：面板开着时不移动、不转头。
      ★★ 面板的开关状态现在住在共享模块里（isRoomPanelOpen()），本文件不再维护第二份。
      为什么必须拦：鼠标虽然解锁了，但 keys 那套只看 keys[e.code]，不看 locked
@@ -5229,11 +6754,11 @@ function tick(now){
     const dx = (s * cos - f * sin) * speed * dt;
     const dz = (-s * sin - f * cos) * speed * dt;
 
-    // 分轴移动 + 碰撞
+    // 分轴移动 + 碰撞 → ★ 2026-10-23 改成「先移动、再圆-盒推挤」（见 resolveCollisions）
     const p = player.pos;
     const bx = p.x, bz = p.z;
-    if (!hitsAny(p.x + dx, p.z)) p.x += dx;
-    if (!hitsAny(p.x, p.z + dz)) p.z += dz;
+    p.x += dx; p.z += dz;
+    resolveCollisions(p);
     movedDist = Math.hypot(p.x - bx, p.z - bz);     // ★ 本帧实际走过的距离
 
     // ★ 从走廊进来的：靠近房间开口就提示"按 E 回走廊"
@@ -5280,6 +6805,9 @@ function tick(now){
         `camera.updateMatrixWorld()`。第一版我把调用放在移动块里（camera.rotation
         还没设），结果射线永远用**上一帧的视线**，表现为"准星指向和显示内容差一拍"。 */
   if (typeof updateFurniInfo === 'function') updateFurniInfo(dt);
+  /* ★ 2026-10-23：调试可视化（F8 开）—— 也必须在 camera.rotation 设好之后，
+     否则射线用的是上一帧的视线（和家具信息条同一个坑，见上面那段注释）。 */
+  if (typeof updateDebugView === 'function') updateDebugView();
 
   updateTrust(dt, movedDist);
   movedDist = 0;
@@ -5307,7 +6835,7 @@ function tick(now){
 //  为什么：游戏里"金碧辉煌"的一大来源是自发光面往外洇光。我们管线里
 //  已经有自发光材质（WEB_furni1_emit / WEB_furni3_alpha），叠上 Bloom 就出来了。
 //  可开关：按 B 切换；参数保守，只让很亮的像素泛光。
-let composer = null, bloomPass = null, bloomOn = getSetting('bloom', true);   // ★ bloom 跨房间保留
+let composer = null, bloomPass = null, vignettePass = null, bloomOn = getSetting('bloom', true);   // ★ bloom 跨房间保留
 try {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
@@ -5315,6 +6843,11 @@ try {
   const _bd0 = bloomDefaults();
   bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), _bd0.strength, 0.55, _bd0.threshold);
   composer.addPass(bloomPass);
+  // ★ 2026-10-21：Vignette 真值（sceneeffectprofile.ab 的 Vignette 组件）——
+  //   放在 bloom 之后、OutputPass（线性→sRGB）之前；默认关闭，只有 postfx_tune.json 写到的主题开。
+  vignettePass = new ShaderPass(FKVignetteShader);
+  vignettePass.enabled = false;
+  composer.addPass(vignettePass);
   composer.addPass(new OutputPass());      // ★ 必须：负责线性 → sRGB 的输出转换
   composer.setSize(innerWidth, innerHeight);
   // ★ 2026-10-11：把面板里调好的泛光参数应用上去（bloomPass 到这一步才刚创建）
@@ -5340,6 +6873,16 @@ window.__FK = {
      而"某个新加的东西有没有变成障碍物"正是最需要验的一件事
      —— 光看 boxes 的数量对不上号，得能看见名字。 */
   get boxNames(){ return boxes.map(b => b.name); },
+  /* ★ 2026-10-23 加：碰撞盒矩形（只读）。F8 调试可视化 / 无头脚本核对
+     "这个位置到底该不该卡"时要能拿到坐标 —— 只有名字对不上号。 */
+  get boxRects(){
+    return boxes.map((b) => ({
+      name: b.name,
+      min: [+b.min.x.toFixed(3), +b.min.z.toFixed(3)],
+      max: [+b.max.x.toFixed(3), +b.max.z.toFixed(3)],
+      y: b.y ? [+b.y[0].toFixed(2), +b.y[1].toFixed(2)] : null,
+    }));
+  },
   /* ★★★ 2026-10-13 加：博士 / 信赖 / 终端屏的只读状态。
      为什么需要：用户需求 4 改的就是这块（删掉强制视角演出），
      而无头脚本要能断言"信赖满了 → 博士出现，但视角【没被抢走】"。
@@ -5382,6 +6925,42 @@ window.__FK = {
       radius: spot ? spot.radius : null,
     };
   },
+  /** ★ 2026-10-23：当前房间的分组 / 「研究中」提示状态（给无头脚本断言用） */
+  get roomMeta(){
+    const box = document.getElementById('roomNotice');
+    const badge = document.getElementById('roomBadge');
+    return {
+      theme: THEME,
+      kind: ROOM_ENTRY ? (ROOM_ENTRY.kind || 'dorm') : null,
+      sortId: ROOM_ENTRY ? (ROOM_ENTRY.sortId || null) : null,
+      isFunction: IS_FUNCTION_ROOM,
+      noticeOn: !!(box && box.classList.contains('on')),
+      badgeOn: !!(badge && badge.classList.contains('on')),
+    };
+  },
+  /** ★ 2026-10-23：`,`/`.` 会跳到哪一间（给无头脚本断言 / 排查"顺序怪怪的"用） */
+  get nav(){
+    const n = NAV_ORDER.length;
+    const i = NAV_ORDER.findIndex((r) => r.theme === THEME);
+    return {
+      index: i, total: n,
+      prev: i < 0 ? null : NAV_ORDER[((i - 1) % n + n) % n].theme,
+      next: i < 0 ? null : NAV_ORDER[(i + 1) % n].theme,
+      head: NAV_ORDER.slice(0, 4).map((r) => r.theme + '(' + (r.sortId || '-') + ')'),
+      tail: NAV_ORDER.slice(-3).map((r) => r.theme + '(' + (r.sortId || '-') + ')'),
+    };
+  },
+  /** ★ 2026-10-23：调试可视化状态（给无头脚本断言 / 排查用） */
+  get debug(){
+    const hud = document.getElementById('dbgHud');
+    return {
+      on: DBG.on,
+      boxes: DBG.lines.length,
+      hudOn: !!(hud && hud.classList.contains('on')),
+      hitFurni: DBG.hitFurni,
+      last: DBG.last,
+    };
+  },
   get stats(){
     return {
       unlitMats: UNLIT_MATS.length,
@@ -5408,6 +6987,56 @@ window.__FK = {
     };
   },
 };
+/* ═══════════════════════════════════════════════════ ★★★ 功能房「研究中」提示（2026-10-23）
+   ───────────────────────────────────────────────────────────────────────────
+   用户要求：8 间基建功能房（`kind:'function'`）进房时给一条**不挡视线**的提示 / 角标，
+   因为它们的动态效果（机械臂 / 传送带）还没还原，控制中枢更是只有一块背景板。
+   ★ 判据来自 `rooms/manifest.js` 的 `kind === 'function'`，**别另起一份名单** ——
+     以后某间动效做完了，把那条 kind 改成 'dorm'，提示自动消失。
+   ★ 时机：GLB 载入 + 出生点算完之后才显示（不盖开始页 / 加载进度条），见上面 showRoomNotice() 调用点。
+   ★ 20 秒后自动淡出；左上角「研究中」角标常驻（不挡视线，随时能确认这间还在做）。 */
+const ROOM_ENTRY = ROOMS.find((r) => r.theme === THEME) || null;
+const IS_FUNCTION_ROOM = !!(ROOM_ENTRY && ROOM_ENTRY.kind === 'function');
+let _roomNoticeTimer = 0;
+function showRoomNotice(){
+  if (!IS_FUNCTION_ROOM) return;
+  const badge = document.getElementById('roomBadge');
+  if (badge) badge.classList.add('on');
+  const box = document.getElementById('roomNotice');
+  if (!box) return;
+  const x = document.getElementById('roomNoticeX');
+  if (x) x.addEventListener('click', () => box.classList.remove('on'), { once: true });
+  box.classList.add('on');
+  clearTimeout(_roomNoticeTimer);
+  _roomNoticeTimer = setTimeout(() => box.classList.remove('on'), 20000);
+  console.log('%c★ 功能房「研究中」提示：%s（%s）', 'color:#f0c34a', THEME,
+    (ROOM_ENTRY && ROOM_ENTRY.name) || '');
+}
+
+/* ═══════════════════════════════════════════════════ ★ 按键说明的「调试」折叠（2026-10-23）
+   用户要求「调试类按键默认收起或折叠」⇒ 默认收起，展开状态记 localStorage。
+   ★ 纯 UI，键位逻辑在 addEventListener('keydown') 里，没动。 */
+(function initKeyhelpFold(){
+  const fold = document.getElementById('khFold');
+  const dbg  = document.getElementById('khDebug');
+  if (!fold || !dbg) return;
+  let open = false;
+  try { open = localStorage.getItem('kh_debug_open') === '1'; } catch (e) {}
+  const apply = () => {
+    dbg.classList.toggle('on', open);
+    fold.textContent = open ? '调试 ▾' : '调试 ▸';
+    fold.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  apply();
+  fold.addEventListener('click', (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    open = !open;
+    try { localStorage.setItem('kh_debug_open', open ? '1' : '0'); } catch (e) {}
+    apply();
+  });
+})();
+
 window.__toggleBloom = function(){
   if (!composer){ say('Bloom 不可用'); return; }
   bloomOn = !bloomOn;

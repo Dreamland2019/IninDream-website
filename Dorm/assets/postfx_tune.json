@@ -1,0 +1,13 @@
+{
+ "_what": "后处理真值（来自游戏 sceneeffectprofile.ab 的 Vignette 组件）：按主题启用/调暗角。bloom 仍走 bloom_tune.json。",
+ "_source": "3D渲染/_ak_light_dump/TT_sceneeffectprofile.ab.json（95 个 Vignette，主流 intensity≈0.45 / smoothness=0.2 / rounded=0）",
+ "_legend": "vignette.<主题> = { intensity(0~1 暗角深度), smoothness(0~1 边缘柔和) }；没写到的主题不加暗角。",
+ "_mode": "方案(a)：bloom 0.5/0.5 + vignette 0.45/0.2；当前试验房间：pepesroom / basicRoom / clmsRoom / rhineLab / darkForest",
+ "vignette": {
+  "pepesroom":  { "intensity": 0.45, "smoothness": 0.2 },
+  "basicRoom":  { "intensity": 0.45, "smoothness": 0.2 },
+  "clmsRoom":   { "intensity": 0.45, "smoothness": 0.2 },
+  "rhineLab":   { "intensity": 0.45, "smoothness": 0.2 },
+  "darkForest": { "intensity": 0.45, "smoothness": 0.2 }
+ }
+}

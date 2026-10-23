@@ -11,6 +11,18 @@
  *   起因同上：走廊固定 6 门位，新宿舍只能从这里进，而面板是全部房间平铺 ——
  *   房间一多，肉眼找一间就很费劲。搜索框 + 结果计数 + 数字键认搜索结果。
  *
+ * ★★★ 2026-10-14 用户需求 4：「房间菜单分两大类」。
+ *   分「功能类房间」与「主题宿舍」两段显示，各带一个小标题 + 间数。
+ *   ★ 依据 = `manifest.js` 的 `kind` 字段（判据是【房型尺寸】，不是 tag/名字 ——
+ *     `clmsRoom` 叫"港都会客室"但它是主题宿舍）；缺 `kind` 按 `'dorm'` 兜底。
+ *   ★ 四条既有行为【一条都没动】：① `_allRooms` 仍是调用方数组的副本；
+ *     ② `_viewRooms` 仍是"实际渲染顺序"、数字键 1~9 仍认它、角标仍按它编号；
+ *     ③ 搜索过滤字段仍是 `name/theme/tag/desc`；④ 回车仍是"进第一个匹配"。
+ *     ★ 唯一的行为变化：**不搜索时**两段的先后固定为「功能类 → 主题宿舍」
+ *       （段内保持调用方给的顺序）⇒ 角标编号也跟着变，这是分组本身的必然结果。
+ *     ★ **搜索时不分组**（结果平铺、保持原顺序）：结果通常只有两三间，
+ *       插小标题反而割裂，而且"搜一下再按 3"的直觉更顺。
+ *
  * 这个模块【只管 DOM 与交互】，不碰 three.js、不碰 localStorage、不碰指针锁：
  *   · 打开/关闭时的副作用（解锁鼠标、清空按键、停住移动）由调用方负责
  *   · 键位由调用方在它自己的 keydown 里调 panelKey(e)，返回 true 就 preventDefault
@@ -29,11 +41,66 @@ let _viewRooms = [];
 let _q = '';               // 当前搜索词
 let _redraw = null;        // 当前打开的面板的"只重建网格"回调（搜索时用）
 
+/* ══════════════ ★★★ 房间分两大类显示（2026-10-14 加；2026-10-23 改顺序+排序） ══════════════
+   用户需求（2026-10-14）：「房间菜单分两大类」。
+   用户需求（2026-10-23，**现行规则，别自己另定**）：
+     「先按 kind 分组，组内按游戏内上线时间【倒序】」——
+       ① `kind:'dorm'`（139 套家具主题：135 主题宿舍 + 会客室族 4 套）**全部在前**
+       ② `kind:'function'`（8 间基建功能房）**全部在后**，单独标「研究中」
+       ③ 组内排序：dorm 按 `sortId` **降序**（越晚上线越靠前）；function 没有上线时间
+          → 保持调用方（manifest）给的顺序
+       ⇒ 校验：列表最上面 = velvet(1004) / amiya(1003) / taiko(1002) / basicRoom(1001)，
+         功能房之前最下面 = s1_02(3) / s1_01(2) / warehouse(1)
+   ★ 兼容：`kind` 缺失 / 写了别的值 → **按 `'dorm'`（家具主题）兜底**
+     （理由见 manifest.js 顶部：以后新加的主题绝大多数是宿舍）。
+   ★★ 排序放在这里（而不是 walk.html / hub.html 各写一遍）——
+     两个入口共用本模块，改一处两边都对。sortId 由 manifest.js 提供。
+   ★ 搜索时【不分组】（结果平铺），但仍然按同一套顺序排（好房间在前，符合直觉）。 */
+const KIND_ORDER = ['dorm', 'function'];
+const KIND_LABEL = { dorm: '家具主题', function: '基建功能房' };
+const KIND_NOTE  = {
+  dorm:     '按游戏内上线时间倒序 · 越新越前',
+  function: '研究中 · 动态效果未还原',
+};
+
+function _kindOf(r){
+  return (r && r.kind === 'function') ? 'function' : 'dorm';   // ★ 兜底 → dorm
+}
+
+/** 组 → 排序：dorm 按 sortId 降序；function 保持调用方顺序（返回 0 = 稳定排序不动） */
+function _cmpRooms(a, b){
+  const ka = _kindOf(a) === 'function' ? 1 : 0;
+  const kb = _kindOf(b) === 'function' ? 1 : 0;
+  if (ka !== kb) return ka - kb;
+  if (ka === 1) return 0;
+  return (Number(b.sortId) || 0) - (Number(a.sortId) || 0);
+}
+
+/** 分组标题（横跨整行） */
+function _groupLabel(kind, n){
+  const d = document.createElement('div');
+  d.className = 'fkRoomGroup';
+  d.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:9px;' +
+    'margin:6px 0 -2px;font-size:11.5px;letter-spacing:.14em;color:#8fb4cf';
+  d.innerHTML = '<span style="color:#5fd8e8">▍</span>' +
+    '<span style="color:#bcd9ee">' + (KIND_LABEL[kind] || kind) + '</span>' +
+    '<span style="color:#5f7c94;font:11px ui-monospace,Consolas,monospace">' + n + ' 间</span>' +
+    '<span style="flex:1 1 auto;height:1px;background:#2c4a63"></span>' +
+    '<span style="color:#5f7c94;letter-spacing:0">' + (KIND_NOTE[kind] || '') + '</span>';
+  return d;
+}
+
 export function isRoomPanelOpen(){ return _open; }
 
 /** 打开面板
  *  opts = {
- *    rooms:   [{ theme, name, desc, tag? }]  必填，要列出的房间（调用方自己决定排除哪些）
+ *    rooms:   [{ theme, name, desc, tag?, kind?, sortId? }]  必填，要列出的房间（调用方自己决定排除哪些）
+ *             ★★ `kind`（2026-10-14 加，2026-10-23 语义变更）：`'dorm'` = 家具主题 /
+ *                `'function'` = 基建功能房（标「研究中」）。面板据此把列表分成两段并出小标题
+ *                （见文件上方 KIND_ORDER 注释）；**缺失或写了别的值 → 按 `'dorm'` 兜底**。
+ *             ★★ `sortId`（2026-10-23 加）：游戏内上线顺序，面板在 `dorm` 段内按它降序排。
+ *                缺失时按 0 处理（会排到最后）—— 所以家具主题务必带上。
+ *                ★ 调用方照原样把 manifest.ROOMS 传进来即可，**不用自己分组 / 排序**。
  *    title:   '房 间 选 择'            可选
  *    onPick:  (theme) => {}            必填，点了某间房
  *    onHub:   () => {} | null          传 null/省略 = 不显示"回走廊"按钮
@@ -148,10 +215,27 @@ export function openRoomPanel(opts){
    *  ★ 过滤只影响【显示 / 角标 / 数字键】，不动调用方给的数组（`_allRooms` 是副本）。 */
   const draw = () => {
     const q = _q.trim().toLowerCase();
-    _viewRooms = !q ? _allRooms.slice() : _allRooms.filter((r) => {
+    /* ★★★ 2026-10-23：先排序（家具主题在前、组内 sortId 降序；功能房在后、保持原序），
+       再按 kind 归两段。`hits` 是副本，`.sort()` 不会动调用方的数组。 */
+    const hits = (!q ? _allRooms.slice() : _allRooms.filter((r) => {
       const hay = [r.name, r.theme, r.tag, r.desc].filter(Boolean).join(' ').toLowerCase();
       return hay.indexOf(q) >= 0;
-    });
+    })).sort(_cmpRooms);
+    /* ★★★ 2026-10-14 加：分组（见文件上方 KIND_ORDER / _cmpRooms 注释）。
+       ★ 不搜索时 = 按 kind 归两段（**家具主题在前、基建功能房在后**），段内已排好序；
+       ★ 搜索时 = **不分组、直接平铺**（顺序仍是同一套排序）——
+         理由：搜索的结果通常只有两三间，再插两个小标题反而割裂；
+         而且"搜一下再按 3"选的是搜索结果第 3 个，顺序与卡片角标一致最直观。
+       ★★ `_viewRooms` 就是下面【实际渲染进网格的顺序】——
+         数字键 1~9 认的是它，卡片角标也按它编号，两者天然对齐（既有行为，没改）。 */
+    if (!q){
+      _viewRooms = [];
+      for (const k of KIND_ORDER){
+        for (const r of hits) if (_kindOf(r) === k) _viewRooms.push(r);
+      }
+    } else {
+      _viewRooms = hits;
+    }
     if (sCount){
       sCount.textContent = q ? (_viewRooms.length + ' / ' + _allRooms.length + ' 间')
                              : ('共 ' + _allRooms.length + ' 间');
@@ -166,7 +250,11 @@ export function openRoomPanel(opts){
       grid.appendChild(none);
       return;
     }
-    _viewRooms.forEach((r, i) => {
+    /** 渲染一间房的卡片。★ 角标编号 `i` = 它在 `_viewRooms` 里的下标（0 起）
+     *  ★★ 重构说明（2026-10-14）：原来是 `_viewRooms.forEach((r, i) => {...})` 的内联循环，
+     *    为支持"分组时插小标题"抽成了函数 —— **内部逻辑逐字保留**，只是把两处
+     *    `continue`（没有 continue，是 return）换成了 `return`，行为不变。 */
+    const renderCard = (r, i) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.dataset.theme = r.theme;
@@ -215,12 +303,67 @@ export function openRoomPanel(opts){
           'text-align:center;border:1px solid #4b7fa8;border-radius:3px;background:#16324a;' +
           'color:#a8d4f0;font:600 11px/20px ui-monospace,Consolas,monospace">' + (i + 1) + '</span>'
         : '';
-      cap.innerHTML = badge + '<span style="color:#dfeaf5">' + r.name + '</span>';
+      /* ★★ 2026-10-14 加（用户需求）：「蓝丝绒房间（会客室）」——
+         会客室族里**非默认家具**的那几套加个「（会客室）」后缀。
+         用户原话：「我希望同属于会客室的家具主题备注一下，比如蓝丝绒房间（会客室），
+         默认的就不需要备注了」⇒ 所以 `defaultFurni` 的那套（basicRoom）**不加**。
+
+         ★ 判据用 【`family === 'meeting'` + `!defaultFurni`】，**不用 tag / 名字**：
+           · tag 不可靠 —— `clmsRoom`（港都会客室）的 tag 也叫"会客室"，
+             但它是**主题宿舍**（房型 6x2），加后缀就错了（见 manifest 顶部「归属判据」）；
+           · 也不能只看 `kind === 'function'` —— 那是"功能房"大类，
+             以后加了发电站/制造站也会是 function，而它们不是会客室。
+         ★ 文案写死在面板（不进 manifest）：prefix 对四套会客室都一样，
+           而"默认那套不写"已经是数据里的 `defaultFurni` ⇒ 数据侧不用再加字段。
+         ★ 用 span + textContent 拼（不是 innerHTML 拼字符串）—— 名字里有全角引号
+           （`“祭典的四拍子太鼓”`）之类的字符，拼 HTML 容易踩转义坑。 */
+      const isMeeting = (r.family === 'meeting') && !r.defaultFurni;
+      /* ★★★ 2026-10-23（用户要求）：功能房单独分组 + 卡片上标「研究中」。
+         判据用 kind，和分组同一个来源 —— 别另起一份名单。 */
+      const isResearch = _kindOf(r) === 'function';
+      const nameEl = document.createElement('span');
+      nameEl.style.cssText = 'color:#dfeaf5';
+      nameEl.textContent = r.name;
+      cap.innerHTML = badge;
+      cap.appendChild(nameEl);
+      if (isMeeting){
+        const note = document.createElement('span');
+        note.style.cssText = 'flex:0 0 auto;font-size:11px;color:#7d97ae';
+        note.textContent = '（会客室）';
+        cap.appendChild(note);
+      }
+      if (isResearch){
+        const tag = document.createElement('span');
+        tag.style.cssText = 'flex:0 0 auto;margin-left:auto;padding:0 4px;border-radius:3px;' +
+          'border:1px solid rgba(240,195,74,.5);background:rgba(240,195,74,.12);' +
+          'color:#f0c34a;font-size:10px;line-height:16px;letter-spacing:.06em;white-space:nowrap';
+        tag.textContent = '研究中';
+        cap.appendChild(tag);
+      }
       b.appendChild(img); b.appendChild(cap);
-      if (r.desc) b.title = r.desc;
+      if (r.desc){
+        b.title = r.desc + (isMeeting ? '　·　会客室族（非默认家具）' : '') +
+          (isResearch ? '　·　该房间仍在研究中：机械臂 / 传送带等动态效果尚未还原' : '');
+      }
       b.addEventListener('click', () => { const t = r.theme; closeRoomPanel(); opts.onPick && opts.onPick(t); });
       grid.appendChild(b);
-    });
+    };
+    if (!q){
+      // ★ 分组：只给【有房间的组】出标题（空组不出现，免得列一个"0 间"的空标题）
+      //   ★ 角标编号走一次预算好的 Map（O(1)）—— `_viewRooms.indexOf(r)` 在循环里是 O(n²)，
+      //     现在只有 11 间看不出来，但游戏有 139 个主题，迟早会加满，别埋这个坑。
+      const ord = new Map();
+      _viewRooms.forEach((r, i) => ord.set(r, i));
+      for (const k of KIND_ORDER){
+        const part = _viewRooms.filter((r) => _kindOf(r) === k);
+        if (!part.length) continue;
+        grid.appendChild(_groupLabel(k, part.length));
+        for (const r of part) renderCard(r, ord.get(r));
+      }
+    } else {
+      // ★ 搜索中：不插分组标题（保持"结果平铺 + 角标 = 名次"的既有直觉）
+      _viewRooms.forEach((r, i) => renderCard(r, i));
+    }
   };
   _redraw = draw;
   draw();
