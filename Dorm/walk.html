@@ -78,6 +78,16 @@ canvas{display:block;outline:none}
 #keyhelp .kh-dbg{display:none;flex-direction:column;gap:7px}
 #keyhelp .kh-dbg.on{display:flex}
 
+/* ═══ ★★★ 2026-10-23（用户要求）：H 键折叠【整个】按键提示，只留一行「按 H 展开按键提示」 ═══
+   场景：右上角这块在观赏房间时很挡画面 —— 但完全去掉又会让新玩家找不到键。
+   ⇒ 折叠后只保留一行可读提示，再按 H 展开。
+   ★ 用「只隐藏非提示行」的写法，避免把 HTML 整个重排一遍（结构不动，风险最低）。 */
+#keyhelp .kh-hint-collapsed{display:none;font-size:10.5px;color:var(--dim);
+  letter-spacing:.08em;white-space:nowrap;line-height:1.6}
+#keyhelp.kh-hide > *:not(.kh-hint-collapsed){display:none !important}
+#keyhelp.kh-hide .kh-hint-collapsed{display:block}
+#keyhelp.kh-hide{padding:8px 12px;min-width:0;gap:0}
+
 /* ═══ ★★★ 2026-10-23：功能房「研究中」提示（用户要求：给提示但【不挡视线】） ═════
    · #roomNotice = 顶部居中的一条提示，进房间出现，10 秒自动淡出，点 × 立刻收起
    · #roomBadge  = 左上角常驻小角标，淡出后仍在（随时能确认这间还在做）
@@ -230,14 +240,28 @@ canvas{display:block;outline:none}
   background:rgba(10,15,22,.82);opacity:0;transition:opacity .18s ease;
   pointer-events:none;text-align:left;text-shadow:0 1px 3px rgba(0,0,0,.8)}
 #furniInfo.on{opacity:1}
-#furniInfo .n{display:block;font-size:13.5px;font-weight:600;letter-spacing:.08em;
+/* ★★★ 2026-10-23（用户反馈：「家具描述字太小，希望随屏幕自适应」）：
+     字号不再写死 13.5 / 12.5 px —— 改成 `clamp()` 跟视口宽线性缩放（桌面 / 手机 / 横屏各有下限）。
+     ★ 为什么下限抬到 14.5px：手机上原来的 12px 名字 + 11px 描述实测偏小（用户 390×844 截图）。
+     ★ 上限 19px：再大就会把信息条撑得很显眼、挡住画面下半。
+     ★ 改成跟视口走之后，"每行字数"会变少 —— 描述行数预算要按 390×844 / 800×360 复验
+       （最长描述 101 字，`.d` 手机上限 12em ≈ 7.5 行，见下面 media query 的注释）。 */
+#furniInfo .n{display:block;font-size:clamp(14.5px, 0.5vw + 10.5px, 19px);font-weight:600;letter-spacing:.08em;
   color:#8fd8ff;margin-bottom:2px}
-/* ★★★ 2026-10-23（用户要求）：尺寸 / 类型这一行 —— 变等宽字体、更淡，不抢名字和描述 */
-#furniInfo .m{display:block;font-size:10.5px;letter-spacing:.04em;color:#79a8c4;
+/* ★★★ 2026-10-23（用户需求变更）：尺寸 / 类型这一行**不常驻** —— 只在 F8 调试可视化打开时显示。
+     用户原话：「只保留第一行的家具名称和描述就行了，第二行的家具类型、位置、尺寸
+     我希望如果用户打开调试模式再显示。」
+   ★ 数据一直在 DOM 里（只是被 CSS 藏起来），所以开关时不用重新打射线。
+   ★ 开关在 toggleDebugVisual() 里给 #furniInfo 加/去 `dbg` 类（和 F8 同一个状态）。 */
+#furniInfo .m{display:none;font-size:clamp(11px, 0.3vw + 9.5px, 13px);letter-spacing:.04em;color:#79a8c4;
   margin-bottom:3px;font-family:ui-monospace,Consolas,"Cascadia Mono",monospace}
-#furniInfo .m:empty{display:none}
-#furniInfo .d{display:block;font-size:12.5px;line-height:1.72;color:#cfe0f2;
-  white-space:pre-line;max-height:6em;overflow:hidden}
+#furniInfo.dbg .m{display:block}
+#furniInfo.dbg .m:empty{display:none}
+#furniInfo .d{display:block;font-size:clamp(13px, 0.45vw + 10px, 17px);line-height:1.75;color:#cfe0f2;
+  white-space:pre-line;max-height:8em;overflow:hidden}
+/* ★ 2026-10-23：max-height 6em → **8em**。字号涨到 17px 后 6em 只够 ~3.4 行，
+   而补全 ID 后的表里最长一条描述是 **121 字**（`furni_TempleFair_table_02`，还带 3 处换行），
+   实测桌面 760px 宽要 4 行 ⇒ 6em 会把最后一行切掉。8em ≈ 4.6 行，留半行余量。 */
 /* ★ 2026-10-16：描述仍被截断时显示的一行提示（用户提的方案，做成"兜底"）。
    ⚠️ 提示语写【横屏】不是【横屏全屏】—— 全屏只是去掉浏览器工具栏（约 10% 高度），
       真正让字放得下的是转屏：横屏时 94vw 变成 ~2.2 倍宽，行数直接砍半还多。 */
@@ -255,6 +279,10 @@ canvas{display:block;outline:none}
 /* ★ 2026-10-15 全屏按钮（手机端）—— 默认隐藏，media query 里再打开。
    为什么要有它：见下面 #fsbtn 的详细注释。 */
 #fsbtn{display:none}
+/* ★★★ 2026-10-23（用户要求）：手机端常驻「上一间 / 下一间」按钮。
+   理由：桌面用 `,` / `.` 换房间，手机没有键盘 —— 之前只能开 Tab 面板挑。
+   按钮只在手机 media query 里打开（桌面有键，不占地方）。 */
+#stepbtns{display:none}
 #setmenu{position:fixed;inset:0;z-index:47;display:none;
   align-items:center;justify-content:center;background:rgba(4,8,12,.74)}
 #setmenu.on{display:flex}
@@ -467,6 +495,19 @@ body.shake > *{animation:shake .075s infinite !important}
   /* 已经全屏时高亮，让用户一眼看出当前状态（点一下就退出） */
   #fsbtn.on{border-color:rgba(95,216,232,.8);background:rgba(95,216,232,.18);color:#9fe8ff}
 
+  /* ★★★ 2026-10-23（用户要求）：手机端常驻「上一间 / 下一间」按钮。
+     位置 = 全屏按钮上方（bottom 350，两个 40px 小圆并排，右侧对齐按钮列）。
+     ★ 为什么横排而不是继续竖着排：竖列再加两个会把「设置/全屏」顶到屏幕中线以上，
+       横排只往左多占 46px，仍然远离准星（准星在屏幕正中）。
+     ★ 因此手机端 #furniInfo 的右边距从 84px 加到 118px（让开这一排，见下方 media query）。 */
+  #stepbtns{display:flex;position:fixed;right:18px;bottom:350px;z-index:27;gap:8px}
+  #stepbtns button{display:flex;align-items:center;justify-content:center;
+    width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(120,200,220,.35);
+    background:rgba(11,17,26,.72);color:#cfe0f2;font-size:20px;line-height:1;
+    padding:0;cursor:pointer;touch-action:manipulation;
+    -webkit-user-select:none;user-select:none;font-family:inherit}
+  #stepbtns button:active{background:rgba(95,216,232,.25);border-color:rgba(95,216,232,.85)}
+
   /* 手机版品牌标识（更小） */
   #topbar{padding:9px 12px}
   .brand{gap:6px;padding-top:2px}
@@ -517,10 +558,18 @@ body.shake > *{animation:shake .075s infinite !important}
        140 字的（7 行）也刚好放得下；190 字以上才走 .more 提示。
      ★ 代价可控：框最高 ≈165px，底边在 184px ⇒ 只占屏幕下方约 20%，
        且横向已经让开按钮列、也够不到正中的准星。 */
-  #furniInfo{bottom:184px;left:0;right:84px;margin:0 auto;transform:none;
-    max-width:calc(100vw - 104px);padding:7px 11px}
-  #furniInfo .n{font-size:12px}
-  #furniInfo .d{font-size:11px;line-height:1.6;max-height:12em}
+  #furniInfo{bottom:184px;left:0;right:118px;margin:0 auto;transform:none;
+    max-width:calc(100vw - 138px);padding:7px 11px}
+  /* ★ 2026-10-23：手机端也跟着视口宽涨（原来写死 12 / 11px，用户明确说太小）。
+     390 px 宽时：名字 ≈17px、描述 ≈15.2px；上限分别是 19 / 17.5px。
+     ★ 复验过行数预算：101 字最长描述在 15.2px 下约 5.5 行 < 12em(≈7.5 行) 上限。 */
+  #furniInfo .n{font-size:clamp(15px, 4.4vw, 19px)}
+  /* ★ 2026-10-23：字号跟着视口宽涨到 14~17.5px 后，12em 只够 ~7 行，而最长描述（121 字）
+     在 390px 宽下约要 7~8 行 ⇒ 抬到 **14em ≈ 8.2 行**，留一行余量。
+     ★ 框高上限 ≈ 14em × 17.5px + padding ≈ 270px；底边 184px ⇒ 上沿约在屏幕 2/3 处，
+       仍在准星下方（准星在 50%），不会挡住画面中心。 */
+  #furniInfo .d{font-size:clamp(14px, 3.9vw, 17.5px);line-height:1.7;max-height:14em}
+  #furniInfo .m{font-size:clamp(11.5px, 2.8vw, 13px)}
 
   /* ★ 2026-10-14 用户："手机端的提示应该删除'按E''E'这些字符，只留下'推门出去''进入xxx'"
      ⇒ 提示框里那个「E」小方块（class="pk"）在手机端不显示。
@@ -620,7 +669,14 @@ body.shake > *{animation:shake .075s infinite !important}
    ⚠️ 这条必须写在上面那个手机端 media query **之后**（同级选择器、后来的赢），别往上搬。 */
 @media (orientation: landscape) and (max-height:500px){
   #furniInfo{bottom:52px;left:120px;right:84px;width:auto;margin:0;transform:none}
-  #furniInfo .d{max-height:5em}
+  /* ★ 2026-10-23：横屏高度不够（bottom 350 会顶出屏幕）→ 换房间按钮挪到右上角 */
+  #stepbtns{top:12px;bottom:auto;right:14px}
+  /* ★ 2026-10-23：矮屏高度紧张 → 字号收一档（但仍跟视口宽涨，不写死） */
+  #furniInfo .n{font-size:clamp(14px, 2.2vw, 16px)}
+  /* ★ 2026-10-23：矮屏高度紧张 → 字号收一档（但仍跟视口宽涨，不写死）
+     ★ 5em → 7em：最长描述 121 字在 800×360 下要 4 行（596px 宽 / 14px），5em ≈ 2.9 行会吃掉两行。 */
+  #furniInfo .d{font-size:clamp(12.5px, 2vw, 14px);max-height:7em}
+  #furniInfo .m{font-size:clamp(11px, 1.6vw, 12px)}
 }
 </style>
 </head>
@@ -658,6 +714,8 @@ body.shake > *{animation:shake .075s infinite !important}
          折叠状态记在 localStorage（`dorm_kh_debug`），调试的人不用每次点开。
        ★ `,` `.` = 上一间 / 下一间（2026-10-23 新加，`[` `]` 被"视线高度"占用了）。 -->
   <div id="keyhelp">
+    <!-- ★ 2026-10-23（用户要求）：按 H 把整块按键提示收起来，只剩这一行 -->
+    <div class="kh-hint-collapsed">按 <kbd>H</kbd> 展开按键提示</div>
     <div class="kh-title">操作<span class="kh-sub">CONTROLS</span>
       <button class="kh-fold" id="khFold" type="button" aria-expanded="false"
         aria-controls="khDebug" title="展开 / 收起调试按键">调试 ▸</button>
@@ -677,7 +735,12 @@ body.shake > *{animation:shake .075s infinite !important}
     <div class="row new"><span class="ks"><kbd>Tab</kbd></span><span>房间列表（在任何房间都能开）</span></div>
     <div class="row new"><span class="ks"><kbd>,</kbd><kbd>.</kbd></span><span>上一间 / 下一间</span></div>
     <div class="row new"><span class="ks"><kbd>I</kbd></span><span>家具介绍 开 / 关</span></div>
+    <!-- ★★★ 2026-10-23（用户要求）：「按 G 无视碰撞改为常态显示」——
+         原来在下面的「调试」折叠组里，用户希望它一直能看到。
+         代码没动（还是 toggleNoclip()），只是把它从折叠组搬上来。 -->
+    <div class="row new"><span class="ks"><kbd>G</kbd></span><span>穿透走动（无视碰撞）</span></div>
     <div class="row"><span class="ks"><kbd>M</kbd></span><span>静音 / 取消静音</span></div>
+    <div class="row"><span class="ks"><kbd>H</kbd></span><span>收起 / 展开这块按键提示</span></div>
     <div class="row"><span class="ks"><kbd>Esc</kbd></span><span>松开鼠标（再点一下画面继续走）</span></div>
 
     <div class="kh-dbg" id="khDebug">
@@ -687,7 +750,6 @@ body.shake > *{animation:shake .075s infinite !important}
       <div class="row"><span class="ks"><kbd>F</kbd></span><span>性能面板</span></div>
       <div class="row"><span class="ks"><kbd>B</kbd></span><span>泛光 开 / 关</span></div>
       <div class="row"><span class="ks"><kbd>V</kbd></span><span>后处理：手调 / 真值</span></div>
-      <div class="row new"><span class="ks"><kbd>G</kbd></span><span>穿透走动（无视碰撞）</span></div>
       <div class="row new"><span class="ks"><kbd>F8</kbd></span><span>碰撞盒 + 视线射线可视化</span></div>
       <div class="row"><span class="ks"><kbd>R</kbd></span><span>回到出生点</span></div>
     </div>
@@ -719,6 +781,12 @@ body.shake > *{animation:shake .075s infinite !important}
      全屏进去是自动的，但"出来"原来只能靠系统手势（Android 上正好和拉通知栏冲突）
      或钻进设置菜单 ⇒ 给一个一眼可见、一下就能点的出口。 -->
 <button id="fsbtn" title="全屏 / 退出全屏" aria-label="全屏">全屏</button>
+<!-- ★★★ 2026-10-23（用户要求）：手机端常驻「上一间 / 下一间」—— 手机没有键盘，靠它快速逛宿舍。
+     位置在全屏按钮上方（见 CSS 的 #stepbtns）；点一下 = 和桌面按 , / . 完全同一条逻辑（stepRoom）。 -->
+<div id="stepbtns">
+  <button id="stepPrev" type="button" title="上一间（键盘 ,）" aria-label="上一间宿舍">‹</button>
+  <button id="stepNext" type="button" title="下一间（键盘 .）" aria-label="下一间宿舍">›</button>
+</div>
 <div id="setmenu">
   <div id="setmenuCard">
     <div id="setmenuHead">设 置<span>手机端 · 电脑端用键盘快捷键</span></div>
@@ -2740,6 +2808,10 @@ const INSET  = 0.06;                                  // 障碍盒内缩（避�
 // ═══════════════════════════════════════════════════ 载入模型
 const boxes = [];          // 碰撞盒 {min:{x,z}, max:{x,z}, name}
 let loaded = false;
+/* ★★★ 2026-10-23 加：功能房的骨骼/节点动画（回收站转盘、制造站机械臂…）。
+   规则：GLB 里带了 `animations` 就播第一条，**不带就完全不动**（主题宿舍全都没有），
+   所以对现有 139 间主题零影响。详见 `待办-功能房接入与房间边界（2026-10-23）.md` §三。 */
+let mixer = null;
 const matCache = new Map();     // ★ 材质复用（同参数的只建一个）
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -3646,6 +3718,14 @@ startLoadUI(SKIP_START_PAGE ? 'auto' : 'intro');
 
 new GLTFLoader().load(GLB_URL, gltf => {
   const root = gltf.scene;
+  /* ★★★ 2026-10-23 修（功能房接动态时暴露的老 bug）：
+     `Box3.setFromObject()` 内部只调 `object.updateWorldMatrix(false, false)` ——
+     **不更新父级**，它默认父链的 matrixWorld 已经是对的。
+     而这段代码跑在 onLoad 里、`scene.add(root)` 之前、任何一次 render 之前
+     ⇒ 整棵树的父节点 matrixWorld 还是单位矩阵 ⇒ 所有家具的盒子都塌到原点附近
+     ⇒ ①碰撞盒全堆在房间中间 ②findSpawn 找不到空地（只能走兜底）③出门判定同样受害。
+     一行修完：先把整棵树的的世界矩阵算出来。 */
+  root.updateMatrixWorld(true);
   const skipped = [];
   root.traverse(o => {
     if (!o.isMesh) return;
@@ -3680,6 +3760,18 @@ new GLTFLoader().load(GLB_URL, gltf => {
     if (/^(cc_)?room(_|$)/.test(n) || /_room(_|$)/.test(n) || /_floor(_|$)/.test(n)
         || /_frame(_|$)/.test(n) || /_door(_|$)/.test(n)) return;
 
+    /* ★★★ 2026-10-23：功能房【不做家具碰撞盒】。
+       为什么：功能房的设备是**大框架**（制造站的 `Maker_M` 单件就 4.89×2.05×1.37，
+       几乎铺满整间 5.28×2.20 的房间），用粗包围盒当障碍物会把房间挡死 ——
+       实测 `findSpawn` 的候选从中心一路扫到最后面 z=-0.8 才找到"空地"，
+       结果人贴在后墙、朝向后墙，画面全黑。
+       这些房间是"进来看的"不是"在里面绕的"，只保留 §房间边界（BOUND）就够。
+       副作用：能穿过设备（可接受，比卡死好）。 */
+    if (typeof IS_FUNCTION_ROOM !== 'undefined' && IS_FUNCTION_ROOM){
+      skipped.push(o.name + '(功能房不碰撞)');
+      return;
+    }
+
     // ── 收集碰撞盒
     const b = new THREE.Box3().setFromObject(o);
     const w = b.max.x - b.min.x, d = b.max.z - b.min.z, h = b.max.y - b.min.y;
@@ -3701,6 +3793,85 @@ new GLTFLoader().load(GLB_URL, gltf => {
   });
   scene.add(root);
   loaded = true;
+
+  /* ★★★ 2026-10-23 加：功能房的动画（回收站转盘 / 制造站机械臂 / 贸易站 5 关节 / 发电站 12 关节）。
+     · 这四间的 GLB 里带 1 条 `animations`；**主题宿舍一条都没有** ⇒ 这段对它们完全空转。
+     · 只播第 0 条，循环播放（游戏里就是 loop）。
+     · mixer 的根必须是 `root`（= gltf.scene），不能用它的父级，否则会把场景变换算进去。 */
+  if (gltf.animations && gltf.animations.length){
+    try {
+      mixer = new THREE.AnimationMixer(root);
+      const act = mixer.clipAction(gltf.animations[0]);
+      act.setLoop(THREE.LoopRepeat, Infinity);
+      act.play();
+      console.log('%c★ 房间动画已接入：%s（%d 条，时长 %ss）',
+        'color:#5fd8e8;font-weight:bold',
+        gltf.animations[0].name, gltf.animations.length,
+        (gltf.animations[0].duration || 0).toFixed(2));
+    } catch (e) {
+      console.warn('★ 动画接入失败（不影响静态显示）：', e);
+      mixer = null;
+    }
+  }
+
+  /* ★★★ 2026-10-23：回收站圆盘动画 —— 动态件没有贴图，用静态版的材质补上。
+     背景（`交接-解包.md` / 分工文档 §3.2）：
+       · `rooms\recycle.glb`              = 有贴图、**没有 animations** 的静态版；
+       · `rooms\recycle_anim_fixed.glb`   = 同一套设备拆成 static(2305 顶点) + moving(208 顶点圆盘)，
+         带 11.33 s 循环动画，但**导出时没有贴图**（材质是灰蓝 + 红色的占位色）。
+     做法（**不改 GLB**，纯前端合成）：
+       ① 静态版里的 `OBJ_room_inner_4x2x2_recycle_01` 就是这两个部件合并后的样子
+          （尺寸 4.30×2.08×1.97，与动态版 static 完全一致）；
+       ② 把它 **隐藏**，用动态版的两个 mesh 顶替，并复用**它的材质**（贴图 / UV 同源）；
+       ③ 按包围盒把动态版整体缩放 / 平移对齐到它的位置；
+       ④ 用现有 mixer 播动画（recycle.glb 本来没有动画、mixer 是空的，正好复用 tick 里的 update）。
+     ★ 只对 THEME === 'recycle' 生效；其他房间一行都不碰。 */
+  if (THEME === 'recycle' && QS.get('rc') !== 'static'){
+    let host = null;
+    root.traverse(o => { if (!host && o.isMesh && /^OBJ_room_inner_4x2x2_recycle_01$/.test(o.name)) host = o; });
+    if (host){
+      new GLTFLoader().load('./rooms/recycle_anim_fixed.glb', (g2) => {
+        try {
+          const ar = g2.scene;
+          /* ★ 朝向修正：动态版的 prefab 局部坐标与静态版差 180°（绕 Y）。
+             实测 `?rt=0` 时设备零件散落在房间中央，`?rt=180` 才与静态版一致；
+             `?rt=` 仍可覆盖，方便以后再核。 */
+          ar.rotation.y = ((parseFloat(QS.get('rt') || '180') || 0)) * Math.PI / 180;
+          ar.updateMatrixWorld(true);
+          const stat = ar.getObjectByName('room_inner_4x2x2_recycle_01_static_node');
+          const mov  = ar.getObjectByName('room_inner_4x2x2_recycle_01_moving_node');
+          if (!stat || !mov) throw new Error('动态件节点没找到（static/moving）');
+          root.updateMatrixWorld(true);
+          const hb = new THREE.Box3().setFromObject(host);
+          const sb = new THREE.Box3().setFromObject(stat);
+          const hs = hb.getSize(new THREE.Vector3());
+          const ss = sb.getSize(new THREE.Vector3());
+          const k = (ss.x > 1e-6) ? hs.x / ss.x : 1;       // 等比缩放（两者同一 prefab）
+          const hc = hb.getCenter(new THREE.Vector3());
+          const sc = sb.getCenter(new THREE.Vector3());
+          ar.scale.setScalar(k);
+          ar.position.set(hc.x - sc.x * k, hc.y - sc.y * k, hc.z - sc.z * k);
+          /* 材质复用 host 的 —— 它已经过 toLambert / unlit 处理，贴图与 UV 同源 */
+          ar.traverse(o => { if (o.isMesh) o.material = host.material; });
+          host.visible = false;
+          scene.add(ar);
+          if (g2.animations && g2.animations.length){
+            mixer = new THREE.AnimationMixer(ar);
+            const act = mixer.clipAction(g2.animations[0]);
+            act.setLoop(THREE.LoopRepeat, Infinity);
+            act.play();
+            console.log('%c★ 回收站圆盘动画已接入（复用静态版贴图）：%s %ss · 对齐缩放 %s',
+              'color:#7fd8ff;font-weight:bold', g2.animations[0].name,
+              (g2.animations[0].duration || 0).toFixed(2), k.toFixed(3));
+          }
+        } catch (e) {
+          console.warn('★ 回收站动画接入失败（不影响静态显示）：', e);
+        }
+      });
+    } else {
+      console.warn('★ 回收站：没找到 OBJ_room_inner_4x2x2_recycle_01，圆盘动画跳过');
+    }
+  }
 
   // ★ 2026-10-13：给家具 mesh 打上家具 ID（准星对准显示描述用）。
   //   表可能还没到（fetch 和 GLB 是并行的）→ 函数内部会自己判断，表到了之后再补算一次。
@@ -3728,9 +3899,14 @@ new GLTFLoader().load(GLB_URL, gltf => {
     if (tuneShown) showTunePanel();
   }
 
-  // ★★★ 从走廊进来的房间：用 floor 的包围盒【自动识别房间边界】
-  //     （每个主题的房间尺寸略不同，写死不行）
-  if (FROM_HUB){
+  /* ★★★ 2026-10-23 修：房间边界改成【总是】自动识别，且不再只依赖 `floor` 网格。
+     原来的两个坑：
+       ① 只 `if (FROM_HUB)` 才识别 —— 功能房走 Tab/直链进，FROM_HUB=false
+          ⇒ 一直用写死的宿舍尺寸（7.48×2.20），而功能房是 5.28×2.20 ⇒ 能走出墙外。
+       ② 判据是 `o.name` 含 "floor" —— 功能房的房壳节点叫 `polySurface8`（制造站）/
+          `room`（贸易站）/`polySurface74`（发电站），一个都不含 floor。
+     现在：先按 floor 找（主题宿舍最准），找不到就用**整体包围盒**兜底。 */
+  {
     let fb = null;
     root.traverse(o => {
       if (!o.isMesh) return;
@@ -3738,22 +3914,28 @@ new GLTFLoader().load(GLB_URL, gltf => {
       const b = new THREE.Box3().setFromObject(o);
       if (!fb) fb = b.clone(); else fb.union(b);
     });
+    let how = 'floor 网格';
+    if (!fb || fb.max.x - fb.min.x < 2 || fb.max.z - fb.min.z < 1){
+      fb = new THREE.Box3().setFromObject(root);
+      how = '整体包围盒（没找到 floor 网格）';
+    }
     if (fb && fb.max.x - fb.min.x > 2 && fb.max.z - fb.min.z > 1){
       ROOM.x0 = fb.min.x; ROOM.x1 = fb.max.x;
       ROOM.z0 = fb.min.z; ROOM.z1 = fb.max.z;
       ROOM.y0 = fb.min.y; ROOM.y1 = fb.max.y;
       BOUND.x0 = ROOM.x0 + WALL;  BOUND.x1 = ROOM.x1 - WALL;
       BOUND.z0 = ROOM.z0 + WALL;  BOUND.z1 = ROOM.z1 - 0.06;
-      console.log('%c★ 房间边界自动识别：X %s~%s  Z %s~%s', 'color:#5fd8e8;font-weight:bold',
-        ROOM.x0.toFixed(2), ROOM.x1.toFixed(2), ROOM.z0.toFixed(2), ROOM.z1.toFixed(2));
+      console.log('%c★ 房间边界自动识别（%s）：X %s~%s  Z %s~%s  Y %s~%s',
+        'color:#5fd8e8;font-weight:bold', how,
+        ROOM.x0.toFixed(2), ROOM.x1.toFixed(2), ROOM.z0.toFixed(2), ROOM.z1.toFixed(2),
+        ROOM.y0.toFixed(2), ROOM.y1.toFixed(2));
     } else {
-      console.warn('★ 没找到 floor 网格，沿用默认边界');
+      console.warn('★ 房间边界识别失败，沿用默认边界');
     }
-
-    // ★ 门已经在 GLB 里了（游戏自带的左右门洞 + 门板）
-    //   这里只需要读出门的位置，用来做"按 E 出门"的判定
-    locateDoors(root);
   }
+
+  // ★ 门已经在 GLB 里了（游戏自带的左右门洞 + 门板），读出门的位置做"按 E 出门"判定
+  locateDoors(root);
 
   console.log('%c★ 材质已换成 Lambert：' + matSwapped + ' 个槽位，共用 ' + matCache.size + ' 个材质',
               'color:#5fd8e8;font-weight:bold');
@@ -3961,13 +4143,48 @@ function applyKeptPose(){
   return true;
 }
 
-/* 从房间前部中央开始，向四周找一个不卡住的位置 */
+/* 从房间前部中央开始，向四周找一个不卡住的位置。
+   ★★★ 2026-10-23 改写：候选格原来**写死成宿舍坐标**
+     （x 以 0.13 为中心 ±3.4、z 从 0.86 扫到 0.30）——
+     功能房只有 5.28×2.20，这套坐标会把人推到墙边/设备里。
+     现在按 `ROOM`（已由包围盒自动识别）动态算：x 取房间中心，z 从靠门那侧往里扫。 */
 function findSpawn(){
+  const cx = (ROOM.x0 + ROOM.x1) / 2;
+  const cz = (ROOM.z0 + ROOM.z1) / 2;
+  /* ★★★ 2026-10-23：功能房单独处理 —— 固定站在【靠门那一侧】，朝房间里面看。
+     为什么不用通用的"找空地"：功能房的设备是大框架（制造站的 `Maker_M` 4.89×2.05×1.37
+     几乎铺满 5.28×2.20 的房间），① 按包围盒判空会把整间房判成"被占"；
+     ② 站在几何中心（0,0）实际是钻进设备内部，画面全黑。
+     这些房间是"进来看的"，站门侧 + 朝 -Z 一定看得到设备，也最稳。 */
+  if (typeof IS_FUNCTION_ROOM !== 'undefined' && IS_FUNCTION_ROOM){
+    const x = cx, z = ROOM.z1 - 0.10;
+    player.pos.set(x, EYE, z);
+    player.home.copy(player.pos);
+    player.yaw = 0;                       // yaw=0 → 朝 -Z（房间里面）
+    player.pitch = 0;
+    console.log('%c功能房出生点：贴门侧 (%s, %s)，朝 -Z 看设备', 'color:#5fd8e8',
+      x.toFixed(2), z.toFixed(2));
+    if (applyCamOverride()) return;
+    return;
+  }
+  const halfX = Math.max(0.1, (ROOM.x1 - ROOM.x0) / 2 - 0.32);
+  /* ★★★ 2026-10-23 再修（用户：「amiya 出生点收拾掉」）：
+     候选**从门侧（+Z）往里扫**，x 从房间中心向两侧扩 —— 恢复"刚进门、站在前部往里看"的观感。
+       · 34×10 主题宿舍：z1=1.08 ⇒ 起点 z=0.86，**和 10-23 之前的写死坐标完全一致**
+         （原来写死 `z=0.86`、`x=0.13` 就是"进门一步"的位置；这里 x 从 cx 起步，也对得上）。
+       · 46×16 会客室族（amiya / basicRoom 等，进深 3.52）：起点 z=1.54，正好在门内侧，
+         一眼能把 10.12 m 宽的整间房看进去；原来从几何中心（z=0）扫，人会站在屋子正中、
+         并且被中心附近的家具挤到一侧（实测 amiya 落到 x=1.68 的画架旁）。
+     ★ 为什么不再从中心开始：中心对 3.52 进深的大房间 = 房间正中，
+       玩家的第一眼是"我站在屋子中间"，而不是"我刚进来"。
+     ★ 功能房不走这里（上面已有贴门侧的特判）。 */
+  const zStart = Math.min(ROOM.z1 - 0.22, BOUND.z1);
+  const zStop  = ROOM.z0 + 0.30;
   const cands = [];
-  for (let z = 0.86; z >= 0.30; z -= 0.08){
-    for (let dx = 0; dx <= 3.4; dx += 0.24){
+  for (let z = zStart; z >= zStop - 1e-6; z -= 0.10){
+    for (let dx = 0; dx <= halfX + 1e-6; dx += 0.24){
       for (const sx of (dx === 0 ? [0] : [dx, -dx])){
-        cands.push([0.13 + sx, z]);
+        cands.push([cx + sx, z]);
       }
     }
   }
@@ -3975,14 +4192,22 @@ function findSpawn(){
     if (!hitsAny(x, z)){
       player.pos.set(x, EYE, z);
       player.home.copy(player.pos);
-      console.log('找到空地', x.toFixed(2), z.toFixed(2));
+      // ★ 朝向：站在房间前半（靠门/开放面）就看 -Z（房间里面）；站在后半就转过来看 +Z
+      player.yaw = (z >= cz) ? 0 : Math.PI;
+      player.pitch = 0;
+      console.log('%c找到空地 %s %s（房间 %s×%s，yaw %s°）', 'color:#5fd8e8',
+        x.toFixed(2), z.toFixed(2),
+        (ROOM.x1 - ROOM.x0).toFixed(2), (ROOM.z1 - ROOM.z0).toFixed(2),
+        Math.round(player.yaw * 180 / Math.PI));
       if (applyCamOverride()) return;          // ★ 定点相机优先
       return;
     }
   }
-  player.pos.set(0.13, EYE, 0.90);
+  // 兜底：房间正中心靠前一点，朝房间里面
+  player.pos.set(cx, EYE, cz + 0.2);
   player.home.copy(player.pos);
-  console.warn('没找到空地，用兜底位置');
+  player.yaw = 0; player.pitch = 0;
+  console.warn('没找到空地，用兜底位置（房间中心）');
   applyCamOverride();                          // ★ 定点相机（即使没空地也生效）
 }
 
@@ -4068,6 +4293,8 @@ addEventListener('keydown', e => {
        I = 家具介绍（准星对准家具显示名字+描述）的显示开关 */
   if (e.code === 'KeyG' && !e.repeat) toggleNoclip();
   if (e.code === 'KeyI' && !e.repeat) toggleFurniInfo();
+  /* ★ 2026-10-23（用户要求）：H = 收起 / 展开右上角整块按键提示（收起来只剩一行提示） */
+  if (e.code === 'KeyH' && !e.repeat) toggleKeyhelp();
   /* ★★★ 2026-10-23（用户要求）：`,` = 上一间 · `.` = 下一间（顺序 = 房间列表顺序）。
      ★ 只在【已经进房】且【面板没开】时生效 —— 面板开着时这两个键留给搜索框/滚轮。
      ★ `[` `]` 被「视线高度」占用了，所以用 , .（见提示词 §五 的备选方案）。 */
@@ -5367,6 +5594,13 @@ function locateDoors(root){
     let side = null;
     if (nm.includes('_LDOOR') || nm.includes('DOOR_L')) side = 'L';
     else if (nm.includes('_RDOOR') || nm.includes('DOOR_R')) side = 'R';
+    /* ★★★ 2026-10-23 补：**功能房**的门节点叫 `LDoor` / `RDoor`（没有 `ROOM_` 前缀、
+       也没有 `_LDOOR` 里的那个下划线）⇒ 原来一扇都认不出来，`exitDoorX` 为空，
+       于是 checkExit 走"兜底 z 判定"，把出生点（贴 ROOM.z1）当成门口，
+       「E 推门出去」一直亮着（用户反馈的误触发）。
+       ★ 只认**整名**，不用 includes —— 别把 `furni_xxx_ldoor_01` 这类家具名当门。 */
+    if (!side && /^(ROOM_)?LDOOR$/.test(nm)) side = 'L';
+    if (!side && /^(ROOM_)?RDOOR$/.test(nm)) side = 'R';
     if (!side) return;
     const b = new THREE.Box3().setFromObject(o);
     const midX = (b.min.x + b.max.x) / 2;
@@ -5522,7 +5756,17 @@ function checkExit(){
       on = true; break;
     }
   } else {
-    on = player.pos.z > EXIT_Z;      // 兜底：没找到门就退回"走到边上"
+    /* ★★★ 2026-10-23 修（用户反馈：「E 推门出去」一直亮着）：
+       功能房的出生点本来就贴在 `ROOM.z1 - 0.10`，这条兜底（`z > EXIT_Z`）会把
+       出生点判成"站在门口" ⇒ 提示常亮。
+       ⇒ ① 功能房（面板 / 直链进、房壳里没有门板）**没有门就不提示**；
+         ② 宿舍类里也有没门板的房间（`rhodesKitchen` 实测就没有），原来那个
+            `ROOM.z1 - 0.55` 的阈值太宽松 —— 出生点 z=0.88 就直接命中。
+            现在要求【几乎贴边】+ **朝房间正面看**（fz = 前方 Z 分量 > 0.47 ≈ ±62°，
+            和门判定同一个朝向阈值）才提示，符合用户 2026-10-13「准星对着门才显示」的要求。
+       ★ 另外不再用模块级的 `EXIT_Z`：它是在模块加载时用【默认宿舍 ROOM】算出来的，
+         GLB 回调自动识别边界之后它就是旧值了。 */
+    on = !IS_FUNCTION_ROOM && player.pos.z > ROOM.z1 - 0.18 && fz > 0.47;
   }
   // 门框白边渐亮（如果做了的话）
   if (exitFrameMats && exitFrameMats.length){
@@ -5890,6 +6134,17 @@ function switchRoom(theme){
   }, 340);
 }
 
+/* ★★★ 2026-10-23（用户要求）：手机端常驻「上一间 / 下一间」按钮。
+   ⇒ 直接复用 stepRoom()，和桌面按 `,` / `.` **完全同一条逻辑**
+     （顺序 = 房间列表显示顺序、沿用站位、340ms 淡出）。
+   ★ 按钮本身只在触摸/窄屏的 media query 里显示，桌面不占地方。 */
+(function initStepBtns(){
+  const prev = document.getElementById('stepPrev');
+  const next = document.getElementById('stepNext');
+  if (prev) prev.addEventListener('click', (e) => { e.preventDefault(); stepRoom(-1); });
+  if (next) next.addEventListener('click', (e) => { e.preventDefault(); stepRoom(1); });
+})();
+
 /* ── 键盘：E 开/关（只在终端前）· Tab 随时开关 · Esc 关 · 1~9 选房间
    ★ 灯板（L）开着时数字键让位给灯板
    ★ 2026-10-13：面板那部分的键位（Esc / 1~9 / 0）已经交给共享模块的 panelKey()，
@@ -6048,7 +6303,12 @@ function buildFurniSuffixIndex(){
 }
 function furniBySuffix(shortName, hint){
   if (!FURNI_BY_SUFFIX) return null;
-  const s = FURNI_BY_SUFFIX.get(shortName);
+  let s = FURNI_BY_SUFFIX.get(shortName);
+  /* ★★★ 2026-10-23：**纯件名**再试一次 `_01`
+     —— 旧导入器的房间（`closureRoom` 最典型）GRP_ 名就是 `GRP_computerdesk` / `GRP_chair`，
+     没有编号；而表里的家具 ID 一律是 `furni_closureRoom_computerdesk_01`。
+     只对"不含尾编号"的名字补 `_01`，所以不会把 `poster_02` 认成 `poster_01`。 */
+  if (!s && !/_\d+$/.test(shortName)) s = FURNI_BY_SUFFIX.get(shortName + '_01');
   if (!s) return null;
   if (s.size === 1) return [...s][0];
   if (hint){                                      // 有歧义 → 用当前主题名消歧
@@ -6058,19 +6318,41 @@ function furniBySuffix(shortName, hint){
   }
   return null;                                    // 歧义又没线索 → 宁可不认
 }
-/** 从一个 GRP_/mesh 名猜家具 ID（和 _fk_export_furni_text.cjs 里同一套规则，别只改一边） */
+/** 剥掉 Blender / three.js 加在名字尾巴上的重名后缀：`..._01#2` / `..._01.001` */
+function stripNameSuffix(s){
+  return String(s || '').replace(/#\d+$/, '').replace(/\.\d+$/, '');
+}
+/** 从一个 GRP_/mesh 名猜家具 ID（和 _fk_export_furni_text.cjs 里同一套规则，别只改一边）
+    ★★★ 2026-10-23 修（用户反馈：天花板灯不显示名字/描述）：
+      全库 213 个 `GRP_..._0N#2` 组（79 个房间）和一批缺 `furni_`/`furniM_` 前缀的旧命名，
+      原来一条都认不出来 ⇒ 4390/7090 个 mesh 没有 furniId。现在按 4 步归一再查表：
+        ① 去掉 Blender 重名后缀 `#2` / `.001`（`GRP_furniM_amiya_ceilingLight_01#2`
+           → `furniM_amiya_ceilingLight_01`，直接命中）；
+        ② 原样查表；
+        ③ 补 `furni_` / `furniM_` 前缀再查（旧导入器把主题名一起丢了的那些，
+           `abyssal_ceilingLamp_01` → `furni_abyssal_ceilingLamp_01`）；
+        ④ 最后走后缀索引 + 当前主题消歧（`ceilingLight_01` → 本主题那盏）。
+      ⚠️ `3D渲染\tools\_fk_export_furni_text.cjs` 有同一套规则，改这里必须同步改那边，
+         否则表里会缺件（表是"反过来扫 GLB"生成的，规则不一致 = 表缺键）。 */
 function guessFurniId(rawName){
   const name = String(rawName || '');
   if (name.startsWith('GRP_')){
-    const id = name.slice(4);
+    const id = stripNameSuffix(name.slice(4));
     if (furniIdOfTable(id)) return id;
     const hit = furniBySuffix(id, THEME);
     if (hit) return hit;
+    /* ★ 补前缀：旧导入器的 GRP_ 名只留"主题+件名"或"件名"，没有 furni/furniM 前缀 */
+    if (furniIdOfTable('furni_'  + id)) return 'furni_'  + id;
+    if (furniIdOfTable('furniM_' + id)) return 'furniM_' + id;
+    const hit2 = furniBySuffix(id.split('_').slice(1).join('_'), THEME);   // 剥掉首段主题名再试
+    if (hit2) return hit2;
   }
-  let n = name.replace(/_mesh(\$\d+)?$/i, '').replace(/\$\d+$/, '').replace(/\.\d+$/, '');
+  let n = stripNameSuffix(name.replace(/_mesh(\$\d+)?$/i, '').replace(/\$\d+$/, ''));
   let guard = 0;
   while (n.length > 6 && guard++ < 24){
     if (furniIdOfTable(n)) return n;
+    if (furniIdOfTable('furni_'  + n)) return 'furni_'  + n;
+    if (furniIdOfTable('furniM_' + n)) return 'furniM_' + n;
     const h = furniBySuffix(n, THEME);
     if (h) return h;
     const m = n.replace(/_[^_]+$/, '');
@@ -6184,8 +6466,13 @@ function updateFurniInfo(dt){
     if (want){
       const t = FURNI_TEXT[want] || ['', ''];
       if (furniNameEl) furniNameEl.textContent = furniDisplayName(t[0], want);
-      /* ★ 2026-10-23：尺寸 / 类型（用户要求）。旧表没有第 3~7 位时返回 '' ⇒ 整行不显示。 */
-      if (furniMetaEl) furniMetaEl.textContent = furniMetaText(t);
+      /* ★ 2026-10-23：尺寸/类型 + **家具 ID** 一起写进去。
+         这一行正常状态被 CSS 隐藏（`#furniInfo .m{display:none}`），
+         F8 调试可视化打开时 `#furniInfo.dbg` 才显示 —— 排查"这件为什么没名字"最有用。 */
+      if (furniMetaEl){
+        const meta = furniMetaText(t);
+        furniMetaEl.textContent = (meta ? meta + ' · ' : '') + 'ID: ' + want;
+      }
       if (furniDescEl) furniDescEl.textContent = furniDescText(t[1]);
       furniInfoEl.classList.add('on');
       /* ★★★ 2026-10-16 溢出兜底（用户提的方案）
@@ -6328,6 +6615,9 @@ function toggleDebugVisual(){
   if (DBG.group) DBG.group.visible = DBG.on;
   const hud = DBG.hud || (DBG.hud = document.getElementById('dbgHud'));
   if (hud) hud.classList.toggle('on', DBG.on);
+  /* ★ 2026-10-23（用户需求变更）：尺寸 / 类型 / ID 那一行跟着 F8 一起显示/隐藏。
+     用 class 而不是重算 —— 数据早在 DOM 里（见 updateFurniInfo），这里只改可见性。 */
+  if (furniInfoEl) furniInfoEl.classList.toggle('dbg', DBG.on);
   if (!DBG.on){ _dbgClearHighlight(); DBG.last = null; DBG._sig = ''; }
   say(DBG.on ? '调试可视化：开　碰撞盒 + 视线射线（F8 关闭）' : '调试可视化：关');
   console.log('%c★ 调试可视化：%s', 'color:#59d0ff', DBG.on ? '开' : '关');
@@ -6724,6 +7014,9 @@ function tick(now){
   fkWaterAdvance(dt);
   // ★ 2026-10-20：火同理（盆火靠 UV 滚动，不进 AnimationMixer）
   fkFireAdvance(dt);
+  /* ★ 2026-10-23：功能房的 AnimationMixer（只有带 animations 的 GLB 才会建）。
+     ★ 放在 `if (loaded && ...)` 之外 —— 面板开着 / 站着不动时，机械臂也该继续转。 */
+  if (mixer) mixer.update(dt);
 
   /* ★ 2026-10-13：面板开着时不移动、不转头。
      ★★ 面板的开关状态现在住在共享模块里（isRoomPanelOpen()），本文件不再维护第二份。
@@ -7036,6 +7329,27 @@ function showRoomNotice(){
     apply();
   });
 })();
+
+/* ═══════════════════════════════════════════════════ ★★★ H = 收起 / 展开整块按键提示（2026-10-23）
+   用户要求：「按 H 键右上角就只剩下一个提示，如『按 H 展开按键提示』」。
+   ★ 状态记 localStorage：观赏时收起一次，以后进来一直是收起的（不用每次按）。
+   ★ 手机端 #keyhelp 本来就 display:none（没有键盘），不受影响。 */
+const KEYHELP_HIDE_KEY = 'dorm_kh_hide';
+function keyhelpSetHidden(hide, quiet){
+  const el = document.getElementById('keyhelp');
+  if (!el) return;
+  el.classList.toggle('kh-hide', !!hide);
+  try { localStorage.setItem(KEYHELP_HIDE_KEY, hide ? '1' : '0'); } catch (e) {}
+  if (!quiet) say(hide ? '按键提示：已收起（按 H 展开）' : '按键提示：已展开');
+}
+function toggleKeyhelp(){
+  const el = document.getElementById('keyhelp');
+  if (!el) return;
+  keyhelpSetHidden(!el.classList.contains('kh-hide'));
+}
+try {
+  if (localStorage.getItem(KEYHELP_HIDE_KEY) === '1') keyhelpSetHidden(true, true);
+} catch (e) {}
 
 window.__toggleBloom = function(){
   if (!composer){ say('Bloom 不可用'); return; }

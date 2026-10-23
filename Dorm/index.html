@@ -266,7 +266,7 @@ const OBJECTS = {
     tags:['留言'], go:'写留言', href:'#' },
   ceilingLight:      { icon:'◉', name:'顶灯', sub:'3D DORM',
     desc:'灯亮起来的时候，可以走进这间宿舍 —— 用 3D 视角自由参观。',
-    tags:['3D','交互'], go:'进入 3D 宿舍', href:'hub.html' },
+    tags:['3D','交互'], go:'进入 3D 宿舍', href:'walk.html' },
   workbench:         { icon:'⚒', name:'工作台', sub:'LAB',
     desc:'动手的地方。实验性的小玩意、WebGL demo、工具页面。',
     tags:['实验室','Demo'], go:'进实验室', href:'#' },
@@ -609,7 +609,9 @@ document.getElementById('btn-hints').onclick=e=>{
   if(document.body.classList.contains('hints')) drawHintBoxes(); else hots.innerHTML='';
   toast(document.body.classList.contains('hints')?'已显示可点击区域':'已隐藏可点击区域');
 };
-document.getElementById('btn-3d').onclick=()=>{location.href='hub.html';};
+/* ★ 2026-10-23（用户要求）：默认进【会客室】（walk.html 不带 ?theme= 时就是 basicRoom）；
+   走廊 hub.html 作为早期构造保留，去不去由访客自己决定（房间面板底部有「回走廊」）。 */
+document.getElementById('btn-3d').onclick=()=>{location.href='walk.html';};
 addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft')  go(cur-1);
   if(e.key==='ArrowRight') go(cur+1);

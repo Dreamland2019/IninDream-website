@@ -41,6 +41,29 @@ let _viewRooms = [];
 let _q = '';               // 当前搜索词
 let _redraw = null;        // 当前打开的面板的"只重建网格"回调（搜索时用）
 
+/* ★★★ 2026-10-23（用户要求）：房间列表**分页**。
+   用户原话：「按 tab 打开房间列表，要一直往下拖，现在有这么多套房间，是不是应该改成翻页的比较好，
+             一页多少比较合适你看」。
+   为什么是 12：面板卡片 `minmax(190px,1fr)` 在 900px 宽的卡片里是 **4 列**，
+     4 列 × 3 行 = 12 张 ≈ 一屏（88vh ≈ 740px，标题+搜索+底栏占 ~200px，3 行卡片 ~510px）
+     ⇒ 桌面端**不用滚**正好一页。139 间 = 12 页，手机 1~2 列时一页会稍长，但仍远小于整表。
+   ★ `_viewRooms` 仍是【全部排序结果】，分页只是"渲染当前页"——
+     数字键 1~9 认的是**本页前 9 张**，和卡片角标一致。 */
+const PAGE_SIZE = 12;
+let _page = 0;             // 0 起
+/* ★★★ 2026-10-23（用户要求）：两类房间**各自独立**，功能房不混进家具主题的翻页。
+   用户原话：「功能房作为独立的类型放在家具主题的下方，而不该放到家具主题的翻页里，
+             但是手机端该怎么办，要不默认让其隐藏成只有类别标题，点击后再展开。」
+   ⇒ ① 家具主题区自己分页（12/页）；
+      ② 基建功能房区放在它下方，**不分页**（只有 8 间），标题可点击展开 / 收起；
+      ③ 两个类别标题都是折叠开关；**默认只展开家具主题**（手机上这就是"只剩标题"）。
+   ★ `_dormRooms` = 当前排序后的家具主题（数字键 1~9 认它，替代原来的 `_viewRooms`）。 */
+const _groupOpen = { dorm: true, function: false };
+let _dormRooms = [];
+/* ★ 2026-10-23：点开「基建功能房」时自动滚到它（面板内部滚动）——
+   两个区都展开时功能房在下方，不滚一下用户会以为没反应。 */
+let _scrollToFn = false;
+
 /* ══════════════ ★★★ 房间分两大类显示（2026-10-14 加；2026-10-23 改顺序+排序） ══════════════
    用户需求（2026-10-14）：「房间菜单分两大类」。
    用户需求（2026-10-23，**现行规则，别自己另定**）：
@@ -76,17 +99,25 @@ function _cmpRooms(a, b){
   return (Number(b.sortId) || 0) - (Number(a.sortId) || 0);
 }
 
-/** 分组标题（横跨整行） */
-function _groupLabel(kind, n){
+/** 分组标题（横跨整行）—— ★ 2026-10-23：改成**可点击的折叠头**（▾ 展开 / ▸ 收起）
+ *  ★ 窄屏（手机）上不显示右侧那句长说明，否则「家具主题 138 间」会被挤成三行。 */
+let _narrow = false;
+function _groupLabel(kind, n, open){
   const d = document.createElement('div');
   d.className = 'fkRoomGroup';
-  d.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:9px;' +
-    'margin:6px 0 -2px;font-size:11.5px;letter-spacing:.14em;color:#8fb4cf';
+  d.dataset.kind = kind;
+  d.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;gap:' + (_narrow ? 6 : 9) + 'px;' +
+    'margin:6px 0 -2px;padding:4px 6px;border-radius:4px;cursor:pointer;user-select:none;' +
+    'white-space:nowrap;overflow:hidden;' +
+    'font-size:' + (_narrow ? 10.5 : 11.5) + 'px;letter-spacing:.14em;color:#8fb4cf';
   d.innerHTML = '<span style="color:#5fd8e8">▍</span>' +
-    '<span style="color:#bcd9ee">' + (KIND_LABEL[kind] || kind) + '</span>' +
-    '<span style="color:#5f7c94;font:11px ui-monospace,Consolas,monospace">' + n + ' 间</span>' +
+    '<span style="color:#bcd9ee;flex:0 0 auto">' + (KIND_LABEL[kind] || kind) + '</span>' +
+    '<span style="color:#5f7c94;font:11px ui-monospace,Consolas,monospace;flex:0 0 auto">' + n + ' 间</span>' +
     '<span style="flex:1 1 auto;height:1px;background:#2c4a63"></span>' +
-    '<span style="color:#5f7c94;letter-spacing:0">' + (KIND_NOTE[kind] || '') + '</span>';
+    (_narrow ? '' : '<span style="color:#5f7c94;letter-spacing:0">' + (KIND_NOTE[kind] || '') + '</span>') +
+    '<span style="flex:0 0 auto;color:#bcd9ee;font-size:12px">' + (open ? '▾' : '▸') + '</span>';
+  d.addEventListener('mouseenter', () => { d.style.background = 'rgba(95,216,232,.07)'; });
+  d.addEventListener('mouseleave', () => { d.style.background = 'transparent'; });
   return d;
 }
 
@@ -121,7 +152,7 @@ export function openRoomPanel(opts){
       'align-items:center;justify-content:center;background:rgba(4,8,12,.72)';
     const card = document.createElement('div');
     card.id = 'roomPanelCard';
-    card.style.cssText = 'width:min(900px,94vw);max-height:88vh;overflow:auto;' +
+    card.style.cssText = 'width:min(900px,94vw);max-height:92vh;overflow:auto;' +
       'padding:20px 22px;border:1px solid #4b7fa8;border-radius:8px;' +
       'background:rgba(9,13,19,.97);color:#cfe6f7;' +
       'font-family:"HarmonyOS Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;' +
@@ -150,7 +181,7 @@ export function openRoomPanel(opts){
       'outline:none';
     si.addEventListener('focus', () => { si.style.borderColor = '#5fd8e8'; });
     si.addEventListener('blur',  () => { si.style.borderColor = '#33506a'; });
-    si.addEventListener('input', () => { _q = si.value; if (_redraw) _redraw(); });
+    si.addEventListener('input', () => { _q = si.value; _page = 0; if (_redraw) _redraw(); });
     si.addEventListener('keydown', (ev) => {
       if (ev.key === 'Enter'){
         // ★ 回车 = 进第一个匹配（搜索结果保持调用方给的顺序）
@@ -181,10 +212,16 @@ export function openRoomPanel(opts){
     const grid = document.createElement('div');
     grid.id = 'roomPanelGrid';
     /* ★ 自适应列数（不写死 3 列）—— 房间加到十几间时会自动多排几列，
-       不会变成一条又长又窄的列表 */
+       不会变成一条又长又窄的列表
+       ★ 2026-10-23：最小宽改成 `min(190px, 38vw)` —— 手机竖屏 94vw ≈ 367px、
+         卡片内容宽 ≈ 323px 时：38vw ≈ 148px ⇒ 2×148+14 = 310 < 323 ⇒ 能排 **2 列**
+         （42vw 时算出来 1 列，实测过；原来 190px 也只有 1 列，一页 12 张要滚很久）。 */
     grid.style.cssText = 'display:grid;gap:14px;' +
-      'grid-template-columns:repeat(auto-fill,minmax(190px,1fr))';
+      'grid-template-columns:repeat(auto-fill,minmax(min(190px,38vw),1fr))';
     card.appendChild(grid);
+    /* ★ 2026-10-23（用户要求）：**翻页条建在 grid 内部**（见 draw 里的 makePagerRow），
+       因为"家具主题"自己分页、功能房在它下方 —— 翻页条必须夹在
+       「家具主题最后一排」和「基建功能房标题」之间，不能再是 card 的固定子元素。 */
     card.appendChild(document.createElement('div')).id = 'roomPanelFoot';
     box.appendChild(card);
     // 点遮罩空白处关闭
@@ -202,14 +239,50 @@ export function openRoomPanel(opts){
     '点了直接过去　·　Tab 关闭　·　Esc 关闭　·　按 / 搜索</span>';
 
   // ── ★ 2026-10-15：搜索状态复位（每次打开都从"全部房间 + 空搜索词"开始）
+  //    ★ 2026-10-23：翻页也从第 1 页开始；分组复位成"只展开家具主题"（功能房默认收起）
   _allRooms = Array.isArray(opts.rooms) ? opts.rooms.slice() : [];
   _q = '';
+  _page = 0;
+  _groupOpen.dorm = true;
+  _groupOpen.function = false;
+  /* ★ 2026-10-23：窄屏（手机）用更紧凑的分组标题 / 卡片标题，否则会折成好几行 */
+  _narrow = (typeof innerWidth === 'number') && innerWidth <= 820;
   const siEl = document.getElementById('roomPanelSearch');
   if (siEl) siEl.value = '';
 
   // ── 卡片（每次重建：房间清单可能变）
   const grid = document.getElementById('roomPanelGrid');
   const sCount = document.getElementById('roomPanelSearchCount');
+
+  /** ★ 2026-10-23（用户要求）：翻页条 —— 建在 **grid 内部**的一整行，
+   *  这样它能夹在家具主题区最后一行和「基建功能房」标题之间。
+   *  按钮直接调 `draw()`（只重建网格，不关面板）。 */
+  const makePagerRow = (pages, total) => {
+    const row = document.createElement('div');
+    row.id = 'roomPanelPager';
+    row.style.cssText = 'grid-column:1/-1;display:flex;align-items:center;justify-content:center;' +
+      'gap:12px;margin-top:4px;padding-top:12px;border-top:1px dashed rgba(75,127,168,.35)';
+    if (pages <= 1) return row;
+    const mkBtn = (label, disabled, fn) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.disabled = !!disabled;
+      b.style.cssText = 'padding:7px 14px;cursor:' + (disabled ? 'default' : 'pointer') + ';' +
+        'border:1px solid ' + (disabled ? '#25405a' : '#4b7fa8') + ';border-radius:4px;' +
+        'background:' + (disabled ? 'transparent' : 'rgba(95,216,232,.1)') + ';' +
+        'color:' + (disabled ? '#4d6c85' : '#9fe8ff') + ';font:12.5px inherit';
+      if (!disabled) b.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); fn(); });
+      return b;
+    };
+    row.appendChild(mkBtn('‹ 上一页', _page <= 0, () => { _page--; draw(); }));
+    const lab = document.createElement('span');
+    lab.style.cssText = 'font:12px ui-monospace,Consolas,monospace;color:#8fb4cf;letter-spacing:.06em';
+    lab.textContent = '第 ' + (_page + 1) + ' / ' + pages + ' 页　·　共 ' + total + ' 间';
+    row.appendChild(lab);
+    row.appendChild(mkBtn('下一页 ›', _page >= pages - 1, () => { _page++; draw(); }));
+    return row;
+  };
 
   /** 只重建网格 —— 搜索框的 input 事件通过模块级 `_redraw` 调它。
    *  ★ 过滤只影响【显示 / 角标 / 数字键】，不动调用方给的数组（`_allRooms` 是副本）。 */
@@ -228,19 +301,32 @@ export function openRoomPanel(opts){
          而且"搜一下再按 3"选的是搜索结果第 3 个，顺序与卡片角标一致最直观。
        ★★ `_viewRooms` 就是下面【实际渲染进网格的顺序】——
          数字键 1~9 认的是它，卡片角标也按它编号，两者天然对齐（既有行为，没改）。 */
+    /* ★★★ 2026-10-23（用户要求）：**两个类别各自独立**
+       —— 家具主题自己分页；基建功能房固定在它下方，**不参与家具主题的翻页**，
+          标题可点击展开 / 收起（默认收起，手机上就只剩「基建功能房 8 间 ▸」一行）。
+       搜索时仍平铺 + 分页（不分区），保持"搜一下按 3"的既有直觉。 */
+    let dormRooms = [], fnRooms = [];
     if (!q){
-      _viewRooms = [];
-      for (const k of KIND_ORDER){
-        for (const r of hits) if (_kindOf(r) === k) _viewRooms.push(r);
-      }
+      for (const r of hits){ if (_kindOf(r) === 'function') fnRooms.push(r); else dormRooms.push(r); }
+      _viewRooms = dormRooms.concat(fnRooms);
     } else {
       _viewRooms = hits;
+      dormRooms = hits;                    // 搜索时分页基于结果（不区分 kind）
+      fnRooms = [];
     }
+    _dormRooms = dormRooms;
     if (sCount){
       sCount.textContent = q ? (_viewRooms.length + ' / ' + _allRooms.length + ' 间')
                              : ('共 ' + _allRooms.length + ' 间');
       sCount.style.color = (q && !_viewRooms.length) ? '#e8845f' : '#7d97ae';
     }
+    /* ★ 分页只作用于【家具主题区】（搜索时作用于全部结果） */
+    const pageSource = q ? _viewRooms : dormRooms;
+    const pages = Math.max(1, Math.ceil(pageSource.length / PAGE_SIZE));
+    if (_page > pages - 1) _page = pages - 1;
+    if (_page < 0) _page = 0;
+    const start = _page * PAGE_SIZE;
+    const pageRooms = pageSource.slice(start, start + PAGE_SIZE);
     grid.innerHTML = '';
     if (!_viewRooms.length){
       const none = document.createElement('div');
@@ -296,7 +382,8 @@ export function openRoomPanel(opts){
         if (img.parentNode) img.parentNode.insertBefore(ph, img);
       });
       const cap = document.createElement('div');
-      cap.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 11px;font-size:12.5px';
+      cap.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 11px;font-size:' +
+        (_narrow ? 11.5 : 12.5) + 'px;line-height:1.35';
       // ★ 只有前 9 间显示数字角标（数字键只有 1~9）；第 10 间起靠鼠标点
       const badge = (i < 9)
         ? '<span style="flex:0 0 auto;min-width:20px;height:20px;line-height:20px;' +
@@ -349,20 +436,46 @@ export function openRoomPanel(opts){
       grid.appendChild(b);
     };
     if (!q){
-      // ★ 分组：只给【有房间的组】出标题（空组不出现，免得列一个"0 间"的空标题）
-      //   ★ 角标编号走一次预算好的 Map（O(1)）—— `_viewRooms.indexOf(r)` 在循环里是 O(n²)，
-      //     现在只有 11 间看不出来，但游戏有 139 个主题，迟早会加满，别埋这个坑。
-      const ord = new Map();
-      _viewRooms.forEach((r, i) => ord.set(r, i));
-      for (const k of KIND_ORDER){
-        const part = _viewRooms.filter((r) => _kindOf(r) === k);
-        if (!part.length) continue;
-        grid.appendChild(_groupLabel(k, part.length));
-        for (const r of part) renderCard(r, ord.get(r));
+      /* ★ 家具主题区（独立分页）：标题可点击折叠；角标 = 本页内下标（1~9） */
+      const th = _groupLabel('dorm', dormRooms.length, _groupOpen.dorm);
+      th.addEventListener('click', () => { _groupOpen.dorm = !_groupOpen.dorm; draw(); });
+      grid.appendChild(th);
+      if (_groupOpen.dorm){
+        pageRooms.forEach((r, i) => renderCard(r, i));
+        if (pages > 1) grid.appendChild(makePagerRow(pages, dormRooms.length));
+      }
+
+      /* ★ 基建功能房区（固定在家具主题下方，**不参与家具主题的分页**）：
+         默认收起成一行标题（用户要求）；点击展开 8 间（一页放得下，不分页）。
+         ★ 卡片传 i = 100 + 序号 ⇒ 不显示数字角标（数字键 1~9 只认家具主题本页）。 */
+      if (fnRooms.length){
+        const fh = _groupLabel('function', fnRooms.length, _groupOpen.function);
+        fh.addEventListener('click', () => {
+          _groupOpen.function = !_groupOpen.function;
+          if (_groupOpen.function) _scrollToFn = true;     // 展开后滚到这一区
+          draw();
+        });
+        grid.appendChild(fh);
+        if (_groupOpen.function){
+          fnRooms.forEach((r, i) => renderCard(r, 100 + i));
+        } else {
+          const tip = document.createElement('div');
+          tip.style.cssText = 'grid-column:1/-1;color:#5f7c94;font-size:11.5px;' +
+            'padding:2px 6px 4px;letter-spacing:.04em';
+          tip.textContent = '已收起 · 点上面「基建功能房」展开 ' + fnRooms.length + ' 间（不占家具主题的翻页）';
+          grid.appendChild(tip);
+        }
       }
     } else {
-      // ★ 搜索中：不插分组标题（保持"结果平铺 + 角标 = 名次"的既有直觉）
-      _viewRooms.forEach((r, i) => renderCard(r, i));
+      // ★ 搜索中：不插分组标题（保持"结果平铺 + 角标 = 名次"的既有直觉），仍分页
+      pageRooms.forEach((r, i) => renderCard(r, i));
+      if (pages > 1) grid.appendChild(makePagerRow(pages, _viewRooms.length));
+    }
+    /* ★ 2026-10-23：刚点开功能房 → 面板内部滚到它（只滚最近的滚动容器 = 面板卡片） */
+    if (_scrollToFn){
+      _scrollToFn = false;
+      const fhNow = grid.querySelector('.fkRoomGroup[data-kind="function"]');
+      if (fhNow && fhNow.scrollIntoView) { try { fhNow.scrollIntoView({ block: 'center' }); } catch (e) {} }
     }
   };
   _redraw = draw;
@@ -391,8 +504,8 @@ export function openRoomPanel(opts){
   foot.appendChild(closeBtn);
   const tip = document.createElement('span');
   tip.style.cssText = 'font-size:11px;color:#6d879e;width:100%';
-  tip.textContent = opts.note || ('也可以按 1~9 直接选（认的是搜索结果）　·　' +
-    (opts.onHub ? '按 0 回走廊　·　' : '') + '关闭后点一下画面继续走动');
+  tip.textContent = opts.note || ('也可以按 1~9 直接选（认的是家具主题本页前 9 张）　·　← → 翻页　·　' +
+    '点类别标题展开 / 收起　·　' + (opts.onHub ? '按 0 回走廊　·　' : '') + '关闭后点一下画面继续走动');
   foot.appendChild(tip);
 
   box.style.display = 'flex';
@@ -435,9 +548,12 @@ export function panelKey(e){
   if (code.indexOf('Digit') === 0){
     if (inSearch) return true;                 // 打字中：吃掉但不动房间
     const n = parseInt(code.slice(5), 10);
-    const rooms = _viewRooms;                  // ★ 认的是【搜索结果】，和卡片角标一致
-    if (n >= 1 && n <= 9 && n <= rooms.length){
-      const t = rooms[n - 1].theme;
+    /* ★ 2026-10-23：数字键认的是**家具主题区本页**的第 n 张（搜索时认搜索结果）。
+       功能房默认收起、卡片也没有角标，所以不进数字键序列。 */
+    const rooms = _q.trim() ? _viewRooms : _dormRooms;
+    const idx = _page * PAGE_SIZE + (n - 1);
+    if (n >= 1 && n <= 9 && idx < rooms.length){
+      const t = rooms[idx].theme;
       const pick = _opts && _opts.onPick;
       closeRoomPanel();
       if (pick) pick(t);
@@ -450,6 +566,17 @@ export function panelKey(e){
       return true;
     }
     return true;      // 面板开着时数字键一律别漏到游戏里
+  }
+
+  /* ★ 2026-10-23（分页）：← / → 翻页（只翻家具主题区）。搜索框聚焦时不抢（那是光标移动） */
+  if ((code === 'ArrowLeft' || code === 'ArrowRight') && !inSearch){
+    const src = _q.trim() ? _viewRooms : _dormRooms;
+    const pages = Math.max(1, Math.ceil(src.length / PAGE_SIZE));
+    if (pages > 1){
+      const next = _page + (code === 'ArrowRight' ? 1 : -1);
+      if (next >= 0 && next < pages){ _page = next; if (_redraw) _redraw(); }
+    }
+    return true;      // 面板开着时方向键都吃掉（不让它漏到游戏里）
   }
   return false;
 }
