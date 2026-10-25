@@ -13,7 +13,7 @@
 
   /* ── 开始页 ★ 2026-10-11 改：向 walk.html 的提示页看齐（原来只有标题 + 一行小字，
      信息太少）。用户要求"把宿舍那套提示替换走廊的提示"，并且【只触发一次】
-     —— 从宿舍按 E 回走廊不再重复弹（见 body 开头的内联脚本 + 下面的 JS）。 */
+     —— 从宿舍按 F 回走廊不再重复弹（见 body 开头的内联脚本 + 下面的 JS）。 */
   #start{position:fixed;inset:0;z-index:60;cursor:pointer;
     background:radial-gradient(circle at 50% 45%,#101a26,#05070b 70%);
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
@@ -85,7 +85,7 @@
   /* ── 手机端（2026-10-14 加）──────────────────────────────────────────────
      用户："你把走廊的手机端支持加上。"
      ★ 走廊原来【完全没有】触摸支持：没有摇杆、没有拖拽转头 —— 手机上根本走不动。
-     现在补齐四件事：① 摇杆移动　② 拖拽屏幕转头　③ 点提示框 = 按 E 进门
+     现在补齐四件事：① 摇杆移动　② 拖拽屏幕转头　③ 点提示框 = 按 F 进门
      ④ 右下角房间列表按钮（Tab 的等价物）。
      ★ 实现照搬 walk.html 那套（两边保持一致，改一处记得改另一处）。 */
   #stick{display:none}
@@ -128,7 +128,7 @@
       touch-action:manipulation;-webkit-user-select:none;user-select:none}
     #roombtn:active{background:rgba(95,216,232,.3);border-color:rgba(95,216,232,.9)}
 
-    /* ★ 提示框可点 = 按 E 进门（手机上没键盘，这是唯一的进门方式） */
+    /* ★ 提示框可点 = 按 F 进门（手机上没键盘，这是唯一的进门方式） */
     #prompt{bottom:32%;padding:14px 22px;font-size:15px;cursor:pointer}
     #prompt:active{background:rgba(30,45,62,.95);border-color:#7fb4dc}
     /* ★ 2026-10-14 用户："手机端的提示应该删除'按E''E'这些字符，只留下'推门出去''进入xxx'"
@@ -145,7 +145,7 @@
 <script>
 /* ★★★ 2026-10-11：已看过走廊提示的访客 —— 提前给 <html> 打标记，
    让 #start 一开始就不显示。必须放在 #start 渲染【之前】，
-   否则会先闪一下"载入中…"再淡出（从宿舍按 E 回走廊时最明显）。 */
+   否则会先闪一下"载入中…"再淡出（从宿舍按 F 回走廊时最明显）。 */
 try {
   if (localStorage.getItem('dorm_hub_intro_seen') === '1')
     document.documentElement.classList.add('hub-seen');
@@ -157,13 +157,13 @@ try {
 
 <div id="start">
   <h2>宿 舍 走 廊</h2>
-  <div class="sub">这里通向干员们的宿舍<br>走到门前，按 <b>E</b> 推门进去<br>第一人称 · 四处看看</div>
+  <div class="sub">这里通向干员们的宿舍<br>走到门前，按 <b>F</b> 推门进去<br>第一人称 · 四处看看</div>
   <button id="startbtn" class="waiting">载入中…</button>
   <div class="keys">
     <span><b>W</b><b>A</b><b>S</b><b>D</b> 移动</span>
     <span><b>Shift</b> 疾走</span>
     <span><b>鼠标</b> 环视</span>
-    <span><b>E</b> 进门</span>
+    <span><b>F</b> 进门</span>
     <span><b>Esc</b> 松鼠标</span>
   </div>
   <div class="perfnote">
@@ -180,7 +180,7 @@ try {
   <a id="exitbtn" href="./index.html">返回主页</a>
   <div id="keyhelp">
     <b>WASD</b> 移动　<b>鼠标</b> 环视　<b>Shift</b> 疾走<br>
-    <b>E</b> 进门　<b>Tab</b> 房间列表　<b>Q</b> 画质　<b>Shift+Q</b> 帧率上限<br>
+    <b>F</b> 进门　<b>Tab</b> 房间列表　<b>P</b> 画质　<b>Shift+P</b> 帧率上限<br>
     <b>[ ]</b> 调视线高度　<b>M</b> 静音　<b>F</b> 性能面板
   </div>
   <div id="fps"></div>
@@ -192,7 +192,7 @@ try {
 <button id="roombtn" title="房间列表" aria-label="房间列表">房间</button>
 <div id="fade"></div>
 
-<audio id="bgm" loop preload="none"></audio>
+<audio id="bgm" loop preload="metadata"></audio>
 
 <script type="importmap">
 { "imports": {
@@ -295,7 +295,7 @@ const DOOR_THEME = hubSlots();
        · 在它上面再开一个门洞 = 在一张门的画上挖洞 → 怪
        · 在它上面挂门牌        = 把门本身盖住     → 怪
      ⇒ 所以【不开洞、不挂门牌】，只用【地面发光导引贴片】指路。
-        进门 = 走到隔断前按 E（见 tryEnter 的"向前推进"处理）。
+        进门 = 走到隔断前按 F（见 tryEnter 的"向前推进"处理）。
 
    几何实测（3D渲染\tools\_fk_probe_hub_glb.cjs 读 hub.glb）：
      HUB_partition  X=10.780（厚度 0）Y 0~2.70  Z ±1.250   材质自带发光(emissive=1.1)
@@ -348,7 +348,7 @@ const END_DOOR = {
   guide: { cx: 9.35, cz: 0.0, w: 1.50, h: 1.90, y: 0.012 },
 };
 
-/* ★ 2026-10-13：`?from=<主题>` —— 从房间里按 E 出来时带上的来源。
+/* ★ 2026-10-13：`?from=<主题>` —— 从房间里按 F 出来时带上的来源。
    决策 3：出门要【回到走廊里自己那扇门前】，而不是永远回走廊出生点。
    这是通用逻辑：7 扇门都吃（末尾的会客室 + 6 扇侧墙门）。
    ★★ 2026-10-13 用户修正（重要）：**朝向要背对门、面朝走廊**。
@@ -688,14 +688,46 @@ addEventListener('keydown', e => {
   if (sharedPanelKey(e)){ e.preventDefault(); return; }   // 面板开着时的 Esc / 1~9
   if (isRoomPanelOpen()){ keys[e.code] = false; return; } // 面板开着时别把按键喂给移动
   if (e.code === 'KeyM') toggleMute();
-  if (e.code === 'KeyQ'){
-    // ★ 2026-10-13：Shift+Q = 帧率上限（和 Q 画质相邻）
+  /* ★★★ 2026-10-24（用户反馈，与 walk.html 同步）：画质 Q → **P**（Shift+P = 帧率上限）；
+     交互/进门 E → **F**（E 在房间里已经是「下一间」）。 */
+  if (e.code === 'KeyP'){
     if (e.shiftKey) setFpsCap(fpsDivIdx + 1);
     else cycleQuality();
   }
-  if (e.code === 'KeyE') tryEnter();
+  if (e.code === 'KeyF' && !e.shiftKey) tryEnter();
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
+
+/* ★★★ 2026-10-24（用户反馈）：全屏状态下换场景（房间 ⇄ 走廊）不要退出全屏。
+   ⚠️ 浏览器不允许跨页面保持全屏 ⇒ walk.html 在跳转前写了 `dorm_resume_fs` 标记，
+      这里在**用户第一次触摸**时恢复（和 walk.html 里那段同一套做法）。 */
+const FS_RESUME_KEY = 'dorm_resume_fs';
+(function hubResumeFullscreen(){
+  const el = document.documentElement;
+  if (!(el.requestFullscreen || el.webkitRequestFullscreen)) return;   // iPhone Safari 不支持
+  let want = false;
+  try { want = sessionStorage.getItem(FS_RESUME_KEY) === '1'; sessionStorage.removeItem(FS_RESUME_KEY); } catch (e) {}
+  if (!want) return;
+  let done = false;
+  const cleanup = () => {
+    removeEventListener('touchend', fire, true);
+    removeEventListener('pointerdown', fire, true);
+  };
+  function fire(){
+    if (done) return;
+    done = true;
+    cleanup();
+    try {
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (!req) return;
+      const p = req.call(el, { navigationUI: 'hide' });
+      if (p && p.catch) p.catch(() => {});
+    } catch (e) {}
+  }
+  addEventListener('touchend', fire, true);
+  addEventListener('pointerdown', fire, true);
+  setTimeout(() => { if (!done){ done = true; cleanup(); } }, 10000);
+})();
 
 /* ══════════════════════════════════════════════════ ★ 房间选择面板（Tab）
    ★ 用户需求 2："无论在何地都可以唤起终端页面" —— 走廊也算"何地"。
@@ -749,7 +781,7 @@ document.addEventListener('mousemove', e => {
    这一段是**照搬 walk.html** 的实现（两边保持一致，以后改一处记得改另一处）：
      ① #stick 虚拟摇杆 → 写进 stick.x / stick.y，再由 animate() 里的移动块消费
      ② 在 canvas 上拖动 → 直接改 player.yaw / pitch
-     ③ 点提示框 → 等价于按 E 进门
+     ③ 点提示框 → 等价于按 F 进门
      ④ #roombtn → 等价于按 Tab 开房间列表 */
 const isTouch = matchMedia('(pointer: coarse)').matches;
 
@@ -815,7 +847,7 @@ renderer.domElement.addEventListener('touchend', e=>{
   for (const t of e.changedTouches) if (t.identifier === lookState.id) lookState.id = null;
 }, {passive:true});
 
-// ★ 点提示框 = 按 E 进门（只在触摸设备上开，免得桌面端解锁鼠标后误点）
+// ★ 点提示框 = 按 F 进门（只在触摸设备上开，免得桌面端解锁鼠标后误点）
 /* ⚠️ 这里【不能】直接用 hub 那个 `promptEl` 常量 —— 它在第 906 行才定义，
    而本段代码在第 648 行就执行了（模块顶层立即执行 ⇒ TDZ ReferenceError）。
    所以现场再取一次 DOM。 */
@@ -842,8 +874,8 @@ if (isTouch){
 
 // ══════════════════════════════════════════════════ 开始 / 指针锁定
 // ★★★ 2026-10-11 改（用户要求）：走廊提示页【只弹第一次】
-//   原来：每次从宿舍按 E 回走廊 → 整页重载 → 又得看一遍提示、再点一次「进入」；
-//         而且中途按 Esc 松鼠标，整页提示也会回来 —— 这就是"会反复触发"。
+//   原来：每次从宿舍按 F 回走廊 → 整页重载 → 又得看一遍提示、再点一次「进入」；
+//         而且中途按 Fsc 松鼠标，整页提示也会回来 —— 这就是"会反复触发"。
 //   现在：第一次访问正常看提示并点「进入」；之后直接进走廊，Esc 后也不再弹整页提示。
 let locked = false;
 const startEl = document.getElementById('start');
@@ -927,7 +959,7 @@ document.addEventListener('pointerlockchange', () => {
        ─────────────────────────────────────────────────────────────────────
        原来上面把 `running = false` 之后，**没有任何地方把它设回 true** ——
        而 `animate()` 的移动整段包在 `if (running && loaded)` 里：
-         切窗口(或按 Esc) → pointerlock 丢失 → running = false
+         切窗口(或按 Fsc) → pointerlock 丢失 → running = false
          → 回来点画面重新锁定     → running 仍是 false  → **人完全动不了**
        ★ 为什么只有走廊出问题：`walk.html` 没有 `running` 这个闸门
          （它用 `entered` / `loaded`），所以宿舍和会客室都不受影响。
@@ -940,7 +972,7 @@ document.addEventListener('pointerlockchange', () => {
 renderer.domElement.addEventListener('click', () => {
   if (!loaded || locked) return;
   /* ★ 2026-10-13：`requestPointerLock()` 现在返回 Promise，且浏览器有
-     「用户按 Esc 退出后短时间内拒绝重新锁定」的限制 —— 不加捕获会静默失败，
+     「用户按 Fsc 退出后短时间内拒绝重新锁定」的限制 —— 不加捕获会静默失败，
      表现又是"点了画面还是动不了"。这里把失败打出来，方便一眼看出是被浏览器拒了。 */
   try {
     const r = renderer.domElement.requestPointerLock();
@@ -1047,7 +1079,7 @@ function checkDoors(){
     if (near){
       const t = (near === END_DOOR) ? END_DOOR : DOOR_THEME[near.idx];
       promptEl.innerHTML = t.theme
-        ? '<span class="k">E</span>进入 <span class="n">' + t.name + '</span>'
+        ? '<span class="k">F</span>进入 <span class="n">' + t.name + '</span>'
         : '<span class="n">' + t.name + '</span>';
       promptEl.classList.add('on');
     } else {
@@ -1058,11 +1090,11 @@ function checkDoors(){
 
 /* ★★★ 2026-10-13：进门时的"向前推进"
    ─────────────────────────────────────────────────────────────────────────
-   为什么需要：尽头是【一堵实墙（隔断）】。若按 E 就原地淡出→换页，观感会是
+   为什么需要：尽头是【一堵实墙（隔断）】。若按 F 就原地淡出→换页，观感会是
    "在墙前面凭空消失 / 穿墙"。
    用户已明确【不在隔断上开洞】（贴图本身就是门）、也不挂门牌，
    所以改用镜头语言来补这一下：
-     站在尽头门口按 E → 镜头沿 +X 平滑推进 0.55 m（约 0.29 s）→ 淡出 → 换页
+     站在尽头门口按 F → 镜头沿 +X 平滑推进 0.55 m（约 0.29 s）→ 淡出 → 换页
    = "朝着那扇门走进去"，而不是"原地传送"。
    ★ 推进终点用 BOUND.x1（10.35）夹住 → 保证镜头【不会真的穿过隔断】(x=10.78)。
    ★ 这段放在 animate() 的"移动块"【外面】：指针锁丢了也照样推进。 */
@@ -1088,6 +1120,14 @@ function tryEnter(){
   let url = './walk.html?theme=' + encodeURIComponent(theme) + '&from=hub';
   if (HUB_MODE && hasRigBackup(theme)) url += '&mode=' + encodeURIComponent(HUB_MODE);
 
+  /* ★ 2026-10-24：全屏状态下进门 → 房间落地后第一次触摸自动恢复全屏 */
+  try { if (document.fullscreenElement || document.webkitFullscreenElement) sessionStorage.setItem(FS_RESUME_KEY, '1'); } catch (e) {}
+  /* ★ 2026-10-24：BGM 进度带进房间（walk.html 读同一个 key 续播） */
+  try {
+    sessionStorage.setItem(BGM_RESUME_KEY, JSON.stringify({
+      t: +bgm.currentTime || 0, at: Date.now(), muted: !!bgmUserMuted,
+    }));
+  } catch (e) {}
   setTimeout(() => { location.href = url; }, isEnd ? 620 : 340);
 }
 
@@ -1109,16 +1149,51 @@ function applyQuality(){
 const bgm = document.getElementById('bgm');
 bgm.src = './assets/bgm_low.mp3';
 let bgmUserMuted = false, bgmBlocked = false;
+
+/* ★★★ 2026-10-24（用户反馈）：从宿舍回走廊 / 从走廊进房间时，BGM 不要从头重播。
+   房间那边（walk.html）离开前把「位置 + 离开时刻 + 静音」写进 sessionStorage；
+   这里读同一个 key，按 `位置 + 空档` 对齐（走廊用的是 bgm_low.mp3，同一首曲子，
+   时长若有细微差别，取模后听感基本连续）。 */
+const BGM_RESUME_KEY = 'dorm_bgm_resume';
+const _bgmResume = (() => {
+  try {
+    const j = JSON.parse(sessionStorage.getItem(BGM_RESUME_KEY) || 'null');
+    sessionStorage.removeItem(BGM_RESUME_KEY);
+    return j;
+  } catch (e) { return null; }
+})();
+if (_bgmResume && _bgmResume.muted) bgmUserMuted = true;
+function bgmApplyResume(){
+  /* 已播超过 2 秒就不再 seek；刚起播时 play().then 会再调一次，把进度搬到位 */
+  if (!_bgmResume || (!bgm.paused && bgm.currentTime > 2)) return;
+  const dur = bgm.duration;
+  if (!dur || !isFinite(dur) || dur <= 0) return;
+  const left = Number(_bgmResume.t) || 0;
+  const gap = (Date.now() - (Number(_bgmResume.at) || Date.now())) / 1000;
+  let t = (left + gap) % dur;
+  if (!isFinite(t) || t < 0) t = 0;
+  try { bgm.currentTime = t; } catch (e) {}
+}
+bgm.addEventListener('loadedmetadata', bgmApplyResume);
+if (bgm.readyState >= 1) bgmApplyResume();   // 监听可能比事件晚（preload=metadata）
+
 function startBgm(fromUser){
   if (bgmUserMuted) return;
   bgm.volume = 0.32;
+  bgmApplyResume();
   const p = bgm.play();
-  if (p && p.catch) p.catch(() => { bgmBlocked = true; });
+  if (p && p.then){
+    /* ★ 2026-10-24：play 成功后 duration 一定就绪了 —— 再对齐一次（慢网络时 loadedmetadata
+       可能晚于 play，只靠第一次 apply 会从 0 开始播）。 */
+    p.then(() => bgmApplyResume()).catch(() => { bgmBlocked = true; });
+  } else if (p && p.catch) p.catch(() => { bgmBlocked = true; });
 }
 function toggleMute(){
   bgmUserMuted = !bgmUserMuted;
   if (bgmUserMuted) bgm.pause(); else startBgm(true);
 }
+/* ★ 2026-10-24（与 walk.html 同步）：页面就绪就试播一次，别等用户手势 */
+setTimeout(() => { if (!bgmUserMuted) startBgm(); }, 0);
 
 // ══════════════════════════════════════════════════ ★ 走廊里按 Y 导出宿舍光照参数
 // 2026-10-11 加。为什么放在走廊：导出功能本来只在 walk.html（宿舍）里，
@@ -1183,7 +1258,7 @@ const fpsEl = document.getElementById('fps');
         理由与"为什么「不限」就等于屏幕刷新率上限"的完整论证写在 walk.html 那份注释里
         （要点：本页唯一的渲染循环是 rAF，而 rAF 由 VSYNC 驱动，每屏刷周期最多回调一次
          ⇒ **网页里拿不到"几百帧"**，不存在"渲染出几百帧浪费性能"这回事）。
-        ⚠️ 代价：144Hz 屏默认从 72 变 144，功耗/发热/风扇会上去；想安静就按 Shift+Q。
+        ⚠️ 代价：144Hz 屏默认从 72 变 144，功耗/发热/风扇会上去；想安静就按 Shift+P。
    ★ 跳帧那一次【不能调 clock.getDelta()】—— 否则 dt 会丢；不调它的话，
      下一帧拿到的是两帧之间的真实间隔，天然正确。 */
 const FPS_DIVS = [1, 2, 3];            // ★ 2026-10-14 默认改成「不限」= 跟屏幕；按一次 = 1/2 屏刷；再按 = 1/3
@@ -1211,7 +1286,7 @@ function setFpsCap(i){
   const msg = (fpsDiv === 1)
     ? ('帧率：不限制' + (hz ? ('（跟屏幕，约 ' + hz + ' fps）') : ''))
     : ('帧率上限：1/' + fpsDiv + ' 屏刷' + (hz ? ('（约 ' + Math.round(hz / fpsDiv) + ' fps）') : ''));
-  if (typeof hubToast === 'function') hubToast(msg + '　Shift+Q 切换');
+  if (typeof hubToast === 'function') hubToast(msg + '　Shift+P 切换');
   console.log('%c★ ' + msg, 'color:#5fd8e8');
 }
 

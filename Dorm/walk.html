@@ -266,8 +266,15 @@ canvas{display:block;outline:none}
    ⚠️ 提示语写【横屏】不是【横屏全屏】—— 全屏只是去掉浏览器工具栏（约 10% 高度），
       真正让字放得下的是转屏：横屏时 94vw 变成 ~2.2 倍宽，行数直接砍半还多。 */
 #furniInfo .more{display:none;font-style:normal;font-size:11px;line-height:1.5;
-  color:#f0c34a;margin-top:5px}
+  color:#f0c34a;margin-top:5px;padding:3px 0;
+  pointer-events:auto;cursor:pointer;
+  text-decoration:underline;text-underline-offset:2px;
+  text-decoration-color:rgba(240,195,74,.45)}
 #furniInfo.more .more{display:block}
+/* ★★★ 2026-10-24（用户要求）：描述过长时**点一下可以看完整**（突破 max-height 界限）。
+   只有少数几条会触发，访问者真想看就点；切换家具/移开视线会自动收起。 */
+#furniInfo.expanded .more{display:block}
+#furniInfo.expanded .d{max-height:none;overflow:visible}
 
 /* ── 手机端设置菜单（2026-10-13 用户需求）──────────────────────────────────
    背景：手机端按钮越来越多（摇杆、蹲下、还要加"家具介绍""无视碰撞"开关），
@@ -563,19 +570,26 @@ body.shake > *{animation:shake .075s infinite !important}
   /* ★ 2026-10-23：手机端也跟着视口宽涨（原来写死 12 / 11px，用户明确说太小）。
      390 px 宽时：名字 ≈17px、描述 ≈15.2px；上限分别是 19 / 17.5px。
      ★ 复验过行数预算：101 字最长描述在 15.2px 下约 5.5 行 < 12em(≈7.5 行) 上限。 */
-  #furniInfo .n{font-size:clamp(15px, 4.4vw, 19px)}
-  /* ★ 2026-10-23：字号跟着视口宽涨到 14~17.5px 后，12em 只够 ~7 行，而最长描述（121 字）
-     在 390px 宽下约要 7~8 行 ⇒ 抬到 **14em ≈ 8.2 行**，留一行余量。
-     ★ 框高上限 ≈ 14em × 17.5px + padding ≈ 270px；底边 184px ⇒ 上沿约在屏幕 2/3 处，
-       仍在准星下方（准星在 50%），不会挡住画面中心。 */
-  #furniInfo .d{font-size:clamp(14px, 3.9vw, 17.5px);line-height:1.7;max-height:14em}
-  #furniInfo .m{font-size:clamp(11.5px, 2.8vw, 13px)}
+  #furniInfo .n{font-size:clamp(13px, 3.5vw, 16px)}
+  /* ★★★ 2026-10-24（用户反馈：手机上家具描述"占屏幕太多"，要求"比全屏按钮低一点、字小一点"）：
+     旧的 14em 上限在 390×844 上会顶到屏幕 2/3 处（框顶 ≈ y413），把画面下半块整个盖住。
+     现在压成：
+       · 字号：名字 13~16px、描述 11.5~13.5px（原来 15~19 / 14~17.5）
+       · 行高 1.7 → 1.55
+       · 描述上限 **9.3em**（≈ 6 行）—— 121 字最长描述在 11.7px 下每行约 21 字，6 行正好放完
+     ⇒ 框高上限 ≈ 名字19 + 描述109 + 内边距14 ≈ 142px；底边 184px ⇒ **框顶距屏幕顶 ≈ 518px**，
+       而「全屏」按钮的顶部在 508px ⇒ 框顶确实落在全屏按钮下方（用户点名的目标）。
+     ★ 再往下压（>6 行）就会开始频繁触发「▸ 描述过长」，所以停在这里。
+     ★ 如果以后把最长描述改短/改长，这两个数字要重新算（公式见上面注释）。 */
+  #furniInfo .d{font-size:clamp(11.5px, 3vw, 13.5px);line-height:1.55;max-height:9.3em}
+  #furniInfo .m{font-size:clamp(11px, 2.6vw, 12.5px)}
+  #furniInfo .more{font-size:10.5px}
 
   /* ★ 2026-10-14 用户："手机端的提示应该删除'按E''E'这些字符，只留下'推门出去''进入xxx'"
      ⇒ 提示框里那个「E」小方块（class="pk"）在手机端不显示。
        走廊 hub.html 里同样的东西由它自己的 media query 处理。 */
   #prompt .pk{display:none}
-  /* ★ 手机上提示框同时也是【按钮】（点它 = 按 E 出门/开终端），所以给它留出可点面积 */
+  /* ★ 手机上提示框同时也是【按钮】（点它 = 按 F 出门/开终端），所以给它留出可点面积 */
   #prompt{cursor:pointer;padding:14px 22px;bottom:30%}
 
   /* ★ 设置齿轮按钮：放在蹲下按钮【上方】……
@@ -712,7 +726,7 @@ body.shake > *{animation:shake .075s infinite !important}
        ★ 只改文案与排版，键位逻辑一个字没动（见下面的 keydown）。
        ★ 调试组默认收起：右上角这块地方很值钱，玩家绝大多数时间用不到调试键；
          折叠状态记在 localStorage（`dorm_kh_debug`），调试的人不用每次点开。
-       ★ `,` `.` = 上一间 / 下一间（2026-10-23 新加，`[` `]` 被"视线高度"占用了）。 -->
+       ★ `Q` `E` = 上一间 / 下一间（2026-10-24 从 `,` `.` 改到左手位；交互键因此改成 F）。 -->
   <div id="keyhelp">
     <!-- ★ 2026-10-23（用户要求）：按 H 把整块按键提示收起来，只剩这一行 -->
     <div class="kh-hint-collapsed">按 <kbd>H</kbd> 展开按键提示</div>
@@ -733,7 +747,9 @@ body.shake > *{animation:shake .075s infinite !important}
 
     <div class="kh-grp">界 面</div>
     <div class="row new"><span class="ks"><kbd>Tab</kbd></span><span>房间列表（在任何房间都能开）</span></div>
-    <div class="row new"><span class="ks"><kbd>,</kbd><kbd>.</kbd></span><span>上一间 / 下一间</span></div>
+    <!-- ★ 2026-10-24：交互键 E → F（E 让给「下一间」） -->
+    <div class="row new"><span class="ks"><kbd>F</kbd></span><span>推门出去 / 打开终端（对着门或终端时）</span></div>
+    <div class="row new"><span class="ks"><kbd>Q</kbd><kbd>E</kbd></span><span>上一间 / 下一间</span></div>
     <div class="row new"><span class="ks"><kbd>I</kbd></span><span>家具介绍 开 / 关</span></div>
     <!-- ★★★ 2026-10-23（用户要求）：「按 G 无视碰撞改为常态显示」——
          原来在下面的「调试」折叠组里，用户希望它一直能看到。
@@ -745,9 +761,9 @@ body.shake > *{animation:shake .075s infinite !important}
 
     <div class="kh-dbg" id="khDebug">
       <div class="kh-grp">调 试</div>
-      <div class="row"><span class="ks"><kbd>Q</kbd></span><span>画质 高 / 中 / 低</span></div>
-      <div class="row"><span class="ks"><kbd>Shift</kbd>+<kbd>Q</kbd></span><span>帧率上限（不限 / 1/2 / 1/3）</span></div>
-      <div class="row"><span class="ks"><kbd>F</kbd></span><span>性能面板</span></div>
+      <div class="row"><span class="ks"><kbd>P</kbd></span><span>画质 高 / 中 / 低</span></div>
+      <div class="row"><span class="ks"><kbd>Shift</kbd>+<kbd>P</kbd></span><span>帧率上限（不限 / 1/2 / 1/3）</span></div>
+      <div class="row"><span class="ks"><kbd>Shift</kbd>+<kbd>F</kbd></span><span>性能面板</span></div>
       <div class="row"><span class="ks"><kbd>B</kbd></span><span>泛光 开 / 关</span></div>
       <div class="row"><span class="ks"><kbd>V</kbd></span><span>后处理：手调 / 真值</span></div>
       <div class="row new"><span class="ks"><kbd>F8</kbd></span><span>碰撞盒 + 视线射线可视化</span></div>
@@ -766,7 +782,7 @@ body.shake > *{animation:shake .075s infinite !important}
 
 <div id="stick"><i></i></div>
 <!-- ★ 家具信息条（2026-10-13）：准星对准家具时显示名字 + 官方描述，见 updateFurniInfo() -->
-<div id="furniInfo"><b class="n"></b><span class="m"></span><span class="d"></span><i class="more" id="furniMore">▸ 描述过长 · 横屏查看更完整</i></div>
+<div id="furniInfo"><b class="n"></b><span class="m"></span><span class="d"></span><i class="more" id="furniMore">▸ 展开完整描述</i></div>
 
 <!-- ★ 手机端：蹲下按钮 + 触摸提示 -->
 <button id="crouchbtn" title="切换蹲下"><span class="cb-ico">🧎</span>COS杜林</button>
@@ -784,8 +800,8 @@ body.shake > *{animation:shake .075s infinite !important}
 <!-- ★★★ 2026-10-23（用户要求）：手机端常驻「上一间 / 下一间」—— 手机没有键盘，靠它快速逛宿舍。
      位置在全屏按钮上方（见 CSS 的 #stepbtns）；点一下 = 和桌面按 , / . 完全同一条逻辑（stepRoom）。 -->
 <div id="stepbtns">
-  <button id="stepPrev" type="button" title="上一间（键盘 ,）" aria-label="上一间宿舍">‹</button>
-  <button id="stepNext" type="button" title="下一间（键盘 .）" aria-label="下一间宿舍">›</button>
+  <button id="stepPrev" type="button" title="上一间（键盘 Q）" aria-label="上一间宿舍">‹</button>
+  <button id="stepNext" type="button" title="下一间（键盘 E）" aria-label="下一间宿舍">›</button>
 </div>
 <div id="setmenu">
   <div id="setmenuCard">
@@ -812,7 +828,7 @@ body.shake > *{animation:shake .075s infinite !important}
 
 <!-- ★ 背景音乐：生命流 - 塞壬唱片-MSR,BaoUner（原 FLAC 19MB → MP3 5.2MB）
      preload=metadata：只下载文件头，点「进入」后才开始拉流（避免首屏就下载 5MB） -->
-<audio id="bgm" src="assets/bgm.mp3" loop preload="metadata"></audio>
+<audio id="bgm" src="assets/bgm.mp3" loop preload="auto"></audio>
 <button class="hud" id="mutebtn" title="静音 / 取消静音（M）">♪</button>
 
 <div id="start">
@@ -1483,7 +1499,7 @@ function _loadBloomFile(url, onOk){
   });
   _loadBloomFile('./assets/bloom_tune_true.json', (o) => {
     BLOOM_TUNE_TRUE = o;
-    console.log('%c★ 泛光真值已载入 assets/bloom_tune_true.json：%d 间（按 P 切换）', 'color:#9fe8ff', Object.keys(o).length);
+    console.log('%c★ 泛光真值已载入 assets/bloom_tune_true.json：%d 间（按 V 切换）', 'color:#9fe8ff', Object.keys(o).length);
   });
 })();
 
@@ -1671,7 +1687,7 @@ function tuneOf(theme){
   /* ★★★ 2026-10-21：外置 bloom 真值【优先】——
      否则浏览器 localStorage 里上一次调参存档（比如 bloom 0.22）会把
      assets/bloom_tune.json 的新值覆盖掉，用户刷新页面看不出任何变化。
-     ★ 两套表按 POSTFX_MODE 切换（默认手调；P 键切真值）。
+     ★ 两套表按 POSTFX_MODE 切换（默认手调；V 键切真值）。
      ★ 现场微调：URL 加 `?bloom=0.35`（强度 0~2）或 `?bth=0.62`（阈值 0~1），
        覆盖当前主题的外置值 —— 两套参数都能用，不用改文件、也不用按 7 进面板。 */
   const _bt_tbl = (POSTFX_MODE === 'true') ? BLOOM_TUNE_TRUE : BLOOM_TUNE;
@@ -1786,7 +1802,7 @@ function tuneKey(e){
     tuneShown = !tuneShown; showTunePanel(); return true;
   }
   // ★ 一键导出【所有房间】的参数（面板开不开都能按；再按一次 Y 收起浮层）
-  //    ⚠️ 不能用 E —— E 已经是"回走廊"（见下面 keydown 里的 e.code === 'KeyE'）
+  //    ⚠️ 不能用 E —— E 现在是「下一间」；交互/回走廊是 F（2026-10-24 改）
   if (kl === 'y'){
     const b = document.getElementById('tuneExport');
     if (b && b.style.display !== 'none'){ b.style.display = 'none'; return true; }
@@ -1842,11 +1858,11 @@ function tuneKey(e){
     delete LIGHT_TUNE[tuneTheme]; saveTune(); tuneApply();
     say('灯光已复位'); return true;
   }
-  else if (kl === 'p'){
+  else if (kl === 'o'){
     const line = tuneTheme + ' | ' + tuneLine(tuneTheme);
     console.log('%c★ 灯光参数：' + line, 'color:#ffd28a;font-weight:bold;font-size:14px');
     const el = document.getElementById('tunePanel');
-    if (el) el.textContent = '★ 复制这行发回去：\n\n' + line + '\n\n（再按 P 恢复面板）';
+    if (el) el.textContent = '★ 复制这行发回去：\n\n' + line + '\n\n（再按 O 恢复面板）';
     tuneShown = true;
     setTimeout(() => { if (document.getElementById('tunePanel')) showTunePanel(); }, 6000);
     return true;
@@ -1945,8 +1961,8 @@ window.__dbg = () => {
        ① 复制到剪贴板（直接粘给 AI 即可）
        ② 弹出浮层（可 Ctrl+A / Ctrl+C 手动复制，剪贴板被禁时用）
        ③ 打印到控制台 F12 → Console（还不行就用这条）
-   浮层按 Esc 或再按一次 Y 关闭。
-   ★ 键位为什么是 Y：E 已被"回走廊"占用（KeyE）；Y 在编辑器里就是 yank（拉取/导出）。
+   浮层按 Fsc 或再按一次 Y 关闭。
+   ★ 键位为什么是 Y：E 已被「下一间」占用（KeyE）；Y 在编辑器里就是 yank（拉取/导出）。
    ═══════════════════════════════════════════════════════════════════════════ */
 function hex6(n){ return '#' + (n >>> 0).toString(16).padStart(6, '0'); }
 
@@ -3934,7 +3950,7 @@ new GLTFLoader().load(GLB_URL, gltf => {
     }
   }
 
-  // ★ 门已经在 GLB 里了（游戏自带的左右门洞 + 门板），读出门的位置做"按 E 出门"判定
+  // ★ 门已经在 GLB 里了（游戏自带的左右门洞 + 门板），读出门的位置做"按 F 出门"判定
   locateDoors(root);
 
   console.log('%c★ 材质已换成 Lambert：' + matSwapped + ' 个槽位，共用 ' + matCache.size + ' 个材质',
@@ -4276,8 +4292,12 @@ const player = {
 };
 const keys = Object.create(null);
 addEventListener('keydown', e => {
-  // ★ 从走廊进来的：按 E 回走廊
-  if (typeof FROM_HUB !== 'undefined' && FROM_HUB && (e.code === 'KeyE' || e.code === 'KeyQ' && false)){
+  /* ★★★ 2026-10-24（用户反馈）：交互键 **E → F**。
+     背景：用户的朋友反馈「上一间/下一间」在 `,` `.` 上离左手太远 ⇒ 这两个键改成 **Q / E**；
+     原来 Q（画质）和 E（交互）都要让位：画质 → P，交互 → F，性能面板 F → Shift+F。
+     ★ 交互 = F 是游戏惯例（Interact），提示框里的小方块也跟着显示 F。 */
+  // ★ 从走廊进来的：按 F 回走廊
+  if (typeof FROM_HUB !== 'undefined' && FROM_HUB && e.code === 'KeyF' && !e.shiftKey){
     if (typeof nearExit !== 'undefined' && nearExit) goHub();
   }
   keys[e.code] = true;
@@ -4295,16 +4315,19 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyI' && !e.repeat) toggleFurniInfo();
   /* ★ 2026-10-23（用户要求）：H = 收起 / 展开右上角整块按键提示（收起来只剩一行提示） */
   if (e.code === 'KeyH' && !e.repeat) toggleKeyhelp();
-  /* ★★★ 2026-10-23（用户要求）：`,` = 上一间 · `.` = 下一间（顺序 = 房间列表顺序）。
+  /* ★★★ 2026-10-24（用户反馈）：**Q = 上一间 · E = 下一间**。
+     用户原话：「电脑端的上一间房和下一间房的按键左手太远，建议换成 Q 和 E 键」。
+     ★ 顺序 = 房间列表顺序（家具主题 sortId 降序 → 功能房按 manifest 顺序），
+       和 `,` `.` 时代完全一样，只是换了键。
      ★ 只在【已经进房】且【面板没开】时生效 —— 面板开着时这两个键留给搜索框/滚轮。
-     ★ `[` `]` 被「视线高度」占用了，所以用 , .（见提示词 §五 的备选方案）。 */
-  if ((e.code === 'Comma' || e.code === 'Period') && !e.repeat && loaded
+     ★ 排除 Shift：Shift+P 是帧率上限（见下面 P 那段），不能顺手把房间也切了。 */
+  if ((e.code === 'KeyQ' || e.code === 'KeyE') && !e.repeat && !e.shiftKey && loaded
       && !isRoomPanelOpen() && !eggActive){
-    stepRoom(e.code === 'Period' ? 1 : -1);
+    stepRoom(e.code === 'KeyE' ? 1 : -1);
   }
   if (e.code === 'KeyM') toggleMute();          // 静音 / 取消静音
-  if (e.code === 'KeyQ' && !e.repeat){
-    // ★ 2026-10-13：Shift+Q = 帧率上限（和 Q 画质相邻，都属于"性能"这一类）
+  /* ★ 2026-10-24：画质从 Q 挪到 **P**（Q 让给「上一间」），Shift+P = 帧率上限 */
+  if (e.code === 'KeyP' && !e.repeat){
     if (e.shiftKey) setFpsCap(fpsDivIdx + 1);
     else cycleQuality();                                // 切换画质（高→中→低）
   }
@@ -4326,8 +4349,8 @@ addEventListener('keydown', e => {
       say('（手动）放了一次博士演出 · 平时不会有任何自动演出');
     }
   }
-  // ★ F 显示/隐藏性能面板
-  if (e.code === 'KeyF' && !e.repeat) togglePerfPanel();
+  /* ★ 2026-10-24：F 让给「交互」了（推门/开终端/走廊进门）⇒ 性能面板改成 **Shift+F** */
+  if (e.code === 'KeyF' && e.shiftKey && !e.repeat) togglePerfPanel();
   /* ★★★ 2026-10-23：F8 = 调试可视化（碰撞盒 + 视线射线，见文件后面 DBG 那段）。
      ★ 为什么是 F8：`F3`（MC 里显示碰撞箱的同款）被浏览器占用，`F8` 在 Chrome/Edge
        里没有被占用（F11 全屏 / F12 调试器）；手机端走「设置 → 调试可视化」。 */
@@ -4341,7 +4364,7 @@ addEventListener('keydown', e => {
   /* ★★★ 2026-10-21：V = 切换后处理参数（手调版 ↔ 真值版），运行时立即生效，不用刷新。
      · 手调版：assets/bloom_tune.json（你按 Y 导出的强度/阈值），无暗角
      · 真值版：assets/bloom_tune_true.json（HGMobileBloom 0.5/0.5）+ vignette 0.45/0.2
-     ★ 用 V 不用 P：P 在灯光面板里是"打印参数行"，会打架。
+     ★ 用 V 不用 P：P 现在是【画质】；灯光面板的"打印参数行"改成了 O。
      现场微调仍可用 ?bloom=0.35 / ?bth=0.62（对两套都生效）。 */
   if (e.code === 'KeyV' && !e.repeat){
     POSTFX_MODE = (POSTFX_MODE === 'true') ? 'tuned' : 'true';
@@ -4416,7 +4439,7 @@ setTimeout(()=>{
   console.log('  K        手动放一次博士演出（★ 平时【不会】自动演出）');
   console.log('  Shift+K  切换演出方式（3D 巨人 / 全屏贴脸）');
   console.log('  Q        画质 高/中/低');
-  console.log('  Shift+Q  帧率上限 不限（默认，= 屏幕刷新率）/ 1/2屏刷 / 1/3屏刷');
+  console.log('  Shift+P  帧率上限 不限（默认，= 屏幕刷新率）/ 1/2屏刷 / 1/3屏刷');
   console.log('  Tab      房间列表（任何房间都能按）');
   console.log('  ★ 准星对准家具 → 底部显示家具名字 + 官方描述（不用按键）');
   console.log('  F        性能面板');
@@ -4452,6 +4475,48 @@ let bgmOn = false;          // 正在播放
 let bgmBlocked = false;     // 被策略拦过
 let bgmUserMuted = false;   // 用户主动静音（不再自动重试）
 
+/* ★★★ 2026-10-24（用户反馈）：**换房间时 BGM 不要从头重播**。
+   原因：换房是整页跳转，`<audio>` 的生命周期跟着文档，必然重新开始。
+   ⇒ 离开前把「播放位置 + 离开时刻 + 静音状态」写进 sessionStorage，
+     落地后按 `位置 + 离开时长` 对齐进度（超过时长取模，正好配合 `loop`）。
+   ⚠️ 严格"不间断"做不到：整页跳转有加载期（几秒静音）；
+      而且浏览器可能要求手势才能播 —— 被拒时 startBgm() 会在首次交互重试，
+      播放前会重新对齐进度（见 bgmApplyResume），所以不会"从 0 开始"。
+   ★ 走廊 hub.html 也读同一个 key（那里用 bgm_low.mp3，同一首曲子，进度按各自时长取模）。 */
+const BGM_RESUME_KEY = 'dorm_bgm_resume';
+const _bgmResume = (() => {
+  try {
+    const j = JSON.parse(sessionStorage.getItem(BGM_RESUME_KEY) || 'null');
+    sessionStorage.removeItem(BGM_RESUME_KEY);      // 读一次就清，别让后续普通刷新也续播
+    return j;
+  } catch (e) { return null; }
+})();
+if (_bgmResume && _bgmResume.muted) bgmUserMuted = true;
+/** 跳转前调用（switchRoom / goHub）：记住听到了哪、什么时候离开、有没有静音 */
+function saveBgmProgress(){
+  try {
+    sessionStorage.setItem(BGM_RESUME_KEY, JSON.stringify({
+      t: +bgm.currentTime || 0,
+      at: Date.now(),
+      muted: !!bgmUserMuted,
+    }));
+  } catch (e) {}
+}
+/** 播放前对齐进度（已在对齐过 / 正在播就跳过）。每次 startBgm 前都会算一遍，
+    补偿"加载 + 等用户手势"这段空档。 */
+function bgmApplyResume(){
+  /* ★ 2026-10-24：已经播了 2 秒以上就别再 seek（正常播放不该跳）；
+     刚起播 / 还没播（loading 慢、等手势）时才对齐到"现在应该播到的位置"。 */
+  if (!_bgmResume || (!bgm.paused && bgm.currentTime > 2)) return;
+  const dur = bgm.duration;
+  if (!dur || !isFinite(dur) || dur <= 0) return;
+  const left = Number(_bgmResume.t) || 0;
+  const gap = (Date.now() - (Number(_bgmResume.at) || Date.now())) / 1000;
+  let t = (left + gap) % dur;
+  if (!isFinite(t) || t < 0) t = 0;
+  try { bgm.currentTime = t; } catch (e) {}
+}
+
 function bgmState(){
   return {
     就绪: bgm.readyState, 网络: bgm.networkState,
@@ -4464,6 +4529,7 @@ function bgmState(){
 function startBgm(fromUser){
   if (bgmUserMuted && !fromUser) return;
   if (!bgm.paused) return;                     // 已在播
+  bgmApplyResume();                            // ★ 2026-10-24：续播到"应该播到"的位置
   const p = bgm.play();
   if (p && p.then){
     p.then(()=>{
@@ -4497,7 +4563,11 @@ bgm.addEventListener('error', ()=>{
 });
 bgm.addEventListener('loadedmetadata', ()=>{
   console.log('%c♪ BGM 元数据就绪 ' + (bgm.duration||0).toFixed(1) + ' 秒', 'color:#5fd8e8');
+  bgmApplyResume();                            // ★ 2026-10-24：元数据一到就先把进度摆好
 });
+/* ★ 2026-10-24：`preload="metadata"` + 模块脚本延迟执行 ⇒ 上面的 loadedmetadata 有可能
+   在监听绑定【之前】就已经触发过（后面就再也不会补了），所以这里立刻补一次。 */
+if (bgm.readyState >= 1) bgmApplyResume();
 bgm.addEventListener('playing', ()=>{
   bgmOn = true; bgmBlocked = false;
   muteBtn.classList.add('on'); muteBtn.classList.remove('err');
@@ -4513,6 +4583,15 @@ function kickBgm(){
 ['pointerdown','click','keydown','touchstart'].forEach(ev=>{
   addEventListener(ev, kickBgm, { passive: true });
 });
+
+/* ★★★ 2026-10-24（用户反馈：「BGM 在加载界面会中断」）：
+   以前 BGM 只在【用户交互】时才尝试（kickBgm）—— 换房后新页面没有手势，
+   于是整个加载界面 + 刚进房那几秒都是静音的，直到用户第一次点/按键。
+   现在页面一就绪就主动试一次：浏览器允许自动播放时，加载界面期间就有 BGM
+   （中断只剩页面白屏那一瞬）；被拒时仍走 kickBgm 的首次交互补播，
+   并且 startBgm 里的 bgmApplyResume() 会把进度对齐到"此刻应该播到哪"。
+   ★ 静音状态由 _bgmResume.muted 带过来，这里不会擅自开声音。 */
+setTimeout(() => { if (!bgmUserMuted) startBgm(); }, 0);
 
 function lock(){
   /* ★ 2026-10-12：requestPointerLock 在【无头浏览器 / iframe】里必然抛
@@ -4598,6 +4677,19 @@ function enterGame(){
    ⚠️ iPhone 版 Safari 不支持元素全屏（只有 iPad 支持）→ 那里会静默跳过，不影响游玩。
    ★ 函数本身【不做 isTouch 判断】—— "自动进"的开关在 enterGame 里（`if (isTouch)`），
      这样设置菜单里那个手动开关在桌面端也能用（调试时想全屏看看很方便）。 */
+/* ★★★ 2026-10-24（用户反馈）：**iPhone 的 Safari 按全屏没反应**。
+   原因：iPhone Safari【不支持元素全屏】（`document.documentElement.requestFullscreen`
+   和 `webkitRequestFullscreen` 都是 undefined，只有 `<video>` 能全屏；iPad 才支持）。
+   以前 `requestImmersive()` 在 `!req` 时静默 return ⇒ 用户按了完全没反馈。
+   ⇒ 现在显式检测：不支持时给一条**说得清的提示**，并让全屏按钮半透明（不再假装能用）。
+   ★ 替代方案（写进提示）：Safari「添加到主屏幕」后从桌面图标打开 = 无地址栏的真全屏。 */
+function immersiveSupported(){
+  const el = document.documentElement;
+  return !!(el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen);
+}
+const FS_UNSUPPORTED_MSG = '这台浏览器不支持网页全屏（iPhone 的 Safari 只能全屏视频）· ' +
+  '想沉浸可以点「分享 → 添加到主屏幕」，从桌面图标打开就没有地址栏了';
+
 function requestImmersive(){
   try {
     if (isImmersive()) return;
@@ -4633,14 +4725,55 @@ function exitImmersive(){
   const b = document.getElementById('fsbtn');
   if (!b) return;
   const sync = () => b.classList.toggle('on', isImmersive());
+  /* ★ 2026-10-24：不支持的浏览器（iPhone Safari）—— 按钮半透明 + 点一下给提示，
+     不再"按了毫无反应"。 */
+  if (!immersiveSupported()){
+    b.style.opacity = '0.55';
+    b.title = '这台浏览器不支持网页全屏（建议「添加到主屏幕」后从桌面图标打开）';
+  }
   b.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();                 // 别让点击穿到画布（那边会去 lock 指针）
+    if (!immersiveSupported()){ say(FS_UNSUPPORTED_MSG); return; }
     if (isImmersive()) exitImmersive(); else requestImmersive();
   });
   b.addEventListener('contextmenu', (e) => e.preventDefault());
   for (const evName of ['fullscreenchange', 'webkitfullscreenchange']) addEventListener(evName, sync);
   sync();
+})();
+
+/* ★★★ 2026-10-24（用户反馈）：**全屏状态下换房间不要退出全屏**。
+   ⚠️ 老实说：浏览器**不允许**跨页面保持全屏 —— Fullscreen API 必须由用户手势触发，
+      而换房是整页跳转（`location.href`），原来那次手势的上下文已经结束了。
+   ⇒ 折中做法：换房前记一个标记，落地后绑【一次性】的触摸/点击，
+      用户第一次碰屏幕时立刻恢复全屏 —— 这一下本来就是他继续游玩的第一步，
+      体验上≈"没退全屏"，只是不用再去点全屏按钮。
+   ★ 10 秒内没碰就放弃（避免以后某次普通点击莫名其妙进全屏）。
+   ★ 只监听 touchend/pointerdown（都在"用户激活"窗口内）；不监听 click ——
+     点击可能落在按钮上被 stopPropagation 吃掉，touchend 也会在捕获阶段先到。 */
+const FS_RESUME_KEY = 'dorm_resume_fs';
+(function resumeFullscreenAfterSwitch(){
+  if (!immersiveSupported()) return;                     // iPhone Safari：本来就没有全屏
+  let want = false;
+  try {
+    want = sessionStorage.getItem(FS_RESUME_KEY) === '1';
+    sessionStorage.removeItem(FS_RESUME_KEY);
+  } catch (e) {}
+  if (!want) return;
+  let done = false;
+  const cleanup = () => {
+    removeEventListener('touchend', fire, true);
+    removeEventListener('pointerdown', fire, true);
+  };
+  function fire(){
+    if (done) return;
+    done = true;
+    cleanup();
+    requestImmersive();                                  // 必须在手势回调里调
+  }
+  addEventListener('touchend', fire, true);
+  addEventListener('pointerdown', fire, true);
+  setTimeout(() => { if (!done){ done = true; cleanup(); } }, 10000);
 })();
 function isImmersive(){
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
@@ -5703,7 +5836,7 @@ function buildRoomDoor(root){
 }
 
 // ═══════════════════════════════════════════════════ 回走廊的门
-// 房间开着的一面在 Z = +1.08（three.js），站到那附近按 E 就回走廊
+// 房间开着的一面在 Z = +1.08（three.js），站到那附近按 F 就回走廊
 const EXIT_Z = ROOM.z1 - 0.55;
 const promptEl = (() => {
   let el = document.getElementById('prompt');
@@ -5722,10 +5855,10 @@ let nearExit = false, leavingToHub = false;
 
 /* ★★★ 2026-10-14 用户需求（问题 5）："按E打开终端和按E推门出去在手机端无效"
    ─────────────────────────────────────────────────────────────────────────
-   手机没有键盘 ⇒ 把【提示框本身】变成按钮：点它 = 按 E。
+   手机没有键盘 ⇒ 把【提示框本身】变成按钮：点它 = 按 F。
    动作取决于当前是哪条提示（两条互斥；`nearExit` 优先，和 checkTerminal 里的判定一致）。
    ★ 只在触摸设备上开 `pointer-events` —— 桌面端鼠标在指针锁定时根本看不见光标，
-     但按 Esc 解锁之后是能点的，那时误触会很烦。
+     但按 Fsc 解锁之后是能点的，那时误触会很烦。
    ★ 提示里的「E」那个小方块（class="pk"）在窄屏/触摸设备上会由 CSS 隐藏，
      只留「推门出去」「打开终端 · 切换房间」这样的纯动作文字（用户明确要求）。 */
 if (isTouch){
@@ -5779,7 +5912,7 @@ function checkExit(){
     nearExit = on;
     promptEl.innerHTML = on ? '<span class="pk" style="display:inline-block;margin-right:9px;padding:1px 8px;' +
       'border:1px solid #6d90b4;border-radius:2px;background:#1d2a38;color:#a8d4f0;' +
-      'font-weight:600">E</span>推门出去' : '';
+      'font-weight:600">F</span>推门出去' : '';
     promptEl.style.opacity = on ? '1' : '0';
   }
 }
@@ -5807,13 +5940,17 @@ function goHub(){
   if (THEME) _q.push('from=' + encodeURIComponent(THEME));
   if (MODE)  _q.push('mode=' + encodeURIComponent(MODE));
   const suffix = _q.length ? ('?' + _q.join('&')) : '';
+  /* ★ 2026-10-24：全屏状态下回走廊 → 走廊也是同一个标记，落地后第一次触摸恢复全屏 */
+  try { if (isImmersive()) sessionStorage.setItem(FS_RESUME_KEY, '1'); } catch (e) {}
+  /* ★ 2026-10-24：BGM 进度也带过去（hub.html 读同一个 key，两边各按自己的时长取模） */
+  saveBgmProgress();
   setTimeout(() => { location.href = './hub.html' + suffix; }, 340);
 }
 
 // ═══════════════════════════════════════════════════ ★★★ 会客室「主题终端」（任务 B）
 /* 2026-10-13 新增（依据交接文档《新窗口提示词-会客室终端与走廊连接.md》任务 B）
    ───────────────────────────────────────────────────────────────────────────
-   需求：在会客室里做一个"走近 → 按 E → 选房间"的终端。
+   需求：在会客室里做一个"走近 → 按 F → 选房间"的终端。
    已知约束（每条都在本项目踩过坑，照抄结论别再试）：
      ① ★ 终端【不能进碰撞盒】。`boxes` 只在 GLTFLoader 回调的 root.traverse 里生成，
         所以只要用 `scene.add()`（不是 root.add）加、且加在那次 traverse 之后，
@@ -5991,7 +6128,7 @@ function buildTerminalScreen(){
   g.fillText('主题房间 · 6', CVW / 2, 132);
   g.fillStyle = 'rgba(214,238,255,0.88)';
   g.font = '400 30px "HarmonyOS Sans SC","Microsoft YaHei","PingFang SC",sans-serif';
-  g.fillText('走进来，按 E 选择要去哪', CVW / 2, 196);
+  g.fillText('走进来，按 F 选择要去哪', CVW / 2, 196);
   // 底部按键提示 + 一个向下的箭头（提示"过来按"）
   g.fillStyle = 'rgba(143,216,255,0.9)';
   g.font = '500 26px Consolas,ui-monospace,monospace';
@@ -6047,7 +6184,7 @@ function checkTerminal(){
     if (on){
       promptEl.innerHTML = '<span class="pk" style="display:inline-block;margin-right:9px;padding:1px 8px;' +
         'border:1px solid #6d90b4;border-radius:2px;background:#1d2a38;color:#a8d4f0;' +
-        'font-weight:600">E</span>打开终端 <span style="color:#8fb6d8">· 切换房间</span>';
+        'font-weight:600">F</span>打开终端 <span style="color:#8fb6d8">· 切换房间</span>';
       promptEl.style.opacity = '1';
     } else if (!nearExit){
       promptEl.style.opacity = '0';
@@ -6118,6 +6255,11 @@ function switchRoom(theme){
   /* ★ 2026-10-23（用户要求）：先把当前位姿存下来，落地后由 applyKeptPose() 读回
      （整页跳转，模块状态会全丢，只能走 sessionStorage）。 */
   saveKeptPose(theme);
+  /* ★ 2026-10-24（用户反馈）：BGM 别从头重播 —— 记住听到哪，落地后续播 */
+  saveBgmProgress();
+  /* ★ 2026-10-24（用户反馈）：全屏状态下换房间不要退出全屏。
+     浏览器不允许跨页面保持全屏 ⇒ 记标记，新页面第一次触摸时自动恢复（见 FS_RESUME_KEY）。 */
+  try { if (isImmersive()) sessionStorage.setItem(FS_RESUME_KEY, '1'); } catch (e) {}
   let fade = document.getElementById('fade');
   if (!fade){
     fade = document.createElement('div');
@@ -6165,11 +6307,13 @@ function roomKey(e){
     if (isRoomPanelOpen()) closeRoomPanel(); else openRoomPanel();
     return true;
   }
-  if (code === 'KeyE'){
+  /* ★★★ 2026-10-24（用户反馈）：交互键 E → **F**（E 让给「下一间」）。
+     ★ `!e.shiftKey` 是必须的：Shift+F 是性能面板，别顺手把面板/终端也开了。 */
+  if (code === 'KeyF' && !e.shiftKey){
     if (isRoomPanelOpen()){ closeRoomPanel(); return true; }
-    // ★ 只有在终端前按 E 才开面板；房间中央按 E 什么都不做（Tab 才是万能入口）
+    // ★ 只有在终端前按 F 才开面板；房间中央按 F 什么都不做（Tab 才是万能入口）
     if (nearTerminal && !nearExit){ openRoomPanel(); return true; }
-    return false;                        // 门口那个 E 交给 goHub()
+    return false;                        // 门口那个 F 交给 goHub()
   }
   // ★ 面板开着时的 Esc / 1~9 / 0 → 交给共享模块（它知道列表里有哪些房间）
   if (sharedPanelKey(e)) return true;
@@ -6393,7 +6537,30 @@ const FURNI_HOLD_MS = 280;                        // 连续对准多久才显示
 
 function hideFurniInfo(){
   if (_furniShown !== null){ _furniShown = null; if (furniInfoEl) furniInfoEl.classList.remove('on'); }
+  /* ★ 2026-10-24：移开视线 / 收起时把"展开完整描述"也复位，下次看别的家具不会一直是展开态 */
+  if (furniInfoEl) furniInfoEl.classList.remove('expanded');
+  if (furniMoreEl) furniMoreEl.textContent = '▸ 展开完整描述';
   _furniPending = null; _furniSince = 0;
+}
+
+/* ★★★ 2026-10-24（用户要求）：「描述过长」那一行改成可点击 —— 点开显示完整描述，
+   不受 `.d` 的 max-height 限制（只有少数几条会超过，访问者真想看点了就行）。
+   ★ 信息条整体是 pointer-events:none（怕挡住画面操作），只有这一行单独放开了。 */
+if (furniMoreEl){
+  furniMoreEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const expanded = furniInfoEl.classList.toggle('expanded');
+    furniMoreEl.textContent = expanded ? '▾ 收起' : '▸ 展开完整描述';
+    /* ★ 收起时要重新判断"还溢不溢出" —— 展开期间 `.d` 没有 max-height，
+       scrollHeight == clientHeight，`more` 类可能已经被 toggle 掉了。 */
+    if (!expanded && furniDescEl){
+      const t = _furniShown ? (FURNI_TEXT && FURNI_TEXT[_furniShown]) : null;
+      const truncated = !!(t && t[1] && String(t[1]).length > FURNI_DESC_MAX);
+      furniInfoEl.classList.toggle('more',
+        truncated || furniDescEl.scrollHeight > furniDescEl.clientHeight + 1);
+    }
+  });
 }
 
 function updateFurniInfo(dt){
@@ -6464,6 +6631,9 @@ function updateFurniInfo(dt){
   if (want !== _furniShown){
     _furniShown = want;
     if (want){
+      /* ★ 2026-10-24：换一件家具就回到"收起"状态（上一件的展开不该延续） */
+      furniInfoEl.classList.remove('expanded');
+      if (furniMoreEl) furniMoreEl.textContent = '▸ 展开完整描述';
       const t = FURNI_TEXT[want] || ['', ''];
       if (furniNameEl) furniNameEl.textContent = furniDisplayName(t[0], want);
       /* ★ 2026-10-23：尺寸/类型 + **家具 ID** 一起写进去。
@@ -6923,7 +7093,7 @@ function updateFpsHud(){
    ─────────────────────────────────────────────────────────────────────────
    原来【完全没有上限】—— requestAnimationFrame 直接跑，120/144Hz 的屏幕就满速渲染。
    这个页面是"观赏房间"用的，60 fps 完全够；高刷屏上跑满只会明显费电 / 发热 / 响风扇。
-   ⇒ 加了帧率上限，`Shift+Q` 切换。
+   ⇒ 加了帧率上限，`Shift+P` 切换。
    ★★★ 2026-10-13 晚【重做档位】—— 用户反馈："我目前看帧率上限是72，
        开启无上限才会变成我的屏幕帧率上线144fps"，怀疑上限没生效。
    ─────────────────────────────────────────────────────────────────────────
@@ -6950,7 +7120,7 @@ function updateFpsHud(){
        rAF 就跟哪个显示器的刷新率。
    ⇒ **所以"默认成当前屏幕上限"= 选「不限」，不需要另做一个"跟屏幕"的档。**
    ⚠️ 要清楚的代价：144Hz 屏上默认从 72 变成 144，**功耗 / 发热 / 风扇会明显上去**
-      （当初加上限就是为了压这个）。想安静就按一次 `Shift+Q` 回到 1/2 屏刷。
+      （当初加上限就是为了压这个）。想安静就按一次 `Shift+P` 回到 1/2 屏刷。
 
    ── 现行三档（★ 默认 = 不限）──
         不限    （跟屏幕走 → 144Hz 屏就是 144 fps）   ← ★ 默认
@@ -6995,7 +7165,7 @@ function setFpsCap(i){
   let msg;
   if (fpsDiv === 1) msg = '帧率：不限制' + (hz ? ('（跟屏幕，约 ' + hz + ' fps）') : '');
   else msg = '帧率上限：1/' + fpsDiv + ' 屏刷' + (hz ? ('（约 ' + Math.round(hz / fpsDiv) + ' fps）') : '');
-  say(msg + '　Shift+Q 切换');
+  say(msg + '　Shift+P 切换');
 }
 
 function tick(now){
@@ -7054,7 +7224,7 @@ function tick(now){
     resolveCollisions(p);
     movedDist = Math.hypot(p.x - bx, p.z - bz);     // ★ 本帧实际走过的距离
 
-    // ★ 从走廊进来的：靠近房间开口就提示"按 E 回走廊"
+    // ★ 从走廊进来的：靠近房间开口就提示"按 F 回走廊"
     if (typeof checkExit === 'function') checkExit();
     // ★ 2026-10-13：会客室终端（走近 → 「E 打开终端」）
     if (typeof checkTerminal === 'function') checkTerminal();
