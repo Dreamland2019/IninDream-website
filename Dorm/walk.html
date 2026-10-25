@@ -5589,7 +5589,12 @@ function ensureDoctorTextures(){
   });
   DOCTOR.head = new THREE.Mesh(new THREE.PlaneGeometry(h * ar, h), DOCTOR.headMat);
   DOCTOR.head.position.copy(DOCTOR.headPos);
-  DOCTOR.head.renderOrder = 5;
+  /* ★★★ 2026-10-25（用户决定）：博士演出已废弃，头直接放到**最低渲染层级**。
+     它是透明平面（depthWrite:false）：原来的 renderOrder=5 会排到所有透明物体之后，
+     把房间里的透明发光材质（amiya 的烟雾/光柱、水/火/加色片）整片盖住。
+     ⇒ 头最先画（-999），房间内任何透明物体都会正常盖在它上面；
+       不再为"巨人演出"做特殊排序。手保持原样（不再使用演出时也不会挡东西）。 */
+  DOCTOR.head.renderOrder = -999;
   DOCTOR.head.visible = false;
   scene.add(DOCTOR.head);
 
@@ -7767,6 +7772,9 @@ window.__FK = {
       revealed: DOCTOR.revealed, enabled: DOCTOR.enabled,
       headTarget: DOCTOR.headTarget, headOp: +DOCTOR.headOp.toFixed(3),
       headVisible: !!(DOCTOR.head && DOCTOR.head.visible),
+      /* ★ 2026-10-25：排查「透明发光材质被博士头挡住」时直接看这两个数 */
+      headRenderOrder: DOCTOR.head ? DOCTOR.head.renderOrder : null,
+      handRenderOrder: DOCTOR.hand ? DOCTOR.hand.renderOrder : null,
       handTarget: DOCTOR.handTarget, handOp: +DOCTOR.handOp.toFixed(3),
       handVisible: !!(DOCTOR.hand && DOCTOR.hand.visible),
     };
