@@ -1936,7 +1936,7 @@ window.__dbg = () => {
     }
   });
   return {
-    theme: THEME, url: GLB_URL,
+    theme: THEME, url: glbUrl(THEME),
     cam: [+camera.position.x.toFixed(3), +camera.position.y.toFixed(3), +camera.position.z.toFixed(3)],
     yaw: +camera.rotation.y.toFixed(3), pitch: +camera.rotation.x.toFixed(3),
     fov: camera.fov, near: camera.near,
@@ -2240,7 +2240,12 @@ const QS = new URLSearchParams(location.search);
         THEME   = 实际加载的主题      →  没传时默认会客厅
       `FROM_HUB` 用的是 THEME_Q，不是 THEME。 */
 const THEME_Q = QS.get('theme') || '';
-const THEME = THEME_Q || 'basicRoom';
+/* ★★★ 2026-10-25（换房改 SPA）：`THEME` 从 const 改成 **let** —— SPA 换房时它必须在
+   `loadRoom(theme)` 里重新赋值（否则第二间房还在用第一间的标题 / 终端 / 碰撞规则）。
+   ⚠️ 仍然是"模块级可变状态"，所以**任何按主题算一次的东西都不能在模块顶层锁死**：
+     见下面 `glbUrl()` / `isUnlitTheme()` / `HAS_TERMINAL` / `ROOM_ENTRY` / `roomMenuList()`。
+   ⚠️ `THEME_Q` 保持 const（= 本次会话 URL 里的初始主题，`FROM_HUB` 靠它，语义不变）。 */
+let THEME = THEME_Q || 'basicRoom';
 /* ★★★ 2026-10-12：光照模式开关
    `?mode=rig` = 【旧光照模式】（Lambert + ROOM_RIG 打光），加载 `rooms\_rig\<主题>.glb`
    —— 那批是改造前的旧 GLB，一份没删，专门留着回退 / A-B 对比。
@@ -2270,8 +2275,13 @@ const PRE_FIX_BACKUP = {
   YuKitchen:    'YuKitchen_pre_emit',          // 去掉 is_lamp 误标发光之前
 };
 const FIX_ALPHA = QS.get('fix') !== '0' || MODE === 'rig';
-const GLB_URL = './rooms/' + (MODE === 'rig' ? '_rig/' : '')
-  + ((!FIX_ALPHA && PRE_FIX_BACKUP[THEME]) ? PRE_FIX_BACKUP[THEME] : THEME) + '.glb';
+/* ★★★ 2026-10-25（SPA）：原来的 `const GLB_URL` 按初始 THEME 算死了 ⇒ 换房后第二间
+   还会去加载第一间的 GLB。这里改成**按主题求值**的函数，`loadRoom(theme)` 每次调它。
+   ★ `?fix=0` / `?mode=rig` 仍是会话级开关（整轮会话都用同一套），所以只把 THEME 参数化。 */
+function glbUrl(theme){
+  return './rooms/' + (MODE === 'rig' ? '_rig/' : '')
+    + ((!FIX_ALPHA && PRE_FIX_BACKUP[theme]) ? PRE_FIX_BACKUP[theme] : theme) + '.glb';
+}
 /* ★ 2026-10-16：只有【显式带了 ?theme=】才算"从走廊/面板进来" → 才显示"回走廊"按钮。
    直接打开网站（默认会客厅）时 FROM_HUB=false，右上角不会出现一个回不去的走廊入口。 */
 const FROM_HUB = !!THEME_Q;
@@ -2441,7 +2451,17 @@ const UNLIT_THEMES = new Set([
   //    · classroom   —— 同上，用户判定"不如自己调的还原" → 先还原
   //    想再试 unlit：把主题名加回这个集合 + GLB 换成 unlit 版即可（旧版都留着）。
 ]);
-const IS_UNLIT = UNLIT_THEMES.has(THEME) && MODE !== 'rig';
+/* ★★★ 2026-10-25（SPA）：IS_UNLIT 从 const 改成 let + 函数 —— 换房时按新主题重算。
+   它决定泛光默认值（0.22 / 0.42）、unlit 材质判定、以及 `__FK.unlit`。
+   ★ 仍然保持"函数可在声明前被 try/catch 调到"的老约定：`unlitGlowGain` / `bloomDefaults`
+     里那两处 try { ... } catch 不动，TDZ 时照旧走兜底。 */
+function isUnlitTheme(theme){ return UNLIT_THEMES.has(theme) && MODE !== 'rig'; }
+let IS_UNLIT = isUnlitTheme(THEME);
+
+/* ★★★ 2026-10-25（用户拍板 A 方案）：**换房改 SPA（不刷新页面）**。
+   `?spa=0` = 回退到原来的整页跳转（出问题用户能自救，也方便 A/B 对比）。
+   ★ 只有"上一间/下一间 + 面板点卡片"走 SPA；回走廊（goHub）仍是整页跳转。 */
+const SPA_ON = QS.get('spa') !== '0';
 
 /* unlit 房间的泛光默认值 —— 用户在会客室手调后定稿：强度 0.22 / 阈值 0.80。
    ★ 不再沿用旧的 (强度 0.42 / 半径 0.55 / 阈值 0.80)：贴图直出后画面本来就亮，
@@ -2697,7 +2717,11 @@ function applyRig(name){
   //    【旧存档迁移】—— 结果面板显示的是迁移后的值（"原色 强度倍率 1.00×"），
   //    实际应用的却是旧值（把 8 盏点光全统一染成 3000K）。两边必须用同一份数据。
   //    只在【已有记录】时补跑一次迁移，不改变"从没调过"时的原行为。
-  if (LIGHT_TUNE[name]) tuneOf(name);
+  /* ★★★ 2026-10-25（SPA）：**无条件**跑 tuneOf(name) —— 原来是 `if (LIGHT_TUNE[name])`，
+     于是"从没调过"的房间直接跳过 ⇒ `applyBloomTune()` 读不到 LIGHT_TUNE[theme] 就 return，
+     泛光/暗角会**沿用上一间**（unlit 0.22 ↔ rig 0.42 串台）。
+     tuneOf 对没有记录的主题会现建一份默认值（不写 localStorage），正好用来做"换房归位"。 */
+  tuneOf(name);
   const _t = LIGHT_TUNE[name];
   if (_t){
     for (const c of CH){
@@ -2772,6 +2796,10 @@ function applyLightIntensities(f = 1){
 const ROOM = { x0:-3.61, x1:3.87, z0:-1.12, z1:1.08, y0:0.22, y1:2.42 };
 const WALL = 0.30;                                    // 离墙距离
 const BOUND = { x0:ROOM.x0+WALL, x1:ROOM.x1-WALL, z0:ROOM.z0+WALL, z1:ROOM.z1-0.06 };
+/* ★★★ 2026-10-25（SPA）：这两份是"没有 GLB 边界时"的默认值。unloadRoom 必须把
+   ROOM/BOUND 恢复成它们 —— 否则新房间识别失败时会沿用上一间的尺寸（人走出墙外）。 */
+const ROOM_DEFAULT  = { ...ROOM };
+const BOUND_DEFAULT = { ...BOUND };
 /* ★★★ 2026-10-14 用户实测定的默认值：**1.00 米**。
    原话："手机端各项数据都重置了 …… 应该使用我已经测试最合适的数据，如角色身高默认为1m等。"
    ⚠️ 这个值是给【没有 localStorage 记录】的设备用的（手机、新浏览器、清了缓存）。
@@ -2824,6 +2852,12 @@ const INSET  = 0.06;                                  // 障碍盒内缩（避�
 // ═══════════════════════════════════════════════════ 载入模型
 const boxes = [];          // 碰撞盒 {min:{x,z}, max:{x,z}, name}
 let loaded = false;
+/* ★★★ 2026-10-25（SPA）：换房需要的"当前场景"引用 —— 整页跳转时代这些都不需要，
+   SPA 后必须自己记住它们才能精确卸载（提示词 §4.5）。 */
+let roomRoot = null;            // 当前房间 GLB 的根（scene.add(root) 的那个）
+let recycleAnimRoot = null;     // 回收站动态件（第二个 GLB，scene 级，不随 root 走）
+let recycleHostMesh = null;     // 回收站被隐藏的静态主体（只读引用，unload 复位）
+let roomLoadToken = 0;          // 竞态保护：每次 loadRoom 自增，过期的异步回调一律丢弃
 /* ★★★ 2026-10-23 加：功能房的骨骼/节点动画（回收站转盘、制造站机械臂…）。
    规则：GLB 里带了 `animations` 就播第一条，**不带就完全不动**（主题宿舍全都没有），
    所以对现有 139 间主题零影响。详见 `待办-功能房接入与房间边界（2026-10-23）.md` §三。 */
@@ -3614,13 +3648,16 @@ const ROOM_TITLE = {
   dessertShop:  ['DESSERT SHOP',        'FIRST PERSON'],
   YuKitchen_unlit: ['YU KITCHEN · UNLIT', 'A/B 对照版'],
 };
-(function setBrandTitle(){
+/* ★★★ 2026-10-25（SPA）：标题改成按 theme 更新的函数 —— 原来是个 IIFE，只按初始 THEME 写一次，
+   换房后左上角会一直挂着上一间的英文标题。 */
+function updateBrandTitle(theme){
   const el = document.getElementById('brandTitle');
   if (!el) return;
-  const t = ROOM_TITLE[THEME] || ['DORMITORY', 'FIRST PERSON'];
+  const t = ROOM_TITLE[theme] || ['DORMITORY', 'FIRST PERSON'];
   el.innerHTML = t[0] + '<em>' + t[1] + '</em>';
-})();
-console.log('%c★ 载入场景：' + GLB_URL, 'color:#5fd8e8;font-weight:bold');
+}
+updateBrandTitle(THEME);
+console.log('%c★ 载入场景：' + glbUrl(THEME), 'color:#5fd8e8;font-weight:bold');
 
 /* ═══════════════════════════════════════════════════ ★★★ 加载进度（2026-10-15 用户需求）
    用户原话（问题 3）：
@@ -3655,10 +3692,11 @@ const LOADUI = {
   warn:  document.getElementById('ldWarn'),
   loaded: 0, total: 0, lastAt: 0, samples: [], timer: 0,
 };
-function loadRoomLabel(){
-  const hit = ROOMS.find((r) => r.theme === THEME);
+function loadRoomLabel(theme){
+  theme = theme || THEME;
+  const hit = ROOMS.find((r) => r.theme === theme);
   if (hit && hit.name) return hit.name;
-  const t = ROOM_TITLE[THEME];
+  const t = ROOM_TITLE[theme];
   if (t) return Array.isArray(t) ? t[0] : t;
   return '宿舍';
 }
@@ -3718,7 +3756,7 @@ function updateLoadUI(){
 function startLoadUI(mode){
   const L = LOADUI;
   setStartLoading(mode);
-  if (L.room) L.room.textContent = '正在下载 · ' + loadRoomLabel();
+  if (L.room) L.room.textContent = '正在下载 · ' + loadRoomLabel(THEME);
   if (L.lastAt) return;                     // 已经在跑，别重复起定时器
   L.lastAt = performance.now();
   updateLoadUI();
@@ -3732,8 +3770,38 @@ function stopLoadUI(){
    ★ 判断依据就是 IIFE 设好的 SKIP_START_PAGE —— 单一数据源，别在这里重算条件。 */
 startLoadUI(SKIP_START_PAGE ? 'auto' : 'intro');
 
-new GLTFLoader().load(GLB_URL, gltf => {
-  const root = gltf.scene;
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-25（用户拍板 A 方案）：换房改成【页面内 SPA】—— 不再整页跳转。
+   ───────────────────────────────────────────────────────────────────────────
+   为什么：整页跳转会销毁 <audio>（BGM 断）、退出全屏、重新下载 HTML/three.js。
+   现在：`switchRoom()` → 淡出遮罩 → `loadRoom(theme)`（只换 GLB）→ `unloadRoom()`
+        → 同一页面里重建 → 淡入。BGM / 全屏 / 博士 / 设置全部保持。
+   ★ 关键顺序（错了会串色/黑屏，别改）：
+       ① **GLB 下载成功**才 unloadRoom() + applyRoomTheme()
+          —— 下载失败时旧房间还完整在场景里，用户看到的是"切换失败"而不是黑屏；
+       ② unloadRoom() 必须在 toLambert() 之前 —— 否则新模型会命中旧 matCache（串色）；
+       ③ 首帧专属逻辑（开始页 / 自动进入 / 博士恢复 / 硬件检测）只在 initial 跑。
+   ★ 回退开关：`?spa=0` → switchRoom 走原来的整页跳转（旧代码保留，见 switchRoom）。
+   ═══════════════════════════════════════════════════════════════════════════ */
+function loadRoom(theme, opts){
+  opts = opts || {};
+  const initial = !!opts.initial;
+  const prevTheme = opts.prevTheme || THEME;
+  const myToken = ++roomLoadToken;
+  console.log('%c★ ' + (initial ? '首帧载入' : 'SPA 换房') + '：' +
+    (initial ? '' : (prevTheme + ' → ')) + theme + '　' + glbUrl(theme),
+    'color:#5fd8e8;font-weight:bold');
+  new GLTFLoader().load(glbUrl(theme), gltf => {
+    /* ★ 过期回调（连点 / 切走后才回来）：直接丢弃，别把旧房间重新塞进场景 */
+    if (myToken !== roomLoadToken){
+      console.warn('★ 丢弃过期的房间回调：%s（当前 token %d / 回调 %d）', theme, roomLoadToken, myToken);
+      return;
+    }
+    /* ★★★ 先清旧、再应用新主题 —— 顺序见上面 ①/② */
+    unloadRoom();
+    applyRoomTheme(theme);
+    const root = gltf.scene;
+    roomRoot = root;
   /* ★★★ 2026-10-23 修（功能房接动态时暴露的老 bug）：
      `Box3.setFromObject()` 内部只调 `object.updateWorldMatrix(false, false)` ——
      **不更新父级**，它默认父链的 matrixWorld 已经是对的。
@@ -3846,9 +3914,18 @@ new GLTFLoader().load(GLB_URL, gltf => {
     let host = null;
     root.traverse(o => { if (!host && o.isMesh && /^OBJ_room_inner_4x2x2_recycle_01$/.test(o.name)) host = o; });
     if (host){
+      recycleHostMesh = host;          // ★ 2026-10-25：unloadRoom 里要复位（它属于 root，移走即可）
       new GLTFLoader().load('./rooms/recycle_anim_fixed.glb', (g2) => {
+        /* ★★★ 2026-10-25（SPA）：第二个 GLB 是**异步**加载的 —— 用户完全可能在它回来之前
+           就换了房间。没有这道 token/主题检查，回收站的圆盘会"啪"地出现在别的房间里
+           （scene.add 的，不随旧 root 消失）。 */
+        if (myToken !== roomLoadToken || THEME !== 'recycle'){
+          console.warn('★ 回收站动画回调已过期（当前房间 %s）→ 丢弃', THEME);
+          return;
+        }
         try {
           const ar = g2.scene;
+          recycleAnimRoot = ar;        // ★ 2026-10-25：scene 级对象，unloadRoom 要单独 remove
           /* ★ 朝向修正：动态版的 prefab 局部坐标与静态版差 180°（绕 Y）。
              实测 `?rt=0` 时设备零件散落在房间中央，`?rt=180` 才与静态版一致；
              `?rt=` 仍可覆盖，方便以后再核。 */
@@ -3969,7 +4046,9 @@ new GLTFLoader().load(GLB_URL, gltf => {
   //         而不是"一次都不触发"）。跳过与否由上面的 IIFE 统一决定。
   //      ② 原来手动 entered=true + 移除 #start，却【没调 lock()】→ 自动进入后鼠标没锁定，
   //         还得再点一下画面才能转头。现在统一走 enterGame()（它负责 lock + 音频 + 移除 #start）。
-  if (FROM_HUB && SKIP_START_PAGE){
+  //    ★★★ 2026-10-25（SPA）：再加 `initial` —— 换房时 #start 早就被移除、entered 也已是 true，
+  //       这段只在首帧走一次（否则每换一间都会尝试 enterGame / 重新请求指针锁定）。
+  if (initial && FROM_HUB && SKIP_START_PAGE){
     setTimeout(() => {
       console.log('%c★ 从走廊进来 —— 跳过开始页', 'color:#5fd8e8;font-weight:bold');
       try { enterGame(); } catch(e){}
@@ -4007,43 +4086,89 @@ new GLTFLoader().load(GLB_URL, gltf => {
      放在这里 = 模型载入 + 出生点算完之后，不会盖在开始页 / 加载进度条上。 */
   showRoomNotice();
 
-  // ★ 恢复上次的博士状态（他记得你）
-  //   注意：?reset 参数会在这之前清掉 localStorage，所以这里读到的就是重置后的状态
-  try {
-    if (localStorage.getItem('dorm_doctor_revealed') === '1') DOCTOR.revealed = true;
-    if (localStorage.getItem('dorm_doctor_on') === '0'){ DOCTOR.enabled = false; trust.frozen = true; }
-    if (DOCTOR.revealed && DOCTOR.enabled){
-      ensureDoctorTextures();        // ★ 2026-10-14：这次一进来就要显示他 → 立刻补拉贴图
-      DOCTOR.headOp = 1; DOCTOR.headTarget = 1; DOCTOR.head.visible = true;
-      console.log('%c……他在外面等着（上次已经现身过）', 'color:#8298ac');
-      console.log('%c   想重置成"第一次"？按 Shift+R，或访问 walk.html?reset', 'color:#5c7086');
-    }
-  } catch(e){}
-
-  // ★ 模型载好了 —— 但不自动进！等访客点「点击进入」
-  const btn = document.getElementById('startbtn');
-  if (btn){
-    btn.textContent = '点击进入';
-    btn.classList.remove('waiting');
+  /* ★★★ 2026-10-25（SPA）：博士状态是**跨房间常驻**的（提示词 §4.8 第 6 条：不要删）。
+     首帧读一次 localStorage 就够 —— 换房时他的 head/hand 还在 scene 里，别反复重置透明度。 */
+  if (initial){
+    // ★ 恢复上次的博士状态（他记得你）
+    //   注意：?reset 参数会在这之前清掉 localStorage，所以这里读到的就是重置后的状态
+    try {
+      if (localStorage.getItem('dorm_doctor_revealed') === '1') DOCTOR.revealed = true;
+      if (localStorage.getItem('dorm_doctor_on') === '0'){ DOCTOR.enabled = false; trust.frozen = true; }
+      if (DOCTOR.revealed && DOCTOR.enabled){
+        ensureDoctorTextures();        // ★ 2026-10-14：这次一进来就要显示他 → 立刻补拉贴图
+        DOCTOR.headOp = 1; DOCTOR.headTarget = 1; DOCTOR.head.visible = true;
+        console.log('%c……他在外面等着（上次已经现身过）', 'color:#8298ac');
+        console.log('%c   想重置成"第一次"？按 Shift+R，或访问 walk.html?reset', 'color:#5c7086');
+      }
+    } catch(e){}
   }
-  /* ★ 2026-10-15：第一次来的那条路 —— 下载完了就把进度条收起来。
-     按钮已经变成「点击进入」，再挂一条 100% 的"正在准备场景…"只会让人以为还在转。
-     （自动进入那条路不用管：#start 马上会被 enterGame() 整个移除。）
-     ★ stopLoadUI() 顺手把 500ms 的刷新定时器停掉，别让它空转。 */
-  if (!SKIP_START_PAGE){ setStartLoading(''); stopLoadUI(); }
-  checkHardwareAccel();          // ★ 顺手检查硬件加速，有问题就在开始页警告
+
+  /* ★★★ 2026-10-25（SPA）：只有首帧才碰开始页 / 硬件检测。
+     换房时 #start 已 remove（enterGame 里做的），startbtn 根本不存在；再调 setStartLoading
+     会把已经移除的界面重新挂状态。 */
+  if (initial){
+    // ★ 模型载好了 —— 但不自动进！等访客点「点击进入」
+    const btn = document.getElementById('startbtn');
+    if (btn){
+      btn.textContent = '点击进入';
+      btn.classList.remove('waiting');
+    }
+    /* ★ 2026-10-15：第一次来的那条路 —— 下载完了就把进度条收起来。
+       按钮已经变成「点击进入」，再挂一条 100% 的"正在准备场景…"只会让人以为还在转。
+       （自动进入那条路不用管：#start 马上会被 enterGame() 整个移除。）
+       ★ stopLoadUI() 顺手把 500ms 的刷新定时器停掉，别让它空转。 */
+    if (!SKIP_START_PAGE){ setStartLoading(''); stopLoadUI(); }
+    checkHardwareAccel();          // ★ 顺手检查硬件加速，有问题就在开始页警告
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     ★★★ 2026-10-25（SPA）：**每间房都要做的收尾** —— 顺序别换：
+       ① 终端：按新主题建 / 拆（它挂在 scene 上，不在 root 里）；
+       ② 调试可视化：boxes 全换了 → 旧线框必须丢掉，开着 F8 时要重建；
+       ③ SPA：URL 同步 + 遮罩淡出 + 解锁 leavingRoom。
+     首帧（initial）不碰 ③ —— #start / 加载进度条有自己的节奏。 */
+  try { syncTerminal(); } catch (e) { console.warn('★ 终端建/拆失败（不影响房间显示）：', e); }
+  try {
+    if (DBG.on){ dbgDestroy(); dbgBuild(); if (DBG.group) DBG.group.visible = true; }
+  } catch (e) { console.warn('★ 调试层重建失败（不影响房间显示）：', e); }
+  if (!initial){
+    loaded = true;                      // unloadRoom 里置过 false，这里恢复（放在下面 try 之前）
+    syncRoomUrl(theme, prevTheme);
+    /* 等两帧再淡出：确保 composer 已经用新场景画过一帧，不会露出黑屏 / 旧画面残影 */
+    requestAnimationFrame(() => requestAnimationFrame(() => spaLoadHide()));
+    leavingRoom = false;
+    console.log('%c✓ SPA 换房完成：%s（%s）', 'color:#7ee0a0;font-weight:bold',
+      theme, (ROOM_ENTRY && ROOM_ENTRY.name) || '');
+  }
+  if (opts.onDone){ try { opts.onDone(true); } catch (e) { console.warn(e); } }
 }, (ev) => {
-  /* ★ 2026-10-15：进度回调（原来这里是 undefined —— 所以用户完全看不到下载进度）。
-     three.js 的 FileLoader 会流式读取并用 Content-Length 算出 total；
-     服务器没给 Content-Length 时 total = 0，那时只报"已下载多少"。 */
-  if (ev){
-    if (typeof ev.loaded === 'number') LOADUI.loaded = ev.loaded;
-    if (ev.total) LOADUI.total = ev.total;
-    LOADUI.lastAt = performance.now();
-    updateLoadUI();
+  /* 下载进度：首帧走原来的 #start 进度条；SPA 走轻量遮罩（不碰 LOADUI 的计时器）。 */
+  if (myToken !== roomLoadToken) return;
+  if (initial){
+    /* ★ 2026-10-15：进度回调（原来这里是 undefined —— 所以用户完全看不到下载进度）。
+       three.js 的 FileLoader 会流式读取并用 Content-Length 算出 total；
+       服务器没给 Content-Length 时 total = 0，那时只报"已下载多少"。 */
+    if (ev){
+      if (typeof ev.loaded === 'number') LOADUI.loaded = ev.loaded;
+      if (ev.total) LOADUI.total = ev.total;
+      LOADUI.lastAt = performance.now();
+      updateLoadUI();
+    }
+  } else {
+    spaLoadProgress(ev);
   }
 }, err => {
+  if (myToken !== roomLoadToken) return;
   console.error(err);
+  if (opts.onFail){ try { opts.onFail(err); } catch (e) { console.warn(e); } }
+  /* ★★★ 2026-10-25（SPA）：**新 GLB 下载失败时旧场景还没卸**（unloadRoom 只在成功回调里跑）
+     ⇒ 这里只需要把遮罩收掉、恢复交互，用户还站在原地、BGM 也没断。 */
+  if (!initial){
+    loaded = true;                      // 旧房间仍然完好，恢复移动/交互
+    leavingRoom = false;
+    spaLoadError('这本房间下载失败：' + ((err && err.message) || err) + '（仍在原来的房间）');
+    return;
+  }
   stopLoadUI();
   if (LOADUI.warn){
     LOADUI.warn.style.display = '';
@@ -4053,6 +4178,197 @@ new GLTFLoader().load(GLB_URL, gltf => {
   const btn = document.getElementById('startbtn');
   if (btn){ btn.textContent = '模型载入失败 · 刷新重试'; btn.classList.add('waiting'); }
 });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ★★★ 2026-10-25（SPA）：主题切换 / 卸载 / 轻量加载遮罩 / URL 同步
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** 应用新主题的「按主题算一次的模块级状态」—— 换房的唯一入口。
+    ★ 提示词 §4.4 那张表里除了 GLB_URL（已改成函数）全部在这里重算。 */
+function applyRoomTheme(theme){
+  THEME = theme;
+  IS_UNLIT = isUnlitTheme(theme);
+  ROOM_ENTRY = ROOMS.find((r) => r.theme === theme) || null;
+  IS_FUNCTION_ROOM = !!(ROOM_ENTRY && ROOM_ENTRY.kind === 'function');
+  HAS_TERMINAL = TERMINAL_THEMES.indexOf(theme) >= 0;
+  /* ★★★ 2026-10-25（SPA）：**必须同步 tuneTheme**！
+     它是"当前正在调参的房间"，初始加载时由 applyRig(THEME) 设成初始主题；
+     换房后不清掉的话，下面 `applyRig(tuneTheme || THEME)` 会继续应用**上一间**的
+     灯光/泛光参数（实测：会客室→amiya 后日志还是「灯光 rig：basicRoom」、泛光 0.20/0.88）。 */
+  tuneTheme = theme;
+  updateBrandTitle(theme);
+  console.log('%c★ 主题已切换：%s（unlit=%s · 功能房=%s · 终端=%s）',
+    'color:#5fd8e8;font-weight:bold', theme, IS_UNLIT, IS_FUNCTION_ROOM, HAS_TERMINAL);
+}
+
+/* ── 卸载当前房间：照提示词 §4.5 的清单逐项清（不清会串色 / 黑屏 / 涨显存） ── */
+function unloadRoom(){
+  loaded = false;
+  const oldRoot = roomRoot;
+  const oldAnim = recycleAnimRoot;
+  const mats = new Set();
+  const texs = new Set();
+
+  /* 收集一个对象树里的 geometry / material / texture（含 ShaderMaterial 的 uniforms） */
+  const collect = (obj) => {
+    if (!obj) return;
+    obj.traverse((x) => {
+      if (x.geometry) { try { x.geometry.dispose(); } catch (e) {} }
+      if (!x.isMesh || !x.material) return;
+      const ms = Array.isArray(x.material) ? x.material : [x.material];
+      for (const m of ms){
+        if (!m) continue;
+        mats.add(m);
+        for (const k of ['map','emissiveMap','alphaMap','aoMap','lightMap','bumpMap',
+                         'normalMap','roughnessMap','metalnessMap','specularMap']){
+          if (m[k]) texs.add(m[k]);
+        }
+        if (m.uniforms){
+          for (const k in m.uniforms){
+            const v = m.uniforms[k] && m.uniforms[k].value;
+            if (v && v.isTexture) texs.add(v);
+          }
+        }
+      }
+    });
+  };
+
+  /* ① 旧 GLB：scene.remove + geometry / material / map dispose */
+  if (oldRoot){ scene.remove(oldRoot); collect(oldRoot); roomRoot = null; }
+  /* ② 回收站动态件（scene 级第二个 GLB —— 不随 root 走，漏了会在别的房间多一坨） */
+  if (oldAnim){ scene.remove(oldAnim); collect(oldAnim); recycleAnimRoot = null; }
+  recycleHostMesh = null;
+  /* ③ 材质缓存：**必须 clear**，否则新房间会命中旧材质的贴图（最典型症状 = 串色） */
+  for (const m of matCache.values()) mats.add(m);
+  for (const m of UNLIT_MATS) mats.add(m);
+  for (const m of FK_WATER_MATS) mats.add(m);
+  for (const m of FK_FIRE_MATS) mats.add(m);
+  for (const m of mats){ try { m.dispose(); } catch (e) {} }
+  matCache.clear();
+  /* ④ 贴图：先收集再统一 dispose（顺序：材质引用已断开 → 贴图释放） */
+  for (const t of allTextures) texs.add(t);
+  for (const t of FK_WATER_TEXS) texs.add(t);
+  for (const t of FK_FIRE_TEXS) texs.add(t);
+  for (const t of texs){ try { t.dispose(); } catch (e) {} }
+  allTextures.length = 0;
+  FK_WATER_TEXS.length = 0; FK_FIRE_TEXS.length = 0;
+  FK_WATER_MATS.length = 0; FK_FIRE_MATS.length = 0;
+  UNLIT_MATS = []; EMISSIVE_MATS = []; POINT_LIGHTS = [];
+  /* ⑤ 功能房动画：stopAllAction + uncacheRoot + mixer = null */
+  if (mixer){
+    try {
+      mixer.stopAllAction();
+      if (oldRoot) mixer.uncacheRoot(oldRoot);
+      if (oldAnim) mixer.uncacheRoot(oldAnim);
+    } catch (e) {}
+    mixer = null;
+  }
+  /* ⑥ 碰撞盒 / 家具 ID / 房间边界（边界恢复默认，识别失败时不能沿用上一间） */
+  boxes.length = 0;
+  furniMeshes = [];
+  Object.assign(ROOM, ROOM_DEFAULT);
+  Object.assign(BOUND, BOUND_DEFAULT);
+  /* ⑦ 门 / 提示状态 */
+  exitDoorX = [];
+  exitFrameMats = [];
+  exitDoorZ = 0;
+  nearExit = false; nearTerminal = false;
+  if (promptEl){ promptEl.style.opacity = '0'; promptEl.textContent = ''; }
+  hideFurniInfo();
+  /* ⑧ 调试可视化线框（旧的 mesh 引用已经在 dispose 里没了） */
+  dbgDestroy();
+  matSwapped = 0;
+  console.log('%c★ SPA 卸载完成：旧 GLB / 材质 / 贴图 / 碰撞盒已释放',
+    'color:#8298ac');
+}
+
+/* ── 轻量加载遮罩（★ 不碰 startLoadUI / #start —— 那是"首次进入"专用的） ── */
+let spaLoadEl = null, spaLoadFill = null, spaLoadInfo = null, spaLoadTitle = null;
+let spaLoadShownAt = 0, _spaLoadToken = 0;
+function spaLoadEnsure(){
+  if (spaLoadEl) return spaLoadEl;
+  const el = document.createElement('div');
+  el.id = 'spaLoad';
+  el.style.cssText = 'position:fixed;inset:0;z-index:60;background:#05070a;' +
+    'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;' +
+    'color:#dceaf8;font-family:inherit;opacity:0;pointer-events:auto;' +
+    'transition:opacity .28s ease;';
+  el.innerHTML =
+    '<div id="spaLoadTitle" style="font-size:15px;letter-spacing:.18em;color:#dceaf8"></div>' +
+    '<div style="width:min(300px,66vw);height:3px;background:rgba(120,200,220,.16);' +
+      'border-radius:2px;overflow:hidden"><i id="spaLoadFill" style="display:block;width:0;' +
+      'height:100%;background:#5fd8e8;transition:width .18s linear"></i></div>' +
+    '<div id="spaLoadInfo" style="font-size:11.5px;color:#8298ac;letter-spacing:.06em"></div>';
+  document.body.appendChild(el);
+  spaLoadEl = el;
+  spaLoadTitle = el.querySelector('#spaLoadTitle');
+  spaLoadFill = el.querySelector('#spaLoadFill');
+  spaLoadInfo = el.querySelector('#spaLoadInfo');
+  return el;
+}
+function spaLoadShow(theme){
+  spaLoadEnsure();
+  _spaLoadToken++;
+  spaLoadTitle.textContent = '正在进入 · ' + loadRoomLabel(theme);
+  spaLoadInfo.textContent = '正在下载房间资源…';
+  spaLoadFill.style.width = '0%';
+  spaLoadEl._ld = { loaded: 0, total: 0 };   // ★ 每次换房重置进度（别沿用上一间的字节数）
+  spaLoadEl.style.background = '#05070a';
+  spaLoadShownAt = performance.now();
+  spaLoadEl.style.display = 'flex';
+  void spaLoadEl.offsetWidth;              // 强制一次布局：opacity 过渡才从 0 起
+  spaLoadEl.style.opacity = '1';
+}
+function spaLoadProgress(ev){
+  if (!spaLoadEl) return;
+  const L = spaLoadEl._ld || (spaLoadEl._ld = { loaded: 0, total: 0 });
+  if (ev && typeof ev.loaded === 'number') L.loaded = ev.loaded;
+  if (ev && ev.total) L.total = ev.total;
+  const pct = (L.total > 0) ? Math.min(1, L.loaded / L.total) : 0;
+  spaLoadFill.style.width = (L.total > 0 ? (pct * 100).toFixed(1) : '0') + '%';
+  const mb = (b) => (b / 1048576).toFixed(2) + ' MB';
+  spaLoadInfo.textContent = L.total > 0
+    ? ('已下载 ' + mb(L.loaded) + ' / ' + mb(L.total) + '（' + Math.round(pct * 100) + '%）')
+    : ('已下载 ' + mb(L.loaded));
+}
+function spaLoadHide(){
+  if (!spaLoadEl) return;
+  const tk = _spaLoadToken;
+  const wait = Math.max(0, 260 - (performance.now() - spaLoadShownAt));   // 防止一闪而过
+  setTimeout(() => {
+    if (!spaLoadEl || tk !== _spaLoadToken) return;
+    spaLoadEl.style.opacity = '0';
+    setTimeout(() => { if (spaLoadEl && tk === _spaLoadToken) spaLoadEl.style.display = 'none'; }, 320);
+  }, wait);
+}
+function spaLoadError(msg){
+  if (!spaLoadEl) return;
+  const tk = _spaLoadToken;
+  spaLoadTitle.textContent = '切换失败';
+  spaLoadInfo.textContent = msg;
+  spaLoadFill.style.width = '0%';
+  spaLoadEl.style.background = 'rgba(22,8,8,.96)';
+  setTimeout(() => {
+    if (!spaLoadEl || tk !== _spaLoadToken) return;
+    spaLoadEl.style.opacity = '0';
+    setTimeout(() => { if (spaLoadEl) spaLoadEl.style.display = 'none'; }, 320);
+  }, 2600);
+}
+
+/* ── URL 同步：用 replaceState（不是 pushState，避免返回键在房间里"倒带"） ──
+   ★ 保留其它查询参数（?cam= / ?mode= / ?terminal= 等）—— 不能直接拼 '?theme='。 */
+function syncRoomUrl(theme, prevTheme){
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('theme', theme);
+    if (prevTheme) u.searchParams.set('from', prevTheme);
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+    console.log('%c★ SPA：URL 已同步（刷新/分享仍能直达）→ %s', 'color:#5fd8e8', u.search);
+  } catch (e) {
+    console.warn('★ URL 同步失败（不影响游玩）：', e);
+  }
+}
 
 /* ★ 硬件加速检测 → 在开始页给出警告 */
 function checkHardwareAccel(){
@@ -5974,22 +6290,27 @@ function goHub(){
    · 排除【当前所在的这间】（点了等于原地重载，没意义）
    · 用户说下一步要加很多宿舍、走廊只放精选 → 所以这里的列表 = 全部房间，
      走廊上有没有门是另一回事（manifest 的 inHub 字段管那个）。 */
-const ROOM_MENU = ROOMS
-  .filter((r) => r.theme && r.theme !== THEME)
-  /* ★★★ 2026-10-14：`kind` 必须一起带过去！
-     面板的两段分组**只认这个字段**（见 rooms/panel.js）。
-     ★★★ 2026-10-23：`sortId` 同理 —— 面板在「家具主题」段内按它降序排
-     （游戏内上线时间，越新越前）。漏带 → 全部按 0 处理 → 顺序变成 manifest 原顺序（错的）。
-     这里是白名单式映射（不是展开 `...r`），漏一个字段就会静默出错 ——
-     ★ 所以以后 manifest 里新增"面板要用的字段"，**两个调用方
-       （这里 + hub.html 的 openHubRoomPanel）都要加**。 */
-  .map((r) => ({ theme: r.theme, name: r.name, tag: r.tag || '', desc: r.desc || '',
-                 kind: r.kind, sortId: r.sortId,
-                 /* ★★★ 2026-10-23 修：`family` / `defaultFurni` 一直漏在这儿！
-                    面板靠它俩给非默认家具的会客室加「（会客室）」后缀（用户 2026-10-14 要求：
-                    「蓝丝绒房间（会客室）」，默认那套不加）。漏传 ⇒ `isMeeting` 恒为 false ⇒
-                    后缀从来没出现过。白名单式映射的老坑，见上面注释。 */
-                 family: r.family, defaultFurni: r.defaultFurni }));
+/* ★★★ 2026-10-25（SPA）：改成**函数**，每次打开面板时现算。
+   原来是 `const ROOM_MENU = ... filter(r => r.theme !== THEME)` —— 只按初始房间过滤一次，
+   SPA 换房后它永远少一间（初始那间）、多一间（当前这间）。 */
+function roomMenuList(){
+  return ROOMS
+    .filter((r) => r.theme && r.theme !== THEME)
+    /* ★★★ 2026-10-14：`kind` 必须一起带过去！
+       面板的两段分组**只认这个字段**（见 rooms/panel.js）。
+       ★★★ 2026-10-23：`sortId` 同理 —— 面板在「家具主题」段内按它降序排
+       （游戏内上线时间，越新越前）。漏带 → 全部按 0 处理 → 顺序变成 manifest 原顺序（错的）。
+       这里是白名单式映射（不是展开 `...r`），漏一个字段就会静默出错 ——
+       ★ 所以以后 manifest 里新增"面板要用的字段"，**两个调用方
+         （这里 + hub.html 的 openHubRoomPanel）都要加**。 */
+    .map((r) => ({ theme: r.theme, name: r.name, tag: r.tag || '', desc: r.desc || '',
+                   kind: r.kind, sortId: r.sortId,
+                   /* ★★★ 2026-10-23 修：`family` / `defaultFurni` 一直漏在这儿！
+                      面板靠它俩给非默认家具的会客室加「（会客室）」后缀（用户 2026-10-14 要求：
+                      「蓝丝绒房间（会客室）」，默认那套不加）。漏传 ⇒ `isMeeting` 恒为 false ⇒
+                      后缀从来没出现过。白名单式映射的老坑，见上面注释。 */
+                   family: r.family, defaultFurni: r.defaultFurni }));
+}
 
 const TERMINAL = {
   // ★★★ 用户 2026-10-13 拍板 = 'board'（留言板）
@@ -6073,7 +6394,10 @@ function updateTerminalFacing(){
    连「E 打开终端」的提示都照弹。终端是【会客室专属】的，这里按主题收窄。
    ★ 以后想让别的房间也有终端：往数组里加主题名即可（别改回无条件）。 */
 const TERMINAL_THEMES = ['basicRoom'];
-const HAS_TERMINAL = TERMINAL_THEMES.indexOf(THEME) >= 0;
+/* ★★★ 2026-10-25（SPA）：`HAS_TERMINAL` 从 const 改成 let —— 换房时必须重算，否则
+   ①从会客室换到别的房间，终端屏还挂在 scene 里（它不在 root 里，unloadRoom 要单独收）；
+   ②从别的房间换回会客室，终端就不会被创建。真正"按新主题建/拆"的是 syncTerminal()。 */
+let HAS_TERMINAL = TERMINAL_THEMES.indexOf(THEME) >= 0;
 
 let terminalMat = null;          // 屏幕材质（只读调试用）
 let terminalMesh = null;
@@ -6166,9 +6490,27 @@ function buildTerminalScreen(){
   console.log('  ★ 屏幕会沿该圆弧滑动并【始终正对玩家】，追随范围 ±%d°（共 %d 度）',
     Math.round(TERMINAL_FOLLOW.maxYaw * 180 / Math.PI), Math.round(TERMINAL_FOLLOW.maxYaw * 360 / Math.PI));
 }
-if (HAS_TERMINAL) buildTerminalScreen();
-else console.log('%c★ 本房间（%s）没有终端 —— 终端目前只在：%s',
-  'color:#8298ac', THEME || '(默认 dorm)', TERMINAL_THEMES.join(' / '));
+/* ★★★ 2026-10-25（SPA）：终端的"建 / 拆"统一出口。
+   · 终端屏是 `scene.add()` 的（故意不在 root 里，避开碰撞盒）⇒ unloadRoom 清 root 时
+     **不会**带走它，必须在这里显式 scene.remove + dispose；
+   · 每次换房都会先拆掉旧的，再按新主题决定要不要建。
+   ★ 初始房间也走这条路（模块末尾的 loadRoom(initial) 会调），所以原来那行
+     `if (HAS_TERMINAL) buildTerminalScreen();` 已移除 —— 否则初始会建两次。 */
+function syncTerminal(){
+  HAS_TERMINAL = TERMINAL_THEMES.indexOf(THEME) >= 0;
+  if (terminalMesh){
+    scene.remove(terminalMesh);
+    try { terminalMesh.geometry.dispose(); } catch (e) {}
+    if (terminalMat){
+      try { if (terminalMat.map) terminalMat.map.dispose(); } catch (e) {}
+      try { terminalMat.dispose(); } catch (e) {}
+    }
+    terminalMesh = null; terminalMat = null;
+  }
+  if (HAS_TERMINAL) buildTerminalScreen();
+  else console.log('%c★ 本房间（%s）没有终端 —— 终端目前只在：%s',
+    'color:#8298ac', THEME || '(默认 dorm)', TERMINAL_THEMES.join(' / '));
+}
 
 /* ── 交互：走近 → 提示（和"推门出去"共用同一个 #prompt 元素，所以两边要互斥） */
 function checkTerminal(){
@@ -6210,7 +6552,7 @@ function openRoomPanel(){
   // ★ 防止"面板开着但人还在走"：把按下的键全部清掉（和 blur 那段同一套做法）
   for (const k in keys) keys[k] = false;
   showRoomPanel({
-    rooms: ROOM_MENU,
+    rooms: roomMenuList(),                 // ★ 2026-10-25：现算（排除当前房间）
     onPick: (t) => switchRoom(t),
     onHub: () => goHub(),
     onClose: () => { nearTerminal = false; },        // 下次靠近重新弹提示
@@ -6250,8 +6592,27 @@ function stepRoom(dir){
 function switchRoom(theme){
   if (leavingRoom) return;
   if (!theme || theme === THEME){ closeRoomPanel(); return; }
-  leavingRoom = true;
   closeRoomPanel();
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     ★★★ 2026-10-25（用户拍板 A 方案）：**默认走 SPA** —— 页面不卸载，只换 GLB。
+     · BGM 不间断（<audio> 没被销毁，不用续播补偿）；
+     · 全屏保持（没有文档级导航，Fullscreen API 生命周期不被打断）；
+     · 换房更快（不再重新下载 HTML + three.js + 重新初始化模块）。
+     ★ 这里**不再**调 saveBgmProgress() / FS_RESUME_KEY —— 那是整页跳转时代的补偿手段，
+        SPA 下反而会在 sessionStorage 里留下过期标记（下次整页进入时误续播/误恢复全屏）。
+     ═══════════════════════════════════════════════════════════════════════════ */
+  if (SPA_ON){
+    leavingRoom = true;
+    loaded = false;                 // 切换期间禁止移动/交互（tick 的 loaded 守卫）
+    saveKeptPose(theme);            // 站位沿用：同尺寸房间才生效（applyKeptPose 会校验）
+    spaLoadShow(theme);             // 淡出 + 轻量进度遮罩（不碰 #start / startLoadUI）
+    loadRoom(theme, { prevTheme: THEME });
+    return;
+  }
+
+  /* ── `?spa=0`：回退到原来的整页跳转（这段一个字没改，留着自救 / A-B 对比） ── */
+  leavingRoom = true;
   /* ★ 2026-10-23（用户要求）：先把当前位姿存下来，落地后由 applyKeptPose() 读回
      （整页跳转，模块状态会全丢，只能走 sessionStorage）。 */
   saveKeptPose(theme);
@@ -6771,6 +7132,25 @@ function dbgBuild(){
   DBG.hud = document.getElementById('dbgHud');
   console.log('%c★ 调试可视化已就绪：%d 个碰撞盒线框 + 视线射线（F8 开关）',
     'color:#59d0ff', DBG.lines.length);
+}
+
+/* ★★★ 2026-10-25（SPA）：换房时旧碰撞盒全换了 → 线框必须销毁重建。
+   ★ 只销毁 three.js 对象；`#dbgHud` 这个 DOM 和 `DBG.on` 状态都保留（F8 开着的体验不断）。
+   ★ unloadRoom 里调它；loadRoom 末尾按 `DBG.on` 决定要不要 dbgBuild() 重建。 */
+function dbgDestroy(){
+  if (!DBG.group) return;
+  try {
+    scene.remove(DBG.group);
+    DBG.group.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
+  } catch (e) {}
+  DBG.group = null;
+  DBG.lines = [];
+  DBG.ray = null; DBG.rayDot = null;
+  DBG.hitLines = []; DBG.hitFurni = null;
+  DBG.last = null; DBG._sig = '';
 }
 
 function _dbgClearHighlight(){
@@ -7332,6 +7712,35 @@ window.__FK = {
   get mats(){ return UNLIT_MATS; },
   get unlit(){ return IS_UNLIT; },
   get mode(){ return MODE || '(unlit 默认)'; },
+  /* ★★★ 2026-10-25（SPA）：无头回归要能读到"当前主题 / 是否加载完 / 显存占用 / BGM 进度"。
+     ★ 仍然只读：不要通过它们改状态（改场景用 __FK_SPA，见文件末尾）。 */
+  get theme(){ return THEME; },
+  get loaded(){ return loaded; },
+  get memory(){
+    const m = renderer.info.memory;
+    return {
+      geometries: m.geometries, textures: m.textures,
+      programs: renderer.info.programs ? renderer.info.programs.length : null,
+      calls: renderer.info.render.calls, triangles: renderer.info.render.triangles,
+      sceneChildren: scene.children.length,
+    };
+  },
+  get bgm(){
+    return {
+      time: +(bgm.currentTime || 0).toFixed(2),
+      paused: !!bgm.paused,
+      muted: !!bgmUserMuted,
+      readyState: bgm.readyState,
+      src: bgm.currentSrc || null,
+    };
+  },
+  get spa(){
+    return {
+      on: SPA_ON, leaving: leavingRoom, token: roomLoadToken,
+      roomRoot: !!roomRoot, recycleAnimRoot: !!recycleAnimRoot,
+      overlay: !!(spaLoadEl && spaLoadEl.style.display !== 'none' && spaLoadEl.style.opacity === '1'),
+    };
+  },
   /* ★ 2026-10-13 加：碰撞盒名单（只读）。boxes 是模块作用域变量，外部拿不到，
      而"某个新加的东西有没有变成障碍物"正是最需要验的一件事
      —— 光看 boxes 的数量对不上号，得能看见名字。 */
@@ -7450,6 +7859,17 @@ window.__FK = {
     };
   },
 };
+
+/* ★★★ 2026-10-25（SPA）：**测试专用**写接口 —— 无头回归脚本要连续切房 + 读内存曲线。
+   ★ 正常页面逻辑不依赖它；人工调试也能在控制台直接 `__FK_SPA.switchRoom('amiya')`。
+   ★ 只暴露最小面（切房 / 上下间 / 导航顺序），不要在这里加会改配置的东西。 */
+window.__FK_SPA = {
+  switchRoom,
+  stepRoom,
+  navOrder: NAV_ORDER.map((r) => r.theme),
+  navNames: NAV_ORDER.map((r) => r.name),
+  spaOn: SPA_ON,
+};
 /* ═══════════════════════════════════════════════════ ★★★ 功能房「研究中」提示（2026-10-23）
    ───────────────────────────────────────────────────────────────────────────
    用户要求：8 间基建功能房（`kind:'function'`）进房时给一条**不挡视线**的提示 / 角标，
@@ -7458,19 +7878,37 @@ window.__FK = {
      以后某间动效做完了，把那条 kind 改成 'dorm'，提示自动消失。
    ★ 时机：GLB 载入 + 出生点算完之后才显示（不盖开始页 / 加载进度条），见上面 showRoomNotice() 调用点。
    ★ 20 秒后自动淡出；左上角「研究中」角标常驻（不挡视线，随时能确认这间还在做）。 */
-const ROOM_ENTRY = ROOMS.find((r) => r.theme === THEME) || null;
-const IS_FUNCTION_ROOM = !!(ROOM_ENTRY && ROOM_ENTRY.kind === 'function');
+/* ★★★ 2026-10-25（SPA）：这两项从 const 改成 let —— 换房时按新主题重算。
+   ⚠️ 它们声明在文件末尾，而 GLB 的 onLoad 回调（异步）里要用 —— 这正是原来能成立的原因
+     （模块执行完才触发回调）。改 let 后不变，但**不要**在模块执行早期同步调用/读取它们。 */
+let ROOM_ENTRY = ROOMS.find((r) => r.theme === THEME) || null;
+let IS_FUNCTION_ROOM = !!(ROOM_ENTRY && ROOM_ENTRY.kind === 'function');
 let _roomNoticeTimer = 0;
-function showRoomNotice(){
-  if (!IS_FUNCTION_ROOM) return;
-  const badge = document.getElementById('roomBadge');
-  if (badge) badge.classList.add('on');
-  const box = document.getElementById('roomNotice');
-  if (!box) return;
+/* ★★★ 2026-10-25（SPA）：关闭按钮只绑一次。
+   原来每调一次 showRoomNotice() 就 `addEventListener(..., {once:true})` ——
+   整页跳转下每次都是新文档，没问题；SPA 换房会反复进来，没点过 × 的房间会累积监听器。 */
+(function initRoomNoticeClose(){
   const x = document.getElementById('roomNoticeX');
-  if (x) x.addEventListener('click', () => box.classList.remove('on'), { once: true });
-  box.classList.add('on');
+  if (x) x.addEventListener('click', () => {
+    const box = document.getElementById('roomNotice');
+    if (box) box.classList.remove('on');
+  });
+})();
+function showRoomNotice(){
+  const badge = document.getElementById('roomBadge');
+  const box = document.getElementById('roomNotice');
   clearTimeout(_roomNoticeTimer);
+  /* ★ 2026-10-25（SPA）：非功能房必须**主动清掉**上一间的角标/提示 ——
+     原来是 `if (!IS_FUNCTION_ROOM) return;`，整页跳转时新文档本来就是干净的，
+     SPA 下却会留下上一间的「研究中」（功能房 → 普通宿舍时最明显）。 */
+  if (!IS_FUNCTION_ROOM){
+    if (badge) badge.classList.remove('on');
+    if (box) box.classList.remove('on');
+    return;
+  }
+  if (badge) badge.classList.add('on');
+  if (!box) return;
+  box.classList.add('on');
   _roomNoticeTimer = setTimeout(() => box.classList.remove('on'), 20000);
   console.log('%c★ 功能房「研究中」提示：%s（%s）', 'color:#f0c34a', THEME,
     (ROOM_ENTRY && ROOM_ENTRY.name) || '');
@@ -7527,6 +7965,10 @@ window.__toggleBloom = function(){
   saveSetting('bloom', bloomOn);      // ★ 2026-10-16 跨房间保留
   say(bloomOn ? '泛光 开' : '泛光 关');
 };
+/* ★★★ 2026-10-25（SPA）：首帧加载挪到模块末尾 —— 这样 `ROOM_ENTRY` / `HAS_TERMINAL` /
+   `terminalMesh` / `SET_ITEMS` 等文件后部声明的 let/const 都已初始化，回调里再也不会踩 TDZ。
+   （原来 `new GLTFLoader().load(...)` 就在这里发请求，但 onLoad 是异步的，行为一致。） */
+loadRoom(THEME, { initial: true });
 requestAnimationFrame(tick);
 
 addEventListener('resize', () => {
