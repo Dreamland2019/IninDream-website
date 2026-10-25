@@ -1,10 +1,10 @@
 {
  "_what": "泛光数据（按 Y 导出，强度 + 按主题阈值）—— ★ 直接覆盖 网页原型\\assets\\bloom_tune.json 即可生效并发布",
- "_time": "2026/10/22 23:09:21",
- "_page": "http://127.0.0.1:8790/walk.html?theme=recycle",
+ "_time": "2026/10/25 20:57:33",
+ "_page": "http://127.0.0.1:8790/walk.html?theme=closureRoom",
  "_legend": "bloom.<主题> = 泛光强度（UnrealBloomPass.strength）；阈值 = 0.80 时写裸数字，阈值不同则写 {\"strength\":0.16,\"threshold\":0.55}。",
  "_scene": {
-  "当前房间": "recycle"
+  "当前房间": "closureRoom"
  },
  "bloom": {
   "Airship": 0.22,
@@ -64,7 +64,7 @@
    "strength": 0.2,
    "threshold": 0.28
   },
-  "closureRoom": 0.42,
+  "closureRoom": 0.12,
   "cloudRestaurant": 0.22,
   "coastCottage": {
    "strength": 0.27,
