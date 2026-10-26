@@ -219,20 +219,14 @@ canvas{display:block;outline:none}
   font:500 11.5px/1.7 ui-monospace,Consolas,monospace;color:#ffb3a8;
   background:rgba(224,87,74,.14);border:1px solid rgba(224,87,74,.5);
   border-radius:3px;word-break:break-all;text-align:left}
-/* ★★★ 2026-10-16 首次欢迎提示（只在【首次进会客厅】时显示，见 showWelcomeTips()） */
-.welcometips{margin-top:20px;max-width:520px;text-align:left;
-  border:1px solid #2c4a63;border-radius:5px;background:rgba(12,20,30,.55);
-  padding:14px 18px;font-size:12.5px;line-height:1.75;color:#b9cfe2}
-.welcometips .wt-title{font-size:13px;font-weight:600;letter-spacing:.18em;color:#9fe8ff;
-  margin-bottom:8px;text-align:center}
-.welcometips ul{margin:0;padding-left:18px}
-.welcometips li{margin:7px 0}
-.welcometips b{color:#dfeaf5}
-.welcometips .wt-path{display:block;color:#6d879e;font-size:11px;margin-top:2px}
-.welcometips .wt-go{margin-top:10px;text-align:center;color:#7d97ae;font-size:11.5px}
+/* ★★★ 2026-10-16 首次欢迎提示（只在【首次进会客厅】时显示，见 showWelcomeTips()）
+   ★ 2026-10-26（用户要求）：只保留「走廊早期测试范例」一条，去掉和「画面很卡」/底部版权
+     重复的内容，也不再套方框（纯文字居中）。 */
+.welcometips{margin-top:18px;max-width:520px;text-align:center;
+  font-size:12px;line-height:1.8;color:#8298ac;letter-spacing:.04em}
+.welcometips b{color:#cfe6f7;font-weight:600}
 @media (pointer:coarse),(max-width:820px){
-  .welcometips{font-size:12px;padding:12px 14px;max-width:92vw}
-  .welcometips .wt-path{font-size:10.5px}
+  .welcometips{font-size:11.5px;max-width:92vw}
 }
 #start .perfnote{margin-top:22px;max-width:420px;text-align:center;
   border-top:1px solid rgba(120,200,220,.14);padding-top:16px}
@@ -917,14 +911,7 @@ body.shake > *{animation:shake .075s infinite !important}
                  因为这个页面需要写一些提示：如『如果很卡请检查是否开启硬件加速；
                  走廊的六间房间为早期测试范例；本项目仅供娱乐，所有素材版权归版权方所有』等。" -->
   <div class="welcometips" id="welcomeTips" style="display:none">
-    <div class="wt-title">欢 迎 来 到 罗 德 岛 宿 舍</div>
-    <ul>
-      <li><b>如果很卡</b>：请检查浏览器是否开启了<b>硬件加速</b>
-        <span class="wt-path">Chrome / Edge：设置 → 系统 →「使用硬件加速（如可用）」，改完需重启浏览器</span></li>
-      <li><b>走廊的六间房间为早期测试范例</b>，观感与性能都还在继续调整</li>
-      <li><b>本项目仅供娱乐</b>，所有素材版权归版权方所有</li>
-    </ul>
-    <div class="wt-go">看完上面的提示，点下面的按钮进入</div>
+    <b>走廊的六间房间为早期测试范例</b>，观感与性能都还在继续调整
   </div>
   <!-- ★ 2026-10-26（用户要求）：进入页最下面一句版权声明。
        用户原话："一切素材版权归版权方所有，本项目仅供娱乐"，只写这句意思一下即可。 -->
@@ -5179,16 +5166,13 @@ addEventListener('orientationchange', () => {
    用户原话："第一次进入会客厅时加载完成不要自动进入，应该需要用户点击确认再进入，
              因为这个页面需要写一些提示：如『如果很卡请检查是否开启硬件加速；
              走廊的六间房间为早期测试范例；本项目仅供娱乐，所有素材版权归版权方所有』等。"
-   ⇒ 显示 HTML 里那块 #welcomeTips，并把标题/副标题换成【会客厅】的说法。
+   ⇒ 只显示 HTML 里那块 #welcomeTips（一条「走廊早期测试范例」），
+     **不再改标题/副标题** —— 用户 2026-10-26 要求首次进来也保持
+     「明日方舟第一人称基建 / 用第一人称视角走进干员宿舍」。
    ★ "已看过"的标记在 enterGame() 里写 —— 那样所有进入路径（按钮/点画布/自动）都能覆盖到。 */
 function showWelcomeTips(on){
   const el = document.getElementById('welcomeTips');
   if (el) el.style.display = on ? 'block' : 'none';
-  const h2 = document.querySelector('#start h2');
-  const sub = document.querySelector('#start .sub');
-  if (h2) h2.textContent = '会客室';
-  if (sub) sub.innerHTML = '这是罗德岛宿舍的<b>会客室</b> —— 网站的初始场地<br>' +
-    '想逛别处就按 <b>Tab</b> 打开房间列表；走廊和其余房间都从那里进';
 }
 
 document.getElementById('startbtn').addEventListener('click', e => {
