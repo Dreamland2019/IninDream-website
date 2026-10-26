@@ -112,6 +112,20 @@ canvas{display:block;outline:none}
   white-space:nowrap;pointer-events:none}
 #roomBadge.on{display:block}
 
+/* ★ 2026-10-26（用户/好友反馈）：好友一直没注意到 TAB 能开房间列表
+   —— 右上角按键提示行太多。进入页按钮下已加加粗提示（一次性），
+   这里再给一个**常驻浅色**兜底（仅桌面；手机端有右下角「房间」按钮，不需要键盘提示）。
+   ★ 位置：**屏幕最左下角**（用户要求，不要浮在半空）。
+   ★ 和性能面板（#fps）/ 调试读数（#dbgHud）同角；那两个是可选的调试面板，打开时会盖住它，
+     关掉后恢复。pointer-events:none，不挡准星/点击。★ 不联动 H（用户要求“一直”）。 */
+#tabHint{position:fixed;left:20px;bottom:14px;z-index:22;
+  font-size:11px;color:rgba(190,215,235,.55);letter-spacing:.08em;
+  pointer-events:none;user-select:none;white-space:nowrap}
+#tabHint b{color:rgba(95,216,232,.75);font-weight:600}
+@media (pointer: coarse), (max-width:820px){
+  #tabHint{display:none}
+}
+
 /* ═══ ★★★ 2026-10-23：调试可视化读数（F8） ═══════════════════════════════════
    ★ pointer-events:none —— 它只是"打印"，绝不能挡住鼠标锁定/点击画面。
    ★ 放左下角：右下角是手机按钮列、底部中间是家具信息条，左下角桌面端是空的。 */
@@ -176,6 +190,24 @@ canvas{display:block;outline:none}
 /* 按钮未就绪时不可点 */
 #start .btn.waiting{opacity:.45;pointer-events:none;
   border-color:rgba(120,200,220,.25);color:var(--dim);background:transparent}
+
+/* ★ 2026-10-26（用户/好友反馈）：好友第一次进来没注意到 TAB 能开房间列表
+   —— 右上角按键提示行太多，一眼扫不到。进入页按钮下给一条**加粗**提示（一次性、最显眼），
+   游戏内左下角再给一条常驻浅色提示（见 #tabHint）兜底。 */
+#start .tabhint-enter{margin-top:-10px;font-size:13px;font-weight:600;color:#d9edf8;
+  letter-spacing:.08em;text-align:center;line-height:1.7}
+#start .tabhint-enter b{color:var(--accent);font-weight:800;letter-spacing:.14em}
+@media (pointer: coarse), (max-width:820px){
+  /* 手机没有键盘，提示 TAB 会误导；手机端有右下角「房间」按钮 */
+  #start .tabhint-enter{display:none}
+}
+/* ★ 2026-10-26（用户要求）：进入页最下面的版权声明（只写一句，不写“如有侵权即刻删除”） */
+#start .copyright{position:absolute;left:0;right:0;bottom:14px;
+  text-align:center;font-size:10.5px;color:#5c7086;letter-spacing:.08em;
+  line-height:1.7;pointer-events:none;padding:0 16px}
+@media (pointer: coarse), (max-width:820px){
+  #start .copyright{bottom:10px;font-size:10px}
+}
 
 /* ★ 性能提示 */
 #start #bootError{display:none;max-width:90vw;margin-bottom:14px;padding:10px 14px;
@@ -712,6 +744,11 @@ body.shake > *{animation:shake .075s infinite !important}
 </div>
 <div id="roomBadge" title="该房间仍在研究中：动态效果未还原">研究中</div>
 
+<!-- ★ 2026-10-26（用户/好友反馈）：游戏内左下角常驻浅色 Tab 提示（仅桌面）。
+     好友表示右上角按键提示太多，一直没注意到 TAB 能开菜单；进入页按钮下另有一条加粗提示。
+     pointer-events:none —— 只是提示，不挡准星/点击。 -->
+<div id="tabHint">按 <b>TAB</b> 打开房间列表</div>
+
 <!-- ═══ ★★★ 2026-10-23：调试可视化的读数（F8 开关，见文件后面 DBG / updateDebugView） ═══
      用户 2026-10-19 需求：「按键显示自己视线指向的射线和家具的判断边框」
      —— 它同时是定位两个既有 bug 的工具：① 指向家具不显示文案 ② 碰撞体积不对。
@@ -835,6 +872,9 @@ body.shake > *{animation:shake .075s infinite !important}
   <h2>宿舍</h2>
   <div class="sub">用第一人称走进这间工作室<br>四处看看</div>
   <div class="btn" id="startbtn">载入中…</div>
+  <!-- ★ 2026-10-26（用户/好友反馈）：好友第一次进来没注意到 TAB 能开房间列表。
+       按钮下加一条加粗提示（电脑端）；手机端由 CSS 隐藏（手机有右下角「房间」按钮）。 -->
+  <div class="tabhint-enter">游览时按 <b>TAB</b> 打开选择菜单</div>
   <div class="keys pc">
     <span><b>W</b><b>A</b><b>S</b><b>D</b> 移动</span>
     <span><b>C</b> COS杜林</span>
@@ -881,6 +921,9 @@ body.shake > *{animation:shake .075s infinite !important}
     </ul>
     <div class="wt-go">看完上面的提示，点下面的按钮进入</div>
   </div>
+  <!-- ★ 2026-10-26（用户要求）：进入页最下面一句版权声明。
+       用户原话："一切素材版权归版权方所有，本项目仅供娱乐"，只写这句意思一下即可。 -->
+  <div class="copyright">一切素材版权归版权方所有，本项目仅供娱乐</div>
 </div>
 
 <!-- ★★★ 2026-10-15 极早的加载态（**必须放在 #start 之后、module 之前**）
@@ -6452,17 +6495,21 @@ function buildTerminalScreen(){
   g.textAlign = 'right'; g.font = '500 22px Consolas,ui-monospace,monospace';
   g.fillStyle = 'rgba(143,216,255,0.85)'; g.fillText('RECEPTION', CVW - 30, 42);
   // 主体
+  /* ★ 2026-10-26（用户要求）：这里的「6」是早期走廊 6 间精选的旧文案，
+     现在面板里是全部家具主题 → 动态取 ROOMS 里 kind !== 'function' 的数量（当前 139）。
+     ★ 交互键早已从 E 改成 F，底部那个小方块也一起改成 [ F ]。 */
+  const nDorm = ROOMS.filter((r) => r.kind !== 'function').length;
   g.textAlign = 'center';
   g.fillStyle = '#eaf6ff';
   g.font = '600 52px "HarmonyOS Sans SC","Microsoft YaHei","PingFang SC",sans-serif';
-  g.fillText('主题房间 · 6', CVW / 2, 132);
+  g.fillText('主题房间 · ' + nDorm, CVW / 2, 132);
   g.fillStyle = 'rgba(214,238,255,0.88)';
   g.font = '400 30px "HarmonyOS Sans SC","Microsoft YaHei","PingFang SC",sans-serif';
-  g.fillText('走进来，按 F 选择要去哪', CVW / 2, 196);
+  g.fillText('按 F 选择', CVW / 2, 196);
   // 底部按键提示 + 一个向下的箭头（提示"过来按"）
   g.fillStyle = 'rgba(143,216,255,0.9)';
   g.font = '500 26px Consolas,ui-monospace,monospace';
-  g.fillText('[ E ]', CVW / 2, 258);
+  g.fillText('[ F ]', CVW / 2, 258);
   g.strokeStyle = '#8fd8ff'; g.lineWidth = 7; g.lineCap = 'round'; g.lineJoin = 'round';
   for (let i = 0; i < 2; i++){
     const cy = 276 + i * 20;
