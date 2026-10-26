@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <!-- ★ 内联 favicon：避免浏览器请求 /favicon.ico 产生 404（控制台报错） -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b111a'/%3E%3Cpath d='M9 22V10l7 6 7-6v12' stroke='%235fd8e8' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<title>宿舍 · 第一人称漫游 | 可露希尔工作室</title>
+<title>第一人称视角基建</title>
 <style>
 :root{
   --bg:#05070b; --panel:rgba(8,13,21,.80); --line:rgba(120,200,220,.22);
@@ -869,8 +869,8 @@ body.shake > *{animation:shake .075s infinite !important}
 <button class="hud" id="mutebtn" title="静音 / 取消静音（M）">♪</button>
 
 <div id="start">
-  <h2>宿舍</h2>
-  <div class="sub">用第一人称走进这间工作室<br>四处看看</div>
+  <h2>明日方舟第一人称基建</h2>
+  <div class="sub">用第一人称视角走进干员宿舍<br>四处看看</div>
   <div class="btn" id="startbtn">载入中…</div>
   <!-- ★ 2026-10-26（用户/好友反馈）：好友第一次进来没注意到 TAB 能开房间列表。
        按钮下加一条加粗提示（电脑端）；手机端由 CSS 隐藏（手机有右下角「房间」按钮）。 -->
@@ -5486,7 +5486,7 @@ function updateTrust(dt, movedDist){
        已经被用户明确删掉了（见下面 2665 那一大段注释），再留着这句就是骗人。
        中间试过写成「他一直在黑暗里看着你」，用户 2026-10-13 晚定稿：
        **只要写「信赖已满」就行**，别加戏。 */
-    txt = '★ 信赖已满';
+    txt = '★ 信赖已满（按N隐藏该事件）';
   } else {
     txt = HINTS[p > 66 ? 2 : (p > 33 ? 1 : 0)];
     if (trust.triggered > 0) txt += '　（按 N 冻结信赖）';
