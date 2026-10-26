@@ -205,6 +205,11 @@ canvas{display:block;outline:none}
 #start .copyright{position:absolute;left:0;right:0;bottom:14px;
   text-align:center;font-size:10.5px;color:#5c7086;letter-spacing:.08em;
   line-height:1.7;pointer-events:none;padding:0 16px}
+/* 版权行里的「借物表 / 开源致谢」链接：整块 pointer-events:none，只给链接恢复点击。
+   onclick 里 stopPropagation，避免点链接时冒泡到 #start 的 enterGame。 */
+#start .copyright a{pointer-events:auto;color:#7db8d8;text-decoration:none;
+  border-bottom:1px dotted rgba(125,184,216,.5);transition:color .16s,border-color .16s}
+#start .copyright a:hover{color:var(--accent);border-bottom-color:var(--accent)}
 @media (pointer: coarse), (max-width:820px){
   #start .copyright{bottom:10px;font-size:10px}
 }
@@ -923,7 +928,7 @@ body.shake > *{animation:shake .075s infinite !important}
   </div>
   <!-- ★ 2026-10-26（用户要求）：进入页最下面一句版权声明。
        用户原话："一切素材版权归版权方所有，本项目仅供娱乐"，只写这句意思一下即可。 -->
-  <div class="copyright">一切素材版权归版权方所有，本项目仅供娱乐</div>
+  <div class="copyright">一切素材版权归版权方所有，本项目仅供娱乐 · <a href="借物表-Credits.md" target="_blank" rel="noopener" onclick="event.stopPropagation()">借物表 / 开源致谢</a></div>
 </div>
 
 <!-- ★★★ 2026-10-15 极早的加载态（**必须放在 #start 之后、module 之前**）
@@ -7349,6 +7354,10 @@ const SET_ITEMS = [
      （另一个入口是手机系统手势 / 外接键盘的 Esc）。 */
   { label: '沉浸模式（全屏）', type: 'toggle', on: () => isImmersive(),
     tap: () => { if (isImmersive()) exitImmersive(); else requestImmersive(); } },
+  /* ★ 2026-10-26：借物表 / 开源致谢（three.js 等）。原来借物表文件一直有，
+     但网站页面上没有入口；这里给一个，手机/桌面设置菜单都能点。 */
+  { label: '借物表 / Credits', type: 'tap', btn: '查看', val: () => '素材与开源',
+    tap: () => window.open('借物表-Credits.md', '_blank', 'noopener') },
   /* ★ 2026-10-14 用户："切换房间按键也应该搬出来放在边上，这个应该是需要快速访问的"
      ⇒ 「房间列表」【从菜单里搬走了】，改成右下角常驻按钮 #roombtn（和下蹲并排）。
         菜单里不再重复放它。 */
@@ -7390,7 +7399,7 @@ function renderSetMenu(){
       const v = document.createElement('div');
       v.className = 'sv';
       v.textContent = it.val();
-      const b = mkBtn('切换');
+      const b = mkBtn(it.btn || '切换');
       b.addEventListener('click', () => { it.tap(); renderSetMenu(); });
       row.appendChild(v); row.appendChild(b);
     } else if (it.type === 'step'){

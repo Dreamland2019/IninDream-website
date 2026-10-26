@@ -73,8 +73,40 @@
 |---|---|---|---|---|
 | **three.js** | 0.160.0 | MIT | 网页 3D 渲染（`lib\three.module.js` 实测 `REVISION='160'` ✓） | https://threejs.org |
 | **GLTFLoader** | 随 three.js | MIT | 加载 GLB 模型 | https://threejs.org |
-| **three.js 后处理**（EffectComposer / RenderPass / ShaderPass / UnrealBloomPass / OutputPass …） | 随 three.js | MIT | 网页端泛光（Bloom）与色调映射 | https://threejs.org |
+| **three.js 后处理**（EffectComposer / RenderPass / ShaderPass / UnrealBloomPass / OutputPass / MaskPass …） | 随 three.js | MIT | 网页端泛光（Bloom）与色调映射 | https://threejs.org |
 | ~~**Spine Runtimes (spine-canvas.js)**~~ | — | Spine Runtimes License | ~~渲染手部 Spine 动画~~ → ★ **当前站点未接入**，详见 §1.4 | http://esotericsoftware.com |
+
+### 2.1.1 three.js 的 MIT 许可全文
+
+> `网页原型\lib\three.module.js` 头部保留了原版权与 SPDX 标识：
+> `Copyright 2010-2023 Three.js Authors` / `SPDX-License-Identifier: MIT`。
+> `lib\` 下的 `GLTFLoader.js`、`OrbitControls.js`、`BufferGeometryUtils.js`、
+> `postprocessing\*`、`shaders\*` 均为 three.js **r160 官方 examples/addons**，
+> 随 three.js 采用同一 MIT 许可。以下为随附的完整许可文本：
+
+```text
+MIT License
+
+Copyright (c) 2010-2023 three.js authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ### 2.2 参考的第三方代码
 
