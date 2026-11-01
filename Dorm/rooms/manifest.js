@@ -1318,6 +1318,7 @@ export const ROOMS = [
      · kind:'dorm' —— 主题宿舍 */
   { theme: 'talulahCabin', name: '“并肩之人”', tag: '并肩之人', inHub: false, hasRig: false,
     kind: 'dorm', sortId: 2002,   // ★ 2026-11-01：新上线排最前（游戏内 137）
+    bgm: 'bgm_talulahCabin.mp3',  // ★ 彩蛋：act55side 片尾曲 m_sys2（剧情结束后的主界面 BGM）
     desc: '根据整合运动在乌卡边境农庄的据点复原出的房间。他们曾在这里度过了一个严苛的冬天，不过好在，这里的人心中拥有火焰——而它足够炽热，也足够明亮。' },
 
   /* ★ 会客室 = 第 7 间，是网站的初始场地。

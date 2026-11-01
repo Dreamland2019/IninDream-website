@@ -4230,6 +4230,8 @@ function applyRoomTheme(theme){
   THEME = theme;
   IS_UNLIT = isUnlitTheme(theme);
   ROOM_ENTRY = ROOMS.find((r) => r.theme === theme) || null;
+  /* ★ 2026-11-01：SPA 换房时同步切 BGM（专属曲/默认曲） */
+  if (typeof applyBgmFor === 'function') applyBgmFor(theme);
   IS_FUNCTION_ROOM = !!(ROOM_ENTRY && ROOM_ENTRY.kind === 'function');
   HAS_TERMINAL = TERMINAL_THEMES.indexOf(theme) >= 0;
   /* ★★★ 2026-10-25（SPA）：**必须同步 tuneTheme**！
@@ -4827,6 +4829,23 @@ const startEl = document.getElementById('start');
 const bgm = document.getElementById('bgm');
 const muteBtn = document.getElementById('mutebtn');
 bgm.volume = 0.32;
+/* ★★★ 2026-11-01：主题专属 BGM（彩蛋）。manifest 里 `bgm` 字段有值就换掉默认曲。
+   ★ SPA 换房不销毁 <audio>（见 switchRoom 注释），所以这里必须做成**可随房间切换**的函数，
+     否则会：① 从 talulahCabin 切走时彩蛋曲继续播；② 从别处切进 talulahCabin 时切不过来。 */
+let curBgmFile = '';   // '' = 默认 bgm.mp3；有值 = assets/<值>
+function roomBgmOf(theme){
+  return ((ROOMS.find((r) => r.theme === theme) || {}).bgm) || '';
+}
+function applyBgmFor(theme){
+  const want = roomBgmOf(theme);
+  if (want === curBgmFile) return;          // 没变就别动（避免重启播放）
+  curBgmFile = want;
+  const playing = !bgm.paused;
+  bgm.src = want ? ('assets/' + want) : 'assets/bgm.mp3';
+  try { bgm.load(); } catch (e) {}
+  if (playing) { const p = bgm.play(); if (p && p.catch) p.catch(function(){}); }
+}
+applyBgmFor(THEME);
 let bgmOn = false;          // 正在播放
 let bgmBlocked = false;     // 被策略拦过
 let bgmUserMuted = false;   // 用户主动静音（不再自动重试）
@@ -4861,6 +4880,7 @@ function saveBgmProgress(){
 /** 播放前对齐进度（已在对齐过 / 正在播就跳过）。每次 startBgm 前都会算一遍，
     补偿"加载 + 等用户手势"这段空档。 */
 function bgmApplyResume(){
+  if (curBgmFile) return;   // ★ 2026-11-01：专属 BGM 不套用默认曲的续播进度
   /* ★ 2026-10-24：已经播了 2 秒以上就别再 seek（正常播放不该跳）；
      刚起播 / 还没播（loading 慢、等手势）时才对齐到"现在应该播到的位置"。 */
   if (!_bgmResume || (!bgm.paused && bgm.currentTime > 2)) return;
@@ -6336,8 +6356,10 @@ function goHub(){
    原来是 `const ROOM_MENU = ... filter(r => r.theme !== THEME)` —— 只按初始房间过滤一次，
    SPA 换房后它永远少一间（初始那间）、多一间（当前这间）。 */
 function roomMenuList(){
+  /* ★★★ 2026-11-01（用户要求）：**显示全部房间**，包括当前这间。
+     点当前房间 = 关闭菜单（switchRoom 里已处理 theme === THEME → closeRoomPanel）。 */
   return ROOMS
-    .filter((r) => r.theme && r.theme !== THEME)
+    .filter((r) => r.theme)
     /* ★★★ 2026-10-14：`kind` 必须一起带过去！
        面板的两段分组**只认这个字段**（见 rooms/panel.js）。
        ★★★ 2026-10-23：`sortId` 同理 —— 面板在「家具主题」段内按它降序排
