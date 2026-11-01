@@ -1304,6 +1304,22 @@ export const ROOMS = [
     sortId: 8,
     desc: '仿照龙门装修风格设计的休息室。' },
 
+  /* ★★ 2026-11-01 新增：行宫一隅（furni_set_tsarPalace）—— inHub:false（走廊门位固定 6 个，新房间走 Tab 面板）
+     · 预览图：arts\shop\furngroup\（商店宣传卡，480×296）
+     · hasRig:false —— 没做 rooms\_rig 旧光照回退版
+     · kind:'dorm' —— 主题宿舍 */
+  { theme: 'tsarPalace', name: '行宫一隅', tag: '行宫一隅', inHub: false, hasRig: false,
+    kind: 'dorm', sortId: 2001,   // ★ 2026-11-01：新上线排最前（游戏内 136，这里抬到会客室 1001+ 之上）
+    desc: '依照干员冻河的描述复原的乌萨斯皇室行宫风格房间。他的童年曾在相似的居所中度过，最大的区别可能在于，那个房间的窗外，有片一望无际的苹果林。' },
+
+  /* ★★ 2026-11-01 新增：“并肩之人”（furni_set_talulahCabin）—— inHub:false（走廊门位固定 6 个，新房间走 Tab 面板）
+     · 预览图：arts\shop\furngroup\（商店宣传卡，480×296）
+     · hasRig:false —— 没做 rooms\_rig 旧光照回退版
+     · kind:'dorm' —— 主题宿舍 */
+  { theme: 'talulahCabin', name: '“并肩之人”', tag: '并肩之人', inHub: false, hasRig: false,
+    kind: 'dorm', sortId: 2002,   // ★ 2026-11-01：新上线排最前（游戏内 137）
+    desc: '根据整合运动在乌卡边境农庄的据点复原出的房间。他们曾在这里度过了一个严苛的冬天，不过好在，这里的人心中拥有火焰——而它足够炽热，也足够明亮。' },
+
   /* ★ 会客室 = 第 7 间，是网站的初始场地。
        inHub:false —— 走廊尽头那扇走的是 hub.html 里单独的 END_DOOR，
        不是 DOORS 数组那 6 个门位（塞进去会让 DOOR_THEME 下标全部错位）。
