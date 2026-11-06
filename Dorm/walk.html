@@ -2995,6 +2995,7 @@ uniform vec2  uAmount;       // (Amount_01, Amount_02)
 uniform vec2  uBorder;       // (BorderWidth_01, BorderWidth_02)
 uniform float uTime;
 uniform float uRipple;       // ★ 2026-10-20：1 = 荡漾（不滚动，正弦波纹扰动 UV）
+uniform float uDissolveOn;   // ★ 2026-11-06：1 = 做两层 dissolve；0 = 该材质没有 dissolve 层（水面 shader）
 uniform float uDistortStrength; // ★ 2026-10-21：_DistortStrength（涟漪法线扰动幅度）
 uniform float uDistortSpeedX;   // ★ 2026-10-21：_DistortSpeedX（涟漪相位速度）
 uniform float uRefIntensity;    // ★ 2026-10-21：_RefIntenisty（UV 偏移系数）
@@ -3049,6 +3050,15 @@ void main(){
   float d2 = texture2D(uMask02, vUv + uDissolveOff02).r;
   float a2 = smoothstep(uAmount.y, uAmount.y + uBorder.y, d2);
 
+  /* ★★★ 2026-11-06 修 minosMed 水池「深色区」：**不是所有水材质都有 dissolve 层**。
+     游戏里 TX_water_01（水面 shader）的 typetree **没有** _Amount_01/_BorderWidth_01/
+     _DissolveTex_01/_ToggleUseDissolve_02 —— 之前的 amount/border 是抄 Fx Dissolve 的默认值，
+     于是 mask_12（64×64 渐变，两边暗）被当成 alpha 阈值 ⇒ 水面半边的 alpha 被挖成 0
+     ⇒ 露出下面的池底（深青色 (107,162,156)，与 nowater 实测同色）⇒ 用户报的「深色圆盘」。
+     实测：把 a1/a2 强制为 1 后深色区消失；导出器写 extras.fk_water.noDissolve=1 时这里跳过两层。 */
+  a1 = mix(1.0, a1, uDissolveOn);
+  a2 = mix(1.0, a2, uDissolveOn);
+
   // ④ 合成。alpha = 贴图α × 层1 × 层2（公式来自参数语义 + 现场对照，见待办文档 §八·8.4）
   gl_FragColor = vec4(c.rgb, c.a * a1 * a2);
   #include <colorspace_fragment>
@@ -3096,6 +3106,8 @@ function buildWaterMaterial(src){
       uDissolveOff02:{ value: new THREE.Vector2(off[0], off[1]) },
       uAmount:       { value: new THREE.Vector2(fk.amount01 != null ? fk.amount01 : 0.05,
                                                 fk.amount02 != null ? fk.amount02 : 0.05) },
+      // ★ 2026-11-06：水面 shader（typetree 里没有 _Amount_*/_DissolveTex_*）→ 不做 dissolve
+      uDissolveOn:   { value: fk.noDissolve ? 0.0 : 1.0 },
       uBorder:       { value: new THREE.Vector2(fk.border01 != null ? fk.border01 : 0.153,
                                                 fk.border02 != null ? fk.border02 : 0.5) },
       uTime:         { value: 0 },
@@ -3121,8 +3133,24 @@ function buildWaterMaterial(src){
     blending: THREE.NormalBlending,
     fog: false,
   });
+  /* ★★★ 2026-11-04（用户实测「图一正常、转视角变图二」= z-fighting）：
+     minoSMed 的雕塑有多层水【几何共面】——
+       · 垂直水柱底面 Y=0.09 与水池水平面 Y=0.09 完全重合；
+       · sculpture_07.001 与 sculpture_08 同尺寸同位（0.47×1.32×0.15 @ Y=0.73）。
+     它们都照游戏 `_ZWrite=1` 开了 depthWrite，深度值相同 ⇒ 视角一变就翻面。
+     ⇒ 按创建顺序给每层一个**固定的小深度偏移**（polygonOffset），
+       层序永远一致：后建的那层稳定压在前面那层之上，不再闪烁。
+     可用 `?wpo=0` 关掉对比。 */
+  const _seq = ++_fkWaterSeq;            // 层序（同时用于材质名唯一化）
+  const _wpo = new URLSearchParams(location.search).get('wpo') !== '0';
+  if (_wpo) {
+    const o = _seq % 16;                 // 0..15，循环够用（单间最多 ~10 层水）
+    mat.polygonOffset = true;
+    mat.polygonOffsetFactor = -0.5 * o;
+    mat.polygonOffsetUnits  = -1.0 * o;
+  }
   // ★ 名字带 FKwater，方便在控制台/调试面板一眼认出（也便于 applyUnlitGain 跳过它）
-  mat.name = 'FKwater_' + (++_fkWaterSeq) + '_' + (src.name || 'mat');
+  mat.name = 'FKwater_' + _seq + '_' + (src.name || 'mat');
   // ★ 每件都记下自己的参数 → 调速度时不用重导 GLB
   mat.userData.fk_water = true;
   mat.userData.fk_water_uvTween = [tw[0], tw[1]];
@@ -3131,6 +3159,7 @@ function buildWaterMaterial(src){
   mat.userData.fk_water_off02   = [off[0], off[1]];
   mat.userData.fk_water_mainColor = [col[0], col[1], col[2], col[3]];
   mat.userData.fk_water_hasMask = [!!m01, !!m02];
+  mat.userData.fk_water_seq = _seq;          // ★ 2026-11-06：层序 → 应用处写成 mesh.renderOrder
   FK_WATER_MATS.push(mat);
   return mat;
 }
@@ -3860,6 +3889,24 @@ function loadRoom(theme, opts){
     } else if (o.material){
       o.material = toLambert(o.material);
       matSwapped++;
+    }
+
+    /* ★★★ 2026-11-06 修 minosMed 水池「深色圆盘」：
+       水件是透明的，`depthWrite=true`（照游戏 _ZWrite=1）⇒ **谁先画就会把后面的水用深度挡掉**。
+       实测 second sculpture 的水面（04001, y≈0.08）和水花环筒（06001, y 0.083~0.324）
+       包围盒几乎重合，three 的透明排序在两者之间会随视角（以及 material.id）翻转：
+         · 水面先画 → 水花半透明叠在上面 ⇒ 正常淡青；
+         · 水花先画 → 写深度 ⇒ 水面被剔除 ⇒ 露出水下 ⇒ 一大块深青色「圆盘」。
+       ⇒ 用**导出层序**（buildWaterMaterial 的 _seq，= glTF 材质顺序 = 游戏里的层次）
+         固定 renderOrder，顺序永远一致，不再随视角翻面。
+       ★ 只给水件写（其它物体保持 0），所以不影响家具/发光片的排序。 */
+    {
+      const _ms = Array.isArray(o.material) ? o.material : [o.material];
+      for (const _m of _ms){
+        if (_m && _m.userData && _m.userData.fk_water_seq != null){
+          o.renderOrder = _m.userData.fk_water_seq;
+        }
+      }
     }
 
     // 贴图设置
